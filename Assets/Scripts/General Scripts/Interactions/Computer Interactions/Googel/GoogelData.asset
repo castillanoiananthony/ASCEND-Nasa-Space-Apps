@@ -1,0 +1,3112 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7151548c632e5a35097fdc93545ed97b, type: 3}
+  m_Name: GoogelData
+  m_EditorClassIdentifier: Assembly-CSharp::GoogelData
+  categories:
+  - name: Main Engines
+    description: The primary propulsion system that generates thrust to lift and accelerate the rocket.
+    parts:
+    - title: Merlin 1D
+      image: {fileID: 0}
+      shortDescription: SpaceX's workhorse kerosene engine. Nine of them power every Falcon 9 first stage.
+      purpose: Provides first-stage thrust for Falcon 9 and Falcon Heavy. It can throttle down and restart in flight, which lets boosters perform the boostback, entry and landing burns needed for reuse.
+      specs: 'Maker: SpaceX
+
+        Propellants: RP-1 kerosene / liquid oxygen
+
+        Cycle: Gas generator
+
+        Thrust: ~845 kN (190,000 lbf) at sea level
+
+        Specific impulse: ~282 s sea level, ~311 s vacuum
+
+        Injector: Pintle
+
+        Ignition: TEA-TEB (a fluid that ignites on contact with air)'
+      cost: Not officially published. Industry estimates put it around $1 million per engine, which is very cheap for its class because SpaceX builds them in-house in large numbers and reflies them.
+      history: The Merlin family first flew on Falcon 1 in 2006. The 1D version debuted on Falcon 9 v1.1 in 2013 and kept getting upgraded; the Block 5 version (2018) is built to fly many times with little refurbishment.
+    - title: Merlin Vacuum
+      image: {fileID: 0}
+      shortDescription: A Merlin tuned for space, with a huge nozzle. It drives the Falcon 9 second stage to orbit.
+      purpose: Powers the second stage of Falcon 9 and Falcon Heavy after stage separation. Its oversized nozzle squeezes more energy out of the exhaust in vacuum, and it can restart several times to reach different orbits.
+      specs: 'Maker: SpaceX
+
+        Propellants: RP-1 / liquid oxygen
+
+        Cycle: Gas generator
+
+        Thrust: ~981 kN (220,500 lbf) in vacuum
+
+        Specific impulse: ~348 s in vacuum
+
+        Nozzle: Radiatively cooled niobium alloy extension, ~165:1 expansion ratio'
+      cost: Not published. Because the second stage is not recovered, a new Merlin Vacuum is used up on every flight, making it one of the main hardware costs of each Falcon 9 launch.
+      history: Merlin Vacuum variants have flown since Falcon 9's first launch in 2010. The 1D Vacuum arrived with Falcon 9 v1.1 in 2013, and SpaceX later added a short-nozzle version for missions that don't need maximum performance.
+    - title: RS-25
+      image: {fileID: 0}
+      shortDescription: The Space Shuttle's reusable hydrogen engine, now flying again on NASA's SLS moon rocket.
+      purpose: Burns liquid hydrogen and liquid oxygen at very high efficiency, powering a core stage from liftoff almost all the way to orbit. Four RS-25s sit at the base of the SLS core stage.
+      specs: 'Maker: Aerojet Rocketdyne (now L3Harris)
+
+        Propellants: Liquid hydrogen / liquid oxygen
+
+        Cycle: Fuel-rich staged combustion
+
+        Thrust: ~1,860 kN sea level, ~2,280 kN vacuum
+
+        Specific impulse: ~366 s sea level, ~452 s vacuum
+
+        Chamber pressure: ~20 MPa (about 200 atmospheres)'
+      cost: One of the most expensive rocket engines ever built. NASA's contract for new expendable RS-25s for SLS works out to roughly $100 million per engine.
+      history: First flew on STS-1 in 1981 as the Space Shuttle Main Engine, with three on every Shuttle until 2011. Leftover Shuttle engines were upgraded for SLS, which launched Artemis I in 2022.
+    - title: RS-68
+      image: {fileID: 0}
+      shortDescription: The biggest hydrogen-fueled engine ever flown, built cheap and simple for the Delta IV.
+      purpose: Powered the Delta IV Common Booster Core. It traded some efficiency for a simpler, cheaper design than the RS-25, using an ablative nozzle that slowly wears away instead of complex cooling tubes.
+      specs: 'Maker: Rocketdyne (later Aerojet Rocketdyne)
+
+        Propellants: Liquid hydrogen / liquid oxygen
+
+        Cycle: Gas generator
+
+        Thrust: ~3,140 kN at sea level (RS-68A)
+
+        Specific impulse: ~360 s sea level, ~410 s vacuum
+
+        Nozzle: Ablatively cooled (the dark color you see in photos)'
+      cost: Exact prices were never published, but it was designed with far fewer parts than the RS-25 and cost only a fraction as much.
+      history: First flew on Delta IV in 2002, with the upgraded RS-68A following in 2012. Its fiery liftoffs, where leftover hydrogen scorched the booster's orange insulation, became a trademark until the final Delta IV Heavy launch in April 2024.
+    - title: F-1
+      image: {fileID: 0}
+      shortDescription: The Saturn V's monster engine. Five of them launched the Apollo astronauts toward the Moon.
+      purpose: Powered the S-IC first stage of the Saturn V, lifting the nearly 3,000-tonne rocket off the pad. It is still the most powerful single-chamber liquid-fueled engine ever flown.
+      specs: 'Maker: Rocketdyne
+
+        Propellants: RP-1 / liquid oxygen
+
+        Cycle: Gas generator
+
+        Thrust: ~6,770 kN (1.52 million lbf) at sea level
+
+        Specific impulse: ~263 s at sea level
+
+        Propellant use: about 2.6 tonnes per second, per engine'
+      cost: Per-engine cost in 1960s dollars isn't well documented. A complete Saturn V launch cost roughly $185 million at the time, which is well over $1 billion in today's money.
+      history: Development began in the late 1950s. Violent combustion instability nearly stopped the program until engineers set off small bombs inside test chambers to tune the injector. It first flew on Apollo 4 in 1967 and flew on all 13 Saturn V launches.
+    - title: Rutherford
+      image: {fileID: 0}
+      shortDescription: Rocket Lab's small 3D-printed engine whose fuel pumps are spun by electric motors and batteries.
+      purpose: 'Powers both stages of the Electron small-satellite rocket: nine engines on the first stage and one vacuum-optimized engine on the second.'
+      specs: 'Maker: Rocket Lab
+
+        Propellants: RP-1 / liquid oxygen
+
+        Cycle: Electric-pump-fed (battery-powered motors drive the pumps)
+
+        Thrust: ~24 kN per engine at sea level
+
+        Specific impulse: ~311 s sea level, ~343 s vacuum version
+
+        Manufacturing: Main components 3D printed'
+      cost: Engine price isn't published. A whole Electron launch has been advertised at around $7.5 million, so each engine is a small slice of that.
+      history: Unveiled in 2014 and first flew on Electron's debut in 2017. It was the first orbital-class engine to use an electric-pump cycle.
+    - title: Raptor
+      image: {fileID: 0}
+      shortDescription: SpaceX's methane-burning full-flow engine that powers Starship and the Super Heavy booster.
+      purpose: Drives both stages of Starship. Methane burns cleaner than kerosene (less soot, which helps reuse) and could in theory be produced on Mars from carbon dioxide and water.
+      specs: 'Maker: SpaceX
+
+        Propellants: Liquid methane / liquid oxygen
+
+        Cycle: Full-flow staged combustion
+
+        Thrust: ~2,260 kN (Raptor 2) to ~2,750 kN (Raptor 3) at sea level
+
+        Chamber pressure: ~30-35 MPa, among the highest ever
+
+        Super Heavy uses: 33 engines
+
+        Starship uses: 6 engines (3 sea-level, 3 vacuum)'
+      cost: Not published. SpaceX has said its goal is to bring each engine well under $1 million through mass production.
+      history: Development started around 2012. Raptor first flew in 2019 on the Starhopper test vehicle, Raptor 2 powered the Starship flight tests starting in 2023, and the simplified Raptor 3 was revealed in 2024.
+    - title: BE-4
+      image: {fileID: 0}
+      shortDescription: Blue Origin's large methane engine, powering both ULA's Vulcan and Blue Origin's New Glenn.
+      purpose: 'Provides first-stage thrust: two engines on ULA''s Vulcan Centaur and seven on the New Glenn booster, which is designed to land and fly again.'
+      specs: 'Maker: Blue Origin
+
+        Propellants: Liquid methane (LNG) / liquid oxygen
+
+        Cycle: Oxygen-rich staged combustion
+
+        Thrust: ~2,400 kN (550,000 lbf) at sea level
+
+        Throttling: Deep throttling for booster landings (New Glenn)'
+      cost: Not published. ULA picked it partly to replace the Russian-made RD-180 engine it had been buying for the Atlas V.
+      history: Announced in 2014. After a long development, it first flew on Vulcan's debut in January 2024 and on New Glenn's first launch in January 2025.
+    - title: RL10
+      image: {fileID: 0}
+      shortDescription: A small, super-efficient hydrogen engine that has powered American upper stages since 1963.
+      purpose: Powers upper stages such as Centaur, where efficiency matters more than raw thrust. Its expander cycle uses heat soaked up by the engine walls to drive the pumps, so no separate gas generator is needed.
+      specs: 'Maker: Originally Pratt & Whitney, now L3Harris (formerly Aerojet Rocketdyne)
+
+        Propellants: Liquid hydrogen / liquid oxygen
+
+        Cycle: Expander
+
+        Thrust: ~100-110 kN depending on version
+
+        Specific impulse: Up to ~465 s in vacuum
+
+        Restarts: Many restarts per flight'
+      cost: Often reported in the $10-20+ million range per engine, partly because it is still built in small numbers with a lot of hand work.
+      history: First flew in 1963 on Centaur, making it the first liquid-hydrogen engine to fly. Versions have flown on Atlas, Titan, Delta and SLS upper stages, and RL10-powered Centaurs sent probes like Voyager and New Horizons on their way.
+    - title: Vulcain
+      image: {fileID: 0}
+      shortDescription: Europe's hydrogen main engine, the heart of the Ariane 5 and Ariane 6 core stages.
+      purpose: Ignites on the launch pad and burns for around eight to nine minutes, powering the core stage from liftoff to near orbit while solid boosters add extra thrust early on.
+      specs: 'Maker: ArianeGroup (Europe)
+
+        Propellants: Liquid hydrogen / liquid oxygen
+
+        Cycle: Gas generator
+
+        Thrust: ~1,370 kN in vacuum (Vulcain 2 / 2.1)
+
+        Specific impulse: ~430+ s in vacuum
+
+        Burn time: ~8-9 minutes'
+      cost: Not published. Vulcain 2.1 for Ariane 6 was simplified (including a 3D-printed gas generator) specifically to cut production cost.
+      history: The first Vulcain flew on Ariane 5's maiden launch in 1996, which failed because of a software error, not the engine. Vulcain 2 arrived in 2002, and Vulcain 2.1 flew on Ariane 6's first launch in July 2024.
+    - title: YF-100
+      image: {fileID: 0}
+      shortDescription: China's high-pressure kerosene engine, used across the modern Long March rocket family.
+      purpose: Provides thrust for the Long March 5 boosters and the Long March 6 and Long March 7 first stages.
+      specs: 'Maker: Academy of Aerospace Liquid Propulsion Technology (China)
+
+        Propellants: RP-1 kerosene / liquid oxygen
+
+        Cycle: Oxygen-rich staged combustion
+
+        Thrust: ~1,200 kN sea level, ~1,340 kN vacuum
+
+        Specific impulse: ~300 s sea level, ~335 s vacuum'
+      cost: Not published.
+      history: Developed in the 2000s to replace older engines that burned toxic hypergolic propellants. It first flew in 2015 on Long March 6, followed by Long March 7 and Long March 5 in 2016.
+  - name: Solid Rocket Boosters
+    description: Strap-on motors packed with solid propellant that add huge thrust during the first minutes of flight.
+    parts:
+    - title: Space Shuttle SRB
+      image: {fileID: 0}
+      shortDescription: The twin white boosters that gave the Space Shuttle most of its thrust at liftoff.
+      purpose: Each booster burned for about two minutes, then separated, parachuted into the Atlantic, and was towed back to be refurbished and reused.
+      specs: 'Maker: Thiokol (later ATK)
+
+        Propellant: Ammonium perchlorate composite (PBAN binder)
+
+        Thrust: ~12,500 kN (2.8 million lbf) each at liftoff
+
+        Length: ~45.6 m
+
+        Diameter: ~3.7 m
+
+        Burn time: ~124 s
+
+        Segments: 4 propellant segments'
+      cost: Recovering, refurbishing and refilling a set of boosters still cost tens of millions of dollars per flight, so reuse saved hardware but not as much money as originally hoped.
+      history: Flew on all 135 Shuttle missions from 1981 to 2011. A failed O-ring seal in a booster joint caused the Challenger disaster in 1986, which led to a full redesign. Five-segment descendants now power NASA's SLS.
+    - title: GEM-40
+      image: {fileID: 0}
+      shortDescription: A graphite-epoxy strap-on booster that gave the Delta II extra kick at liftoff.
+      purpose: Strapped around the Delta II first stage in sets of three, four or nine, letting the rocket's power be matched to the weight of each payload.
+      specs: 'Maker: Alliant Techsystems (now Northrop Grumman)
+
+        Case: Graphite-epoxy composite (GEM = Graphite Epoxy Motor)
+
+        Diameter: ~1.0 m
+
+        Thrust: ~500 kN each
+
+        Burn time: ~64 s'
+      cost: Not public. Strap-on solids like this are popular because they are a cheap way to add a lot of thrust.
+      history: Introduced on Delta II in 1990 and flew until Delta II's final launch in 2018. In the nine-booster setup, six lit on the ground and three lit in the air.
+    - title: GEM-60
+      image: {fileID: 0}
+      shortDescription: A bigger graphite-epoxy booster made for the Delta IV Medium+ rockets.
+      purpose: Added liftoff thrust to Delta IV Medium+ versions, which used two or four boosters depending on how heavy the payload was.
+      specs: 'Maker: Alliant Techsystems (now Northrop Grumman)
+
+        Diameter: ~1.5 m
+
+        Thrust: ~830 kN each
+
+        Burn time: ~90 s
+
+        Nozzle: Fixed and steerable versions'
+      cost: Not public.
+      history: First flew on Delta IV in 2002 and was retired along with the Delta IV Medium in 2019.
+    - title: GEM-63
+      image: {fileID: 0}
+      shortDescription: Northrop Grumman's booster for the Atlas V, with a stretched XL version for Vulcan.
+      purpose: Strapped to the Atlas V (up to five boosters) to lift heavier payloads; the longer GEM 63XL does the same job on ULA's Vulcan Centaur.
+      specs: 'Maker: Northrop Grumman
+
+        Diameter: ~1.6 m
+
+        Length: ~20 m
+
+        Thrust: ~1,660 kN each
+
+        Burn time: ~94 s
+
+        Case: Carbon-fiber composite'
+      cost: Not public. It replaced the Aerojet AJ-60A booster on Atlas V, partly to bring costs down.
+      history: First flew on Atlas V in November 2020. The GEM 63XL debuted on Vulcan's first flight in 2024.
+    - title: P241 / EAP
+      image: {fileID: 0}
+      shortDescription: The giant solid boosters strapped to each side of Europe's Ariane 5.
+      purpose: Produced over 90% of Ariane 5's thrust at liftoff, burning for about two minutes before separating and falling into the Atlantic.
+      specs: 'Maker: Europropulsion (Avio / ArianeGroup)
+
+        Propellant: ~240 tonnes of solid propellant each
+
+        Thrust: ~7,000 kN each at peak
+
+        Length: ~31 m
+
+        Diameter: ~3 m
+
+        Burn time: ~130 s'
+      cost: Not public.
+      history: Flew on every Ariane 5 from 1996 until its final launch in 2023. EAP stands for 'Etage d'Acceleration a Poudre' (solid booster stage). Ariane 6 replaced them with the P120C booster.
+    - title: Castor 30
+      image: {fileID: 0}
+      shortDescription: A compact solid motor used as the second stage of Northrop Grumman's Antares rocket.
+      purpose: Fires after first-stage separation to push Antares, and the Cygnus cargo ships it carries to the ISS, the rest of the way to orbit.
+      specs: 'Maker: Alliant Techsystems (now Northrop Grumman)
+
+        Diameter: ~2.3 m
+
+        Variants: 30A, 30B, 30XL
+
+        Thrust: Roughly 260-470 kN in vacuum, depending on variant
+
+        Derived from: The Castor 120 motor'
+      cost: Not public.
+      history: First flew on Antares in 2013. The stretched Castor 30XL entered service in 2016 to carry heavier Cygnus spacecraft.
+  - name: Fuel & Propellant Tanks
+    description: Lightweight containers that store fuel and oxidizer, often at extremely cold temperatures.
+    parts:
+    - title: RP-1 Kerosene Tank
+      image: {fileID: 0}
+      shortDescription: Holds highly refined kerosene, a dense and easy-to-store rocket fuel.
+      purpose: Stores RP-1 and feeds it to the engines. Because RP-1 stays liquid at room temperature, the tank needs little insulation compared to cryogenic tanks.
+      specs: 'Typical material: Aluminum-lithium or aluminum alloy
+
+        Fuel temperature: Room temperature (sometimes chilled to make it denser)
+
+        Fuel density: ~0.81 g/cm3
+
+        Used on: Falcon 9, Soyuz, Saturn V first stage'
+      cost: Part of the stage's structure. Large tank sections cost from hundreds of thousands to millions of dollars, while the RP-1 itself costs only a few dollars per kilogram or less.
+      history: RP-1 ('Rocket Propellant-1') was standardized in the US in the 1950s because ordinary jet fuel had too many impurities that gummed up rocket engines.
+    - title: Liquid Oxygen (LOX) Tank
+      image: {fileID: 0}
+      shortDescription: Stores the oxidizer most rockets burn, chilled to about -183 C.
+      purpose: Holds the liquid oxygen that combines with fuel to make combustion possible in the vacuum of space. LOX is usually the heaviest part of a rocket's propellant load.
+      specs: 'Temperature: -183 C (boiling point of oxygen)
+
+        Density: ~1.14 g/cm3
+
+        Material: Aluminum or aluminum-lithium alloy
+
+        Features: Vents for boil-off gas, anti-slosh baffles'
+      cost: Part of the stage cost. Liquid oxygen itself is cheap, often well under a dollar per kilogram.
+      history: Used since Robert Goddard's first liquid-fueled rocket in 1926 and the German V-2. It is still the most common rocket oxidizer today.
+    - title: Liquid Hydrogen (LH2) Tank
+      image: {fileID: 0}
+      shortDescription: A very large, heavily insulated tank for ultra-cold, ultra-light liquid hydrogen.
+      purpose: Stores liquid hydrogen, the most efficient chemical rocket fuel. Because hydrogen is so light, its tank has to be huge for the amount of fuel it holds.
+      specs: 'Temperature: -253 C
+
+        Density: ~0.07 g/cm3 (about 1/14 of water)
+
+        Insulation: Spray-on foam or multilayer blankets
+
+        Challenge: Hydrogen leaks easily and can make some metals brittle'
+      cost: Usually one of the more expensive tanks to build because of the insulation and the extremely leak-tight construction it needs.
+      history: Pioneered on Centaur and the Saturn V upper stages in the 1960s. The hydrogen section of the Shuttle's External Tank was famously covered in orange foam insulation.
+    - title: Liquid Methane (LCH4) Tank
+      image: {fileID: 0}
+      shortDescription: Stores liquid methane, the fuel of the newest generation of reusable rockets.
+      purpose: Holds methane for engines like Raptor and BE-4. Methane is denser than hydrogen and burns cleaner than kerosene.
+      specs: 'Temperature: About -162 C
+
+        Density: ~0.42 g/cm3
+
+        Material: Stainless steel (Starship) or aluminum alloys
+
+        Advantage: Similar temperature to LOX, which makes shared tank walls easier'
+      cost: Methane itself is cheap, similar to natural gas. Starship's stainless steel tanks were chosen partly because steel costs far less than aerospace aluminum or carbon fiber.
+      history: Methane engines were studied for decades but first reached orbit in 2023 on China's Zhuque-2 rocket, followed by Vulcan in 2024.
+    - title: Hypergolic Propellant Tank
+      image: {fileID: 0}
+      shortDescription: Holds fuels and oxidizers that ignite instantly on contact, with no igniter needed.
+      purpose: Stores propellants such as hydrazine and nitrogen tetroxide for thrusters and engines that must start reliably every time, even after years in space.
+      specs: 'Common pairs: Hydrazine, MMH or UDMH + nitrogen tetroxide (N2O4)
+
+        Storage: Room temperature, for years
+
+        Material: Titanium is common
+
+        Hazard: Highly toxic and corrosive'
+      cost: Tanks are often precision titanium parts costing hundreds of thousands of dollars or more, and handling the toxic propellants safely adds a lot of cost too.
+      history: Used on the Apollo service and lunar modules, the Shuttle's maneuvering engines, Titan rockets, and the Draco thrusters on SpaceX's Dragon.
+    - title: Solid Propellant Casing
+      image: {fileID: 0}
+      shortDescription: The pressure-tight shell that holds a solid rocket's fuel and acts as its combustion chamber.
+      purpose: Contains the solid propellant and must survive high internal pressure and heat as the propellant burns from the inside out.
+      specs: 'Materials: High-strength steel or carbon/graphite-epoxy composite
+
+        Inner layers: Insulation and liner to protect the case
+
+        Operating pressure: Several MPa'
+      cost: Varies widely. Large steel cases, like the Shuttle SRB segments, were expensive but could be recovered and reused many times.
+      history: Composite cases, like those on the GEM boosters, became popular from the 1980s and 1990s to save weight. Shuttle SRB steel cases were reused across many flights.
+    - title: Pressurant Gas Tank
+      image: {fileID: 0}
+      shortDescription: Holds high-pressure gas, usually helium, that pushes propellant toward the engines.
+      purpose: Keeps the propellant tanks pressurized as they empty, so the pumps get a steady flow and thin tank walls stay stiff.
+      specs: 'Common gas: Helium (sometimes nitrogen)
+
+        Pressure: Often 20-40 MPa
+
+        Construction: Usually a COPV
+
+        Note: Some rockets, like Starship, use heated propellant gas instead of helium'
+      cost: Helium is expensive and in limited supply worldwide, which is one reason newer rockets try to avoid needing it.
+      history: Helium pressurization has been standard since the 1950s and 60s because helium stays a gas even at extremely low temperatures.
+    - title: Composite Overwrapped Pressure Vessel (COPV)
+      image: {fileID: 0}
+      shortDescription: 'An ultra-light high-pressure tank: a thin metal liner wrapped in carbon fiber.'
+      purpose: Stores gases like helium at very high pressure while weighing much less than an all-metal tank of the same strength.
+      specs: 'Liner: Aluminum or titanium
+
+        Overwrap: Carbon fiber in epoxy
+
+        Pressure: Up to ~40+ MPa
+
+        Weight: Far lighter than equivalent metal tanks'
+      cost: From a few thousand to hundreds of thousands of dollars each, depending on size and how much testing is needed to qualify it for flight.
+      history: Widely used since the Space Shuttle era. A COPV failure inside a liquid oxygen tank was blamed for the 2016 Falcon 9 explosion that destroyed the AMOS-6 satellite.
+  - name: Rocket Body & Structure
+    description: The skeleton and skin of the rocket that hold everything together and survive the forces of flight.
+    parts:
+    - title: First-Stage Tank
+      image: {fileID: 0}
+      shortDescription: The biggest part of the rocket, holding propellant for the first few minutes of flight.
+      purpose: Stores the fuel and oxidizer for the booster engines while also acting as the main load-carrying structure of the rocket.
+      specs: 'Typical layout: Separate fuel and oxidizer tanks
+
+        Material: Aluminum-lithium, aluminum or stainless steel
+
+        Example: Falcon 9''s first stage is over 40 m tall and 3.7 m wide'
+      cost: A major share of a rocket's price. Reusing it, as SpaceX does with Falcon 9, saves millions of dollars per flight.
+      history: Early rockets carried heavy separate tanks inside a body. Modern rockets use the tank walls themselves as the airframe to save weight.
+    - title: Second-Stage Tank
+      image: {fileID: 0}
+      shortDescription: Smaller tanks that feed the upper-stage engine once the booster drops away.
+      purpose: Provides the propellant the upper stage needs to reach orbital speed and place the payload into the correct orbit.
+      specs: 'Size: Usually much smaller than the first stage
+
+        Common bulkhead: Often one shared wall between fuel and oxidizer to save weight
+
+        Insulation: Needed for long coasts in space'
+      cost: Usually thrown away after each flight, so it is a big part of the cost of every launch.
+      history: Centaur pioneered ultra-thin 'balloon' tanks that hold their shape using internal pressure. Many modern upper stages use common-bulkhead designs.
+    - title: Main Rocket Fuselage
+      image: {fileID: 0}
+      shortDescription: The outer body of the rocket that ties all the sections together and handles flight loads.
+      purpose: Carries thrust, drag and bending loads, and protects internal systems like wiring and plumbing.
+      specs: 'Construction: Monocoque shells or isogrid (triangle-pattern) panels
+
+        Materials: Aluminum alloys, composites, stainless steel
+
+        Loads: Thrust, drag, vibration, wind gusts'
+      cost: Depends on size and material; usually counted as part of each stage's manufacturing cost.
+      history: Isogrid panels, developed with NASA support around the 1970s, became popular because they make walls that are both strong and light.
+    - title: Nose Cone
+      image: {fileID: 0}
+      shortDescription: The pointed tip that slices through the air and reduces drag.
+      purpose: Reduces drag and aerodynamic heating at the front of the vehicle. On most orbital rockets, the payload fairing itself forms the nose cone.
+      specs: 'Common shapes: Ogive, conical, von Karman
+
+        Materials: Composites or aluminum
+
+        Trade-off: Pointier shapes cut drag but hold less volume'
+      cost: Small nose cones are cheap; on large rockets the cost is part of the payload fairing.
+      history: Nose-cone shapes were studied heavily for supersonic missiles in the 1940s and 50s; the low-drag von Karman ogive is still a favorite.
+    - title: Interstage Adapter
+      image: {fileID: 0}
+      shortDescription: The connector between the first and second stages that holds the separation system.
+      purpose: Transfers loads between the stages, protects the upper-stage engine nozzle during climb, and then lets the stages separate cleanly.
+      specs: 'Material: Carbon-fiber composite or aluminum
+
+        Contains: Separation pushers or pneumatic systems
+
+        Falcon 9: The interstage stays on the booster and carries the grid fins'
+      cost: Usually counted as part of stage cost.
+      history: Soviet rockets often used 'hot staging', firing the upper engine through an open lattice interstage. SpaceX brought hot staging back for Starship in 2023.
+    - title: Structural Ring
+      image: {fileID: 0}
+      shortDescription: Circular frames that stiffen the rocket body and join sections together.
+      purpose: Keeps the cylinder perfectly round, spreads out concentrated loads (like booster attachment points), and connects tank sections.
+      specs: 'Materials: Machined aluminum, steel or titanium
+
+        Locations: Tank joints, booster attach points, stage interfaces
+
+        Also called: Frames or rings'
+      cost: Individually small, but precision-machined rings can be expensive.
+      history: Ring-and-stringer construction was borrowed from aircraft design and has been used in rockets since the 1940s.
+    - title: Engine Mount
+      image: {fileID: 0}
+      shortDescription: The thrust structure that holds the engines and passes their push into the rocket.
+      purpose: Carries the full engine thrust into the stage, supports the actuators that steer the engines, and routes propellant lines.
+      specs: 'Falcon 9: ''Octaweb'' layout (8 engines in a circle around 1 center engine)
+
+        Materials: Aluminum, titanium, composites
+
+        Loads: Several meganewtons'
+      cost: Part of the stage cost; complex because of the plumbing, heat and huge forces involved.
+      history: Falcon 9 switched from a 3x3 engine grid to the Octaweb in 2013 to simplify manufacturing and better survive an engine failure.
+    - title: Payload Fairing
+      image: {fileID: 0}
+      shortDescription: The protective clamshell that shields the payload from air, heat and noise during launch.
+      purpose: Protects satellites from aerodynamic forces, heating and acoustic vibration, then splits apart and falls away once the rocket is above most of the atmosphere.
+      specs: 'Falcon 9 fairing: ~13 m tall, 5.2 m wide
+
+        Material: Carbon fiber over aluminum honeycomb
+
+        Separation: Pneumatic or pyrotechnic pushers'
+      cost: Falcon 9's fairing has been reported to cost around $6 million, which is why SpaceX recovers and reuses fairing halves.
+      history: Fairings have been used since the earliest satellite launches. SpaceX began regularly recovering and reflying its fairings in 2019.
+    - title: Grid Fins
+      image: {fileID: 0}
+      shortDescription: Lattice-shaped fins that steer a returning booster through the atmosphere.
+      purpose: Guide a falling booster during reentry and landing. Their waffle-like shape gives strong control at supersonic speeds in a compact size.
+      specs: 'Falcon 9: 4 grid fins (titanium on Block 5)
+
+        Actuation: Hydraulic
+
+        Advantage: High control power for their size'
+      cost: Titanium grid fins are expensive to make but are reused flight after flight.
+      history: Grid fins were used on Soviet missiles and the Soyuz launch escape system. SpaceX first flew them in early 2015 and upgraded to titanium in 2017.
+    - title: Landing Legs
+      image: {fileID: 0}
+      shortDescription: Deployable legs that let a booster land upright on a pad or drone ship.
+      purpose: Unfold just before touchdown to soak up the landing impact and keep the booster standing upright.
+      specs: 'Falcon 9: 4 carbon-fiber legs with aluminum honeycomb
+
+        Span: ~18 m when deployed
+
+        Deployment: Pneumatic'
+      cost: Not public. The legs are a small cost compared with the savings from reusing the whole booster.
+      history: Falcon 9 made the first landing of an orbital-class booster in December 2015. Before that, legs were mostly used on landers like Apollo's lunar module.
+  - name: Upper-Stage Components
+    description: Hardware that takes over after the booster drops away and delivers the payload to its final orbit.
+    parts:
+    - title: Upper-Stage Engine
+      image: {fileID: 0}
+      shortDescription: An engine built for space, with a large nozzle and the ability to restart.
+      purpose: Pushes the upper stage and payload up to orbital speed, often in several separate burns to reach the target orbit.
+      specs: 'Examples: Merlin Vacuum, RL10, Vinci, Raptor Vacuum
+
+        Features: Large expansion nozzle, restart capability
+
+        Efficiency: Higher specific impulse in vacuum'
+      cost: Usually used up on every flight, making it a major part of launch cost.
+      history: Upper-stage engines like the J-2 (Saturn V) and RL10 made multi-burn missions to the Moon and planets possible.
+    - title: Kick Stage
+      image: {fileID: 0}
+      shortDescription: A small extra stage that gives the final precise push to place satellites in their exact orbits.
+      purpose: Performs final orbit changes or circularizes the orbit after the main upper stage shuts down, often dropping off several satellites in different spots.
+      specs: 'Example: Rocket Lab''s Electron Kick Stage (Curie engine)
+
+        Propellant: Usually storable liquids or solids
+
+        Ability: Multiple burns'
+      cost: Usually included in the launch price; small compared to the main stages.
+      history: Rocket Lab introduced its kick stage on Electron in 2018.
+    - title: Orbital Transfer Vehicle
+      image: {fileID: 0}
+      shortDescription: A space tug that moves satellites between orbits after launch.
+      purpose: Lets rideshare satellites reach custom orbits that the main rocket isn't going to, saving each satellite from carrying a big engine of its own.
+      specs: 'Examples: D-Orbit ION, Impulse Space Mira
+
+        Propulsion: Chemical or electric
+
+        Payload: Small to medium satellites'
+      cost: Varies; operators charge per kilogram or per satellite on top of the launch price.
+      history: Commercial transfer vehicles took off in the 2020s alongside SpaceX's rideshare missions; D-Orbit's ION first flew in 2020.
+    - title: Payload Adapter
+      image: {fileID: 0}
+      shortDescription: The cone-shaped interface that bolts the satellite to the top of the rocket.
+      purpose: Connects the payload to the upper stage, carries launch loads into the satellite, and holds the separation system.
+      specs: 'Standard sizes: 937 mm, 1194 mm, 1666 mm interfaces
+
+        Material: Aluminum or composite
+
+        Includes: Mounting points for the separation system'
+      cost: Varies from tens of thousands to hundreds of thousands of dollars.
+      history: Standard interface sizes let satellite makers build a spacecraft that can fly on several different rockets.
+    - title: Payload Dispenser
+      image: {fileID: 0}
+      shortDescription: A frame that holds and releases many satellites from one rocket.
+      purpose: Deploys multiple satellites from a single launch, whether for rideshare missions or big constellations.
+      specs: 'Examples: ESPA ring, Starlink stacks, multi-satellite dispensers
+
+        Release: Carefully timed so satellites don''t collide'
+      cost: Varies by size and complexity; custom dispensers can cost hundreds of thousands of dollars.
+      history: The ESPA ring (EELV Secondary Payload Adapter) first flew in 2007 and made it easy to carry small satellites alongside a big one.
+    - title: Spacecraft Separation Mechanism
+      image: {fileID: 0}
+      shortDescription: The latch that releases the satellite from the rocket at exactly the right moment.
+      purpose: Holds the spacecraft tightly through the shaking of launch, then releases it cleanly with a gentle push so it drifts away from the rocket.
+      specs: 'Types: Clamp band (Marman clamp), separation nuts and bolts, motorized rings
+
+        Push-off: Springs give roughly 0.5-1 m/s separation speed'
+      cost: Flight-qualified systems can cost from tens of thousands to over a hundred thousand dollars.
+      history: The Marman clamp, used on countless launches, is named after Marman Products, the company founded by Herbert 'Zeppo' Marx of the Marx Brothers comedy team.
+  - name: Flight Control & Navigation
+    description: 'The rocket''s brain and senses: they know where it is and steer it where it needs to go.'
+    parts:
+    - title: Flight Computer
+      image: {fileID: 0}
+      shortDescription: The onboard computer that runs the rocket's software and makes split-second decisions.
+      purpose: Runs guidance, navigation and control software, and sequences everything from engine start to stage separation and payload release.
+      specs: 'Redundancy: Often three computers that vote on every decision
+
+        Requirements: Radiation-tolerant, vibration-resistant
+
+        Example: Falcon 9 uses multiple redundant processors that cross-check each other'
+      cost: Flight-qualified avionics can cost from hundreds of thousands to millions of dollars.
+      history: The Saturn V's Launch Vehicle Digital Computer in the 1960s already used triple redundancy; modern rockets still use the same voting idea.
+    - title: Inertial Measurement Unit (IMU)
+      image: {fileID: 0}
+      shortDescription: A sensor package that tracks the rocket's motion and orientation without outside help.
+      purpose: Measures rotation and acceleration so the flight computer can work out the rocket's direction, speed and position at every instant.
+      specs: 'Contains: Gyroscopes + accelerometers
+
+        Types: Ring laser, fiber optic, MEMS
+
+        Update rate: Hundreds of times per second'
+      cost: From thousands of dollars (MEMS) to hundreds of thousands (high-end navigation grade).
+      history: Inertial guidance was pioneered on the German V-2 and refined for ICBMs and the Apollo program.
+    - title: Gyroscope
+      image: {fileID: 0}
+      shortDescription: Senses how fast the rocket is rotating around each axis.
+      purpose: Provides rotation-rate data so the rocket can hold its course and correct itself if it starts to tilt or spin.
+      specs: 'Types: Ring laser gyro, fiber optic gyro, MEMS
+
+        Measures: Pitch, yaw and roll rates'
+      cost: Ranges from a few dollars for MEMS chips to tens of thousands for precision laser gyros.
+      history: Early rockets used mechanical spinning gyros; today most use laser or fiber-optic gyros with no moving parts.
+    - title: Accelerometer
+      image: {fileID: 0}
+      shortDescription: Measures acceleration so the computer can work out speed and position.
+      purpose: Senses every push and pull on the rocket; adding these measurements up over time tells the computer how fast it is going and how far it has traveled.
+      specs: 'Types: Pendulous, quartz, MEMS
+
+        Measures: Linear acceleration along 3 axes'
+      cost: From a few dollars (MEMS) to thousands for navigation-grade sensors.
+      history: The V-2 used an integrating accelerometer to decide exactly when to shut off its engine.
+    - title: GNSS Receiver
+      image: {fileID: 0}
+      shortDescription: Uses GPS and other satellite signals to pinpoint the rocket's position.
+      purpose: Corrects the slow drift of inertial sensors and provides accurate tracking for range safety.
+      specs: 'Systems: GPS, Galileo, GLONASS, BeiDou
+
+        Special note: Space-use receivers need special versions, since normal receivers stop working at very high speed and altitude'
+      cost: Space-qualified receivers typically cost tens of thousands of dollars or more.
+      history: GPS became fully operational in 1995 and is now standard equipment on launch vehicles.
+    - title: Flight Control Unit
+      image: {fileID: 0}
+      shortDescription: Turns the computer's commands into actual movements of engines and fins.
+      purpose: Drives the actuators that tilt (gimbal) the engine nozzles, move grid fins, and fire control thrusters.
+      specs: 'Controls: Thrust vector control, fins, cold-gas thrusters
+
+        Actuators: Hydraulic or electromechanical'
+      cost: Typically tens of thousands to hundreds of thousands of dollars, including actuators.
+      history: Early rockets steered with vanes in the exhaust; gimbaled engines became standard in the 1950s and 60s.
+    - title: Navigation System
+      image: {fileID: 0}
+      shortDescription: 'Combines all the sensors to answer: where are we, and how fast are we going?'
+      purpose: Fuses IMU and GNSS data, often with a Kalman filter, into one accurate estimate of position and velocity.
+      specs: 'Inputs: IMU, GNSS, sometimes star trackers
+
+        Method: Sensor fusion (Kalman filtering)
+
+        Output: Position, velocity, orientation'
+      cost: Mostly the cost of its sensors and software development.
+      history: The Kalman filter, developed around 1960, was famously used in the Apollo navigation system.
+    - title: Guidance System
+      image: {fileID: 0}
+      shortDescription: Decides the path the rocket should fly to reach its target orbit.
+      purpose: Calculates the best trajectory and the steering commands needed to follow it, updating them in real time as the flight goes on.
+      specs: 'Methods: Pre-planned pitch program early on, closed-loop guidance later
+
+        Example: Powered Explicit Guidance (used on the Space Shuttle)'
+      cost: Mostly software and engineering cost, often millions of dollars to develop and test.
+      history: The Apollo Guidance Computer, built in the 1960s, was one of the first computers to use integrated circuits.
+    - title: Flight Termination System
+      image: {fileID: 0}
+      shortDescription: A safety system that destroys the rocket if it flies dangerously off course.
+      purpose: Protects people and property on the ground by ending the flight if the rocket strays outside safe boundaries.
+      specs: 'Types: Command destruct (from the ground) or Autonomous FTS (onboard)
+
+        Mechanism: Explosive charges or engine shutdown'
+      cost: Complete systems can cost hundreds of thousands to millions of dollars; autonomous systems also save money on ground equipment.
+      history: SpaceX began flying an autonomous flight termination system around 2017, which no longer needed a person on the ground to trigger it.
+  - name: Electrical & Power
+    description: Systems that store, control and deliver electricity to every component on board.
+    parts:
+    - title: Lithium-Ion Battery
+      image: {fileID: 0}
+      shortDescription: Rechargeable cells that power the avionics and actuators, and on some rockets even the fuel pumps.
+      purpose: Supplies electricity to flight computers, sensors, valves, radios and actuators. On Rocket Lab's Electron, battery packs also spin the Rutherford engines' pumps.
+      specs: 'Energy density: ~150-260 Wh/kg
+
+        Common bus: 28 V class on many vehicles
+
+        Safety: Cell monitoring, thermal protection, venting
+
+        Lifetime needed: Minutes to hours on most rockets'
+      cost: Space-qualified packs cost far more than consumer batteries, often tens to hundreds of thousands of dollars, because every cell is screened and tested.
+      history: Earlier rockets and spacecraft relied on silver-zinc batteries. Lithium-ion took over in the 2000s and 2010s thanks to higher energy density and easy recharging for ground tests.
+    - title: Power Distribution Unit
+      image: {fileID: 0}
+      shortDescription: 'The rocket''s fuse box: it routes power to every system and isolates faults.'
+      purpose: Distributes battery power to each subsystem, switches loads on and off when commanded, and protects the rest of the rocket if one circuit shorts out.
+      specs: 'Functions: Switching, fusing / current limiting, monitoring
+
+        Control: Commanded by the flight computer
+
+        Telemetry: Reports voltages and currents to the ground'
+      cost: Custom avionics; typically tens of thousands to hundreds of thousands of dollars.
+      history: Early rockets used relays and mechanical timers; modern units use solid-state switches that report their health in real time.
+    - title: Voltage Regulator
+      image: {fileID: 0}
+      shortDescription: Keeps the electrical voltage steady so sensitive electronics aren't damaged.
+      purpose: Converts and stabilizes battery voltage, which drops as batteries drain, into clean constant voltages for computers and sensors.
+      specs: 'Types: Linear and switching (DC-DC converters)
+
+        Outputs: Common levels like 28 V, 12 V, 5 V, 3.3 V
+
+        Requirements: Survive vibration, heat and radiation'
+      cost: Individual radiation-tolerant converters can cost hundreds to thousands of dollars each.
+      history: Became more important as rockets moved from analog systems to digital computers that need very stable power.
+    - title: Electrical Wiring Harness
+      image: {fileID: 0}
+      shortDescription: Bundles of cables that carry power and data through the whole rocket.
+      purpose: Connects batteries, computers, sensors, valves and separation charges. Harnesses run along the outside of the tanks inside protective covers called raceways.
+      specs: 'Carries: Power, data and pyrotechnic firing lines
+
+        Protection: Shielding, sleeving, raceway covers
+
+        Connectors: Locking, vibration-proof designs'
+      cost: Very labor intensive. Large harnesses are often built by hand and can cost hundreds of thousands of dollars.
+      history: Wiring is one of the heaviest and most failure-prone parts of a vehicle, so modern rockets cut weight by sending data over networks instead of one wire per signal.
+    - title: Backup Power Supply
+      image: {fileID: 0}
+      shortDescription: A second power source that takes over if the main one fails.
+      purpose: Keeps critical systems running if a main battery or power line fails, especially the flight computer and the flight termination system.
+      specs: 'Form: Independent battery or redundant power bus
+
+        Priority: Flight termination usually has its own dedicated batteries
+
+        Switchover: Automatic'
+      cost: Adds weight and cost, but is required for safety-critical systems.
+      history: During Apollo 12 in 1969, lightning struck the Saturn V shortly after liftoff and knocked the spacecraft's power offline. The crew restored it using backup systems and the mission continued to the Moon.
+    - title: Solar Panel
+      image: {fileID: 0}
+      shortDescription: Panels that generate electricity on long missions, used on some upper stages and space tugs.
+      purpose: Provides power for stages that must survive hours, days or months in orbit, like orbital transfer vehicles and some kick stages. Most rockets don't need them because their flights are short.
+      specs: 'Cells: Multi-junction gallium arsenide (~30% efficient)
+
+        Layout: Body-mounted or deployable panels
+
+        Paired with: Rechargeable batteries for when the Sun is blocked'
+      cost: Space-grade solar cells cost far more than rooftop panels, often hundreds of dollars per watt.
+      history: Solar power in space began with the Vanguard 1 satellite in 1958. Today, long-lived upper stages and space tugs increasingly carry their own panels.
+  - name: Communication & Telemetry
+    description: Radio systems that let the rocket talk to the ground and send back thousands of measurements.
+    parts:
+    - title: Radio Transmitter
+      image: {fileID: 0}
+      shortDescription: Sends the rocket's data and live video back down to the ground.
+      purpose: Broadcasts telemetry, video and status data to ground stations and relay satellites throughout the flight.
+      specs: 'Common band: S-band (2-4 GHz)
+
+        Data rate: Kilobits to megabits per second
+
+        Power: A few watts to tens of watts'
+      cost: Space-qualified transmitters typically cost tens of thousands of dollars or more.
+      history: Rocket telemetry began in the 1940s. Today, the live onboard views in launch webcasts come straight from these transmitters.
+    - title: Radio Receiver
+      image: {fileID: 0}
+      shortDescription: Listens for commands sent up from the ground, including safety commands.
+      purpose: Receives uplinked commands, such as range-safety instructions, so ground teams can still act on the rocket during flight.
+      specs: 'Common band: S-band or UHF
+
+        Function: Command uplink
+
+        Reliability: Usually redundant'
+      cost: Typically tens of thousands of dollars for flight-qualified units.
+      history: Command receivers have been essential for range safety since the earliest missile tests in the 1940s and 50s.
+    - title: Telemetry System
+      image: {fileID: 0}
+      shortDescription: Collects thousands of measurements and packages them up for sending to the ground.
+      purpose: Gathers data from sensors (pressures, temperatures, vibration, positions) and formats it into a data stream that engineers watch live and study after flight.
+      specs: 'Measurements: Often thousands of channels
+
+        Format: Packetized digital data (PCM)
+
+        Backup: Onboard recorders'
+      cost: From tens of thousands to millions of dollars, depending on size and complexity.
+      history: Telemetry is how engineers figure out what went wrong after a failure; the 2015 Falcon 9 CRS-7 accident was traced to a failed strut using flight telemetry.
+    - title: Tracking Antenna
+      image: {fileID: 0}
+      shortDescription: Antennas that let ground stations follow the rocket across the sky.
+      purpose: Ground dishes lock onto the rocket's signal and follow it, while onboard antennas are placed so a link is kept no matter which way the rocket points.
+      specs: 'Ground: Large steerable dishes
+
+        Onboard: Wraparound or patch antennas
+
+        Relay: NASA''s TDRS satellites can relay rocket data too'
+      cost: Onboard antennas are inexpensive; large ground tracking stations cost millions to build and operate.
+      history: NASA's Tracking and Data Relay Satellite (TDRS) system, starting in 1983, allowed almost continuous contact instead of waiting for the rocket to pass over ground stations.
+    - title: GPS/GNSS Antenna
+      image: {fileID: 0}
+      shortDescription: Small antennas that pick up navigation satellite signals.
+      purpose: Feed GPS and other GNSS signals to the receiver for positioning and tracking.
+      specs: 'Type: Patch antennas, often placed on opposite sides of the vehicle
+
+        Frequencies: GPS L1/L2 and similar
+
+        Must survive: High speed, heat and vibration'
+      cost: Usually hundreds to a few thousand dollars each.
+      history: Became common on rockets in the 1990s and 2000s as GPS tracking started replacing radar for range safety.
+    - title: Communication Transponder
+      image: {fileID: 0}
+      shortDescription: Receives a signal and instantly answers, letting radar measure the rocket's exact position.
+      purpose: Boosts radar tracking and allows precise measurements of distance and speed for range safety and orbit calculations.
+      specs: 'Types: C-band radar transponders, S-band ranging transponders
+
+        Function: Replies instantly to an incoming signal'
+      cost: Typically tens of thousands of dollars for flight-qualified units.
+      history: C-band radar transponders were standard on US launches for decades; GPS-based tracking is now replacing many of them.
+  - name: Thermal Protection
+    description: Shields that protect the rocket and its payload from extreme heat and cold.
+    parts:
+    - title: Heat Shield
+      image: {fileID: 0}
+      shortDescription: Protects vehicles from the extreme heat of plunging back through the atmosphere.
+      purpose: Absorbs or blocks the intense heat created when a capsule or stage reenters the atmosphere at very high speed.
+      specs: 'Materials: PICA, Avcoat, ceramic tiles, reinforced carbon-carbon
+
+        Surface temperature: Can exceed 1,600 C
+
+        Example: SpaceX''s Dragon uses PICA-X'
+      cost: Large capsule heat shields cost millions of dollars.
+      history: Heat shield research took off in the 1950s for missile warheads and the Mercury capsule.
+    - title: Thermal Insulation
+      image: {fileID: 0}
+      shortDescription: Foam and blankets that keep cold propellants cold and electronics comfortable.
+      purpose: Reduces boil-off of super-cold propellants, prevents ice from forming on tanks, and shields equipment from engine heat.
+      specs: 'Types: Spray-on foam insulation (SOFI), multilayer insulation (MLI) blankets, cork
+
+        Used on: Cryogenic tanks, avionics bays'
+      cost: Relatively cheap as material, but applying it carefully takes a lot of labor.
+      history: A piece of foam insulation from the Shuttle's External Tank damaged Columbia's wing during launch in 2003, leading to the loss of the orbiter during reentry.
+    - title: Engine Cooling System
+      image: {fileID: 0}
+      shortDescription: Keeps the engine from melting, often by running cold fuel through its walls.
+      purpose: Protects combustion chambers and nozzles from gases hotter than 3,000 C.
+      specs: 'Regenerative: Fuel flows through channels in the chamber walls
+
+        Film: A thin layer of fuel along the wall
+
+        Radiative: Hot nozzle glows to shed heat (Merlin Vacuum)
+
+        Ablative: Material wears away (RS-68)'
+      cost: Built into the engine cost; regenerative channels are among the hardest parts to manufacture.
+      history: Regenerative cooling was pioneered in the 1930s and 40s and used on the V-2.
+    - title: Thermal Protection Tiles
+      image: {fileID: 0}
+      shortDescription: Ceramic tiles that protect reusable vehicles from reentry heat.
+      purpose: Insulate the vehicle's structure during reentry and are designed to be reused many times.
+      specs: 'Space Shuttle: ~24,000 silica tiles
+
+        Starship: ~18,000 hexagonal tiles
+
+        Property: Glowing hot on one side, cool enough to touch on the other'
+      cost: Shuttle tiles were famously expensive and slow to inspect and replace; Starship's tiles are designed for mass production.
+      history: Developed for the Space Shuttle in the 1970s. SpaceX revived the approach for Starship.
+    - title: Ablative Thermal Protection
+      image: {fileID: 0}
+      shortDescription: Material that slowly chars and wears away, carrying heat with it.
+      purpose: Protects capsules and engine nozzles by sacrificing a layer of material instead of letting heat soak in.
+      specs: 'Materials: Avcoat, PICA, phenolic resins
+
+        How it works: Charring and gas release carry heat away
+
+        Reuse: Usually single use'
+      cost: Varies; large ablative shields cost millions of dollars.
+      history: Used on the Apollo capsules; NASA's Orion uses Avcoat today.
+    - title: Temperature Sensors
+      image: {fileID: 0}
+      shortDescription: Tiny sensors that measure temperatures across engines, tanks and electronics.
+      purpose: Monitor temperatures for health checks, help condition propellants, and warn of problems before they become dangerous.
+      specs: 'Types: Thermocouples, RTDs, thermistors
+
+        Range: From -253 C (liquid hydrogen) to over 1,000 C (engines)'
+      cost: Individual sensors are cheap, from a few dollars to a few hundred each.
+      history: During Columbia's 2003 reentry, temperature sensors in the left wing were among the first signs that something was wrong.
+  - name: Payload Integration
+    description: Hardware and processes that house, attach and release the payload.
+    parts:
+    - title: Payload Bay
+      image: {fileID: 0}
+      shortDescription: The protected space where the payload rides during launch.
+      purpose: Provides a clean, safe area that holds the payload through the shaking, noise and pressure changes of launch.
+      specs: 'Space Shuttle cargo bay: ~18.3 m long x 4.6 m wide
+
+        On rockets: The volume inside the payload fairing
+
+        Environment: Controlled cleanliness, temperature and humidity'
+      cost: Part of the vehicle or fairing cost.
+      history: The Shuttle's payload bay carried the Hubble Space Telescope, ISS modules and many satellites.
+    - title: Payload Adapter
+      image: {fileID: 0}
+      shortDescription: The mechanical interface that bolts the satellite onto the launch vehicle.
+      purpose: Joins the satellite to the rocket, carries launch loads, and gives the separation system a place to mount.
+      specs: 'Shape: Usually a cone or cylinder
+
+        Standard sizes: 937 mm, 1194 mm, 1666 mm
+
+        Material: Aluminum or composite'
+      cost: Varies from tens of thousands to hundreds of thousands of dollars.
+      history: Standardized adapters let one satellite design launch on many different rockets.
+    - title: Payload Mounting Bracket
+      image: {fileID: 0}
+      shortDescription: Brackets that secure smaller payloads and equipment inside the rocket.
+      purpose: Hold small satellites, experiments or support hardware firmly in place during launch.
+      specs: 'Material: Aluminum or titanium
+
+        Design: Stiff enough to avoid shaking at resonant frequencies
+
+        Testing: Vibration tested before flight'
+      cost: Usually inexpensive, from hundreds to thousands of dollars.
+      history: Common on rideshare missions, where many small payloads share one rocket.
+    - title: Payload Deployment System
+      image: {fileID: 0}
+      shortDescription: Hardware that pushes payloads away from the rocket into space.
+      purpose: Releases payloads at the right time and speed so they move safely away from the rocket and each other.
+      specs: 'Examples: Spring-loaded CubeSat deployers (P-POD), robotic arms (Shuttle''s Canadarm)
+
+        Control: Timed commands from the flight computer'
+      cost: CubeSat deployers cost thousands to tens of thousands of dollars; larger systems far more.
+      history: The P-POD deployer, first flown in 2003, made launching tiny CubeSats simple and standard.
+    - title: Payload Separation Ring
+      image: {fileID: 0}
+      shortDescription: A ring-shaped separation system that releases the spacecraft cleanly.
+      purpose: Holds the spacecraft during launch and releases it with low shock so delicate instruments aren't damaged.
+      specs: 'Examples: Lightband (motorized), clamp-band rings
+
+        Shock: Low-shock designs protect sensitive instruments'
+      cost: Typically tens of thousands to over a hundred thousand dollars.
+      history: The Lightband was developed by Planetary Systems Corporation, which Rocket Lab acquired in 2021.
+    - title: Payload Encapsulation System
+      image: {fileID: 0}
+      shortDescription: The process and hardware for sealing the payload inside the fairing before launch.
+      purpose: Closes the payload inside the fairing in a clean room, then keeps clean, conditioned air flowing around it until liftoff.
+      specs: 'Location: Clean room
+
+        Environment: Filtered, temperature-controlled air flows into the fairing until launch
+
+        Steps: Mount payload, close fairing halves, move to the rocket'
+      cost: Part of the launch service cost; clean-room facilities are expensive to run.
+      history: The James Webb Space Telescope was encapsulated inside its Ariane 5 fairing in December 2021, shortly before its launch.
+  - name: 'AscendCAD Rocket: Propulsion'
+    description: Engines and solid motors from AscendCAD, with the thrust and efficiency the builder uses.
+    parts:
+    - title: Rutherford
+      image: {fileID: 0}
+      shortDescription: Rocket Lab's 3D-printed, battery-pumped small engine.
+      purpose: 'Powers both stages of the Electron small-satellite rocket: nine engines on the first stage and one vacuum-optimized engine on the second.
+
+
+        Rocket Lab''s 3D-printed, battery-pumped small engine. Nine power Electron''s first stage. Hangs under a tank (symmetry > 1 makes a cluster).'
+      specs: "AscendCAD section: Propulsion > Liquid Engines - Sea Level\nMass: 35 kg\nBurns: RP-1/LOX\nThrust: 25 kN sea level, 26 kN vacuum\nSpecific impulse: 311 s sea level, 320 s vacuum\nSize: \xD80.32 m x 0.9 m"
+      cost: '$350,000 (estimate). Where the numbers come from: Thrust/Isp: Rocket Lab; vac Isp, mass & cost est..'
+      history: Unveiled in 2014 and first flew on Electron's debut in 2017. It was the first orbital-class engine to use an electric-pump cycle.
+    - title: Merlin 1D
+      image: {fileID: 0}
+      shortDescription: SpaceX's workhorse gas-generator engine; nine per Falcon 9 booster.
+      purpose: 'Provides first-stage thrust for Falcon 9 and Falcon Heavy. It can throttle down and restart in flight, which lets boosters perform the boostback, entry and landing burns needed for reuse.
+
+
+        SpaceX''s workhorse gas-generator engine; nine per Falcon 9 booster. Throttles and restarts for landings. Hangs under a tank (symmetry > 1 makes a cluster).'
+      specs: "AscendCAD section: Propulsion > Liquid Engines - Sea Level\nMass: 470 kg\nBurns: RP-1/LOX\nThrust: 845 kN sea level, 914 kN vacuum\nSpecific impulse: 282 s sea level, 311 s vacuum\nSize: \xD80.92 m x 2.9 m"
+      cost: '$1,000,000 (estimate). Where the numbers come from: SpaceX public figures; cost est. ~$1M.'
+      history: The Merlin family first flew on Falcon 1 in 2006. The 1D version debuted on Falcon 9 v1.1 in 2013 and kept getting upgraded; the Block 5 version (2018) is built to fly many times with little refurbishment.
+    - title: YF-100
+      image: {fileID: 0}
+      shortDescription: China's staged-combustion kerosene engine for the Long March 5/6/7 family.
+      purpose: 'Provides thrust for the Long March 5 boosters and the Long March 6 and Long March 7 first stages.
+
+
+        China''s staged-combustion kerosene engine for the Long March 5/6/7 family. Hangs under a tank (symmetry > 1 makes a cluster).'
+      specs: "AscendCAD section: Propulsion > Liquid Engines - Sea Level\nMass: 1.9 t\nBurns: RP-1/LOX\nThrust: 1,200 kN sea level, 1,340 kN vacuum\nSpecific impulse: 300 s sea level, 335 s vacuum\nSize: \xD81.25 m x 3 m"
+      cost: '$2,500,000 (estimate). Where the numbers come from: CALT public figures; mass, dims & cost est..'
+      history: Developed in the 2000s to replace older engines that burned toxic hypergolic propellants. It first flew in 2015 on Long March 6, followed by Long March 7 and Long March 5 in 2016.
+    - title: BE-4
+      image: {fileID: 0}
+      shortDescription: Blue Origin's staged-combustion methane engine; two per Vulcan, seven per New Glenn.
+      purpose: 'Provides first-stage thrust: two engines on ULA''s Vulcan Centaur and seven on the New Glenn booster, which is designed to land and fly again.
+
+
+        Blue Origin''s staged-combustion methane engine; two per Vulcan, seven per New Glenn. Hangs under a tank (symmetry > 1 makes a cluster).'
+      specs: "AscendCAD section: Propulsion > Liquid Engines - Sea Level\nMass: 2.3 t\nBurns: CH4/LOX\nThrust: 2,400 kN sea level, 2,650 kN vacuum\nSpecific impulse: 310 s sea level, 340 s vacuum\nSize: \xD81.8 m x 5 m"
+      cost: '$8,000,000 (estimate). Where the numbers come from: Thrust: Blue Origin; Isp, mass & cost est..'
+      history: Announced in 2014. After a long development, it first flew on Vulcan's debut in January 2024 and on New Glenn's first launch in January 2025.
+    - title: Raptor 2
+      image: {fileID: 0}
+      shortDescription: SpaceX full-flow staged-combustion methane engine; 33 on Super Heavy.
+      purpose: 'Drives both stages of Starship. Methane burns cleaner than kerosene (less soot, which helps reuse) and could in theory be produced on Mars from carbon dioxide and water.
+
+
+        SpaceX full-flow staged-combustion methane engine; 33 on Super Heavy. Hangs under a tank (symmetry > 1 makes a cluster).'
+      specs: "AscendCAD section: Propulsion > Liquid Engines - Sea Level\nMass: 1.63 t\nBurns: CH4/LOX\nThrust: 2,256 kN sea level, 2,450 kN vacuum\nSpecific impulse: 327 s sea level, 350 s vacuum\nSize: \xD81.3 m x 3.1 m"
+      cost: '$1,000,000 (estimate). Where the numbers come from: SpaceX public figures; vac thrust & cost est..'
+      history: Development started around 2012. Raptor first flew in 2019 on the Starhopper test vehicle, Raptor 2 powered the Starship flight tests starting in 2023, and the simplified Raptor 3 was revealed in 2024.
+    - title: Vulcain 2.1
+      image: {fileID: 0}
+      shortDescription: Europe's hydrogen core engine for Ariane 6; burns about 8 minutes from liftoff.
+      purpose: 'Ignites on the launch pad and burns for around eight to nine minutes, powering the core stage from liftoff to near orbit while solid boosters add extra thrust early on.
+
+
+        Europe''s hydrogen core engine for Ariane 6; burns about 8 minutes from liftoff. Hangs under a tank (symmetry > 1 makes a cluster).'
+      specs: "AscendCAD section: Propulsion > Liquid Engines - Sea Level\nMass: 2.1 t\nBurns: LH2/LOX\nThrust: 960 kN sea level, 1,370 kN vacuum\nSpecific impulse: 318 s sea level, 431 s vacuum\nSize: \xD82.1 m x 3.4 m"
+      cost: '$12,000,000 (estimate). Where the numbers come from: ArianeGroup public figures; SL values & cost est..'
+      history: The first Vulcain flew on Ariane 5's maiden launch in 1996, which failed because of a software error, not the engine. Vulcain 2 arrived in 2002, and Vulcain 2.1 flew on Ariane 6's first launch in July 2024.
+    - title: RS-25
+      image: {fileID: 0}
+      shortDescription: The Shuttle main engine, now on SLS.
+      purpose: 'Burns liquid hydrogen and liquid oxygen at very high efficiency, powering a core stage from liftoff almost all the way to orbit. Four RS-25s sit at the base of the SLS core stage.
+
+
+        The Shuttle main engine, now on SLS. Superb efficiency, extreme price. Hangs under a tank (symmetry > 1 makes a cluster).'
+      specs: "AscendCAD section: Propulsion > Liquid Engines - Sea Level\nMass: 3.18 t\nBurns: LH2/LOX\nThrust: 1,860 kN sea level, 2,280 kN vacuum\nSpecific impulse: 366 s sea level, 452 s vacuum\nSize: \xD82.3 m x 4.3 m"
+      cost: '$100,000,000. Where the numbers come from: NASA / L3Harris; ~$100M per new engine reported.'
+      history: First flew on STS-1 in 1981 as the Space Shuttle Main Engine, with three on every Shuttle until 2011. Leftover Shuttle engines were upgraded for SLS, which launched Artemis I in 2022.
+    - title: F-1
+      image: {fileID: 0}
+      shortDescription: 'Saturn V''s monster: the most powerful single-chamber liquid engine ever flown.'
+      purpose: 'Powered the S-IC first stage of the Saturn V, lifting the nearly 3,000-tonne rocket off the pad. It is still the most powerful single-chamber liquid-fueled engine ever flown.
+
+
+        Saturn V''s monster: the most powerful single-chamber liquid engine ever flown. Hangs under a tank (symmetry > 1 makes a cluster).'
+      specs: "AscendCAD section: Propulsion > Liquid Engines - Sea Level\nMass: 8.4 t\nBurns: RP-1/LOX\nThrust: 6,770 kN sea level, 7,770 kN vacuum\nSpecific impulse: 263 s sea level, 304 s vacuum\nSize: \xD83.7 m x 5.8 m"
+      cost: '$90,000,000 (estimate). Where the numbers come from: NASA historical; modern cost est..'
+      history: Development began in the late 1950s. Violent combustion instability nearly stopped the program until engineers set off small bombs inside test chambers to tune the injector. It first flew on Apollo 4 in 1967 and flew on all 13 Saturn V launches.
+    - title: Rutherford Vacuum
+      image: {fileID: 0}
+      shortDescription: Electron's second-stage engine with a large vacuum nozzle.
+      purpose: 'Powers both stages of the Electron small-satellite rocket: nine engines on the first stage and one vacuum-optimized engine on the second.
+
+
+        Electron''s second-stage engine with a large vacuum nozzle. Cannot run at sea level. Hangs under a tank (symmetry > 1 makes a cluster).'
+      specs: "AscendCAD section: Propulsion > Liquid Engines - Vacuum\nMass: 40 kg\nBurns: RP-1/LOX\nThrust: 25.8 kN (vacuum only)\nSpecific impulse: 343 s vacuum\nSize: \xD80.65 m x 1.3 m"
+      cost: '$400,000 (estimate). Where the numbers come from: Rocket Lab; mass & cost est..'
+      history: Unveiled in 2014 and first flew on Electron's debut in 2017. It was the first orbital-class engine to use an electric-pump cycle.
+    - title: AJ10-118K
+      image: {fileID: 0}
+      shortDescription: Restartable storable-propellant upper-stage engine (Delta II heritage).
+      purpose: Restartable storable-propellant upper-stage engine (Delta II heritage). Hangs under a tank (symmetry > 1 makes a cluster).
+      specs: "AscendCAD section: Propulsion > Liquid Engines - Vacuum\nMass: 125 kg\nBurns: MMH/NTO\nThrust: 43.7 kN (vacuum only)\nSpecific impulse: 319 s vacuum\nSize: \xD81.5 m x 2.7 m"
+      cost: '$3,500,000 (estimate). Where the numbers come from: Aerojet public figures; dims & cost est..'
+      history: Part of the AscendCAD catalog (Propulsion > Liquid Engines - Vacuum). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: RL10C-1
+      image: {fileID: 0}
+      shortDescription: Expander-cycle hydrogen engine that powers Centaur.
+      purpose: Expander-cycle hydrogen engine that powers Centaur. Very efficient, very expensive. Hangs under a tank (symmetry > 1 makes a cluster).
+      specs: "AscendCAD section: Propulsion > Liquid Engines - Vacuum\nMass: 190 kg\nBurns: LH2/LOX\nThrust: 101.8 kN (vacuum only)\nSpecific impulse: 450 s vacuum\nSize: \xD81.45 m x 2.2 m"
+      cost: '$17,000,000 (estimate). Where the numbers come from: L3Harris public figures; cost est..'
+      history: Part of the AscendCAD catalog (Propulsion > Liquid Engines - Vacuum). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Merlin Vacuum
+      image: {fileID: 0}
+      shortDescription: Falcon 9's second-stage engine with a radiatively cooled niobium nozzle.
+      purpose: 'Powers the second stage of Falcon 9 and Falcon Heavy after stage separation. Its oversized nozzle squeezes more energy out of the exhaust in vacuum, and it can restart several times to reach different orbits.
+
+
+        Falcon 9''s second-stage engine with a radiatively cooled niobium nozzle. Hangs under a tank (symmetry > 1 makes a cluster).'
+      specs: "AscendCAD section: Propulsion > Liquid Engines - Vacuum\nMass: 490 kg\nBurns: RP-1/LOX\nThrust: 981.0 kN (vacuum only)\nSpecific impulse: 348 s vacuum\nSize: \xD83.3 m x 4.4 m"
+      cost: '$1,500,000 (estimate). Where the numbers come from: SpaceX public figures; mass, dims & cost est..'
+      history: Merlin Vacuum variants have flown since Falcon 9's first launch in 2010. The 1D Vacuum arrived with Falcon 9 v1.1 in 2013, and SpaceX later added a short-nozzle version for missions that don't need maximum performance.
+    - title: Raptor Vacuum
+      image: {fileID: 0}
+      shortDescription: Raptor with a large vacuum nozzle for Starship's upper stage.
+      purpose: 'Drives both stages of Starship. Methane burns cleaner than kerosene (less soot, which helps reuse) and could in theory be produced on Mars from carbon dioxide and water.
+
+
+        Raptor with a large vacuum nozzle for Starship''s upper stage. Hangs under a tank (symmetry > 1 makes a cluster).'
+      specs: "AscendCAD section: Propulsion > Liquid Engines - Vacuum\nMass: 1.9 t\nBurns: CH4/LOX\nThrust: 2,530.0 kN (vacuum only)\nSpecific impulse: 380 s vacuum\nSize: \xD82.3 m x 4.6 m"
+      cost: '$1,800,000 (estimate). Where the numbers come from: SpaceX; mass, dims & cost est..'
+      history: Development started around 2012. Raptor first flew in 2019 on the Starhopper test vehicle, Raptor 2 powered the Starship flight tests starting in 2023, and the simplified Raptor 3 was revealed in 2024.
+    - title: GEM-40 Booster
+      image: {fileID: 0}
+      shortDescription: Graphite-epoxy strap-on booster (Delta II).
+      purpose: 'Strapped around the Delta II first stage in sets of three, four or nine, letting the rocket''s power be matched to the weight of each payload.
+
+
+        Graphite-epoxy strap-on booster (Delta II). Attach to the side of a core stage. Straps onto the side of a core stage.'
+      specs: "AscendCAD section: Propulsion > Solid Motors & Boosters\nMass: 13.08 t full, 1.32 t empty\nPropellant: 11.77 t solid\nThrust: 446 kN sea level, 499 kN vacuum\nSpecific impulse: 245 s sea level, 274 s vacuum\nBurn time: 64 s\nSize: \xD81.02 m x 11 m"
+      cost: '$2,500,000 (estimate). Where the numbers come from: Northrop Grumman public figures; cost est..'
+      history: Introduced on Delta II in 1990 and flew until Delta II's final launch in 2018. In the nine-booster setup, six lit on the ground and three lit in the air.
+    - title: GEM-60 Booster
+      image: {fileID: 0}
+      shortDescription: Strap-on booster from the Delta IV Medium+ family.
+      purpose: 'Added liftoff thrust to Delta IV Medium+ versions, which used two or four boosters depending on how heavy the payload was.
+
+
+        Strap-on booster from the Delta IV Medium+ family. Straps onto the side of a core stage.'
+      specs: "AscendCAD section: Propulsion > Solid Motors & Boosters\nMass: 33.64 t full, 3.94 t empty\nPropellant: 29.7 t solid\nThrust: 826 kN sea level, 880 kN vacuum\nSpecific impulse: 245 s sea level, 275 s vacuum\nBurn time: 90 s\nSize: \xD81.55 m x 13 m"
+      cost: '$5,000,000 (estimate). Where the numbers come from: Northrop Grumman public figures; cost est..'
+      history: First flew on Delta IV in 2002 and was retired along with the Delta IV Medium in 2019.
+    - title: GEM-63 Booster
+      image: {fileID: 0}
+      shortDescription: Atlas V strap-on booster; the stretched XL flies on Vulcan.
+      purpose: 'Strapped to the Atlas V (up to five boosters) to lift heavier payloads; the longer GEM 63XL does the same job on ULA''s Vulcan Centaur.
+
+
+        Atlas V strap-on booster; the stretched XL flies on Vulcan. Straps onto the side of a core stage.'
+      specs: "AscendCAD section: Propulsion > Solid Motors & Boosters\nMass: 49.3 t full, 5.1 t empty\nPropellant: 44.2 t solid\nThrust: 1,663 kN sea level, 1,800 kN vacuum\nSpecific impulse: 245 s sea level, 275 s vacuum\nBurn time: 94 s\nSize: \xD81.6 m x 20.1 m"
+      cost: '$7,000,000 (estimate). Where the numbers come from: Northrop Grumman public figures; cost est..'
+      history: First flew on Atlas V in November 2020. The GEM 63XL debuted on Vulcan's first flight in 2024.
+    - title: P241 (EAP) Booster
+      image: {fileID: 0}
+      shortDescription: Ariane 5's giant side booster; over 90% of liftoff thrust.
+      purpose: Ariane 5's giant side booster; over 90% of liftoff thrust. Straps onto the side of a core stage.
+      specs: "AscendCAD section: Propulsion > Solid Motors & Boosters\nMass: 277 t full, 37 t empty\nPropellant: 240 t solid\nThrust: 6,500 kN sea level, 7,080 kN vacuum\nSpecific impulse: 250 s sea level, 275 s vacuum\nBurn time: 130 s\nSize: \xD83.05 m x 31.6 m"
+      cost: '$40,000,000 (estimate). Where the numbers come from: ESA / ArianeGroup public figures; cost est..'
+      history: Part of the AscendCAD catalog (Propulsion > Solid Motors & Boosters). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Space Shuttle SRB
+      image: {fileID: 0}
+      shortDescription: The largest solid boosters ever flown operationally.
+      purpose: 'Each booster burned for about two minutes, then separated, parachuted into the Atlantic, and was towed back to be refurbished and reused.
+
+
+        The largest solid boosters ever flown operationally. Straps onto the side of a core stage.'
+      specs: "AscendCAD section: Propulsion > Solid Motors & Boosters\nMass: 590 t full, 90 t empty\nPropellant: 500 t solid\nThrust: 12,500 kN sea level, 13,800 kN vacuum\nSpecific impulse: 242 s sea level, 268 s vacuum\nBurn time: 124 s\nSize: \xD83.71 m x 45.6 m"
+      cost: '$50,000,000 (estimate). Where the numbers come from: NASA historical; cost est..'
+      history: Flew on all 135 Shuttle missions from 1981 to 2011. A failed O-ring seal in a booster joint caused the Challenger disaster in 1986, which led to a full redesign. Five-segment descendants now power NASA's SLS.
+    - title: Castor 30XL Stage
+      image: {fileID: 0}
+      shortDescription: Solid upper stage (Antares).
+      purpose: Solid upper stage (Antares). Stack it like a tank; it carries its own propellant. Stacks on top of or under other parts.
+      specs: "AscendCAD section: Propulsion > Solid Motors & Boosters\nMass: 26.3 t full, 1.4 t empty\nPropellant: 24.9 t solid\nThrust: 474.0 kN (vacuum only)\nSpecific impulse: 294 s vacuum\nBurn time: 156 s\nSize: \xD82.34 m x 6 m"
+      cost: '$10,000,000 (estimate). Where the numbers come from: Northrop Grumman public figures; cost est..'
+      history: Part of the AscendCAD catalog (Propulsion > Solid Motors & Boosters). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Star 48B Kick Motor
+      image: {fileID: 0}
+      shortDescription: Small spherical-case solid motor for final orbit raising.
+      purpose: Small spherical-case solid motor for final orbit raising. Stacks on top of or under other parts.
+      specs: "AscendCAD section: Propulsion > Solid Motors & Boosters\nMass: 2.14 t full, 131 kg empty\nPropellant: 2.01 t solid\nThrust: 68.6 kN (vacuum only)\nSpecific impulse: 292 s vacuum\nBurn time: 84 s\nSize: \xD81.24 m x 2.03 m"
+      cost: '$3,000,000 (estimate). Where the numbers come from: Northrop Grumman public figures; cost est..'
+      history: Part of the AscendCAD catalog (Propulsion > Solid Motors & Boosters). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+  - name: 'AscendCAD Rocket: Propellant Tanks'
+    description: Every tank size in AscendCAD. Propellant and dry mass are calculated from volume and density.
+    parts:
+    - title: Kerolox Tank
+      image: {fileID: 0}
+      shortDescription: 28 sizes in AscendCAD. Common-bulkhead kerolox tank in carbon composite.
+      purpose: "Common-bulkhead kerolox tank in carbon composite. Holds 1.61 t of propellant (1.6 m\xB3 usable). Stacks on top of or under other parts.\n\nBigger sizes hold more but weigh and cost more; match the diameter of the parts above and below it."
+      specs: "AscendCAD section: Propellant Tanks > Kerolox (RP-1 / LOX)\nSizes available: 28\n\xD81.2 m x 1.5 m: 1.61 t propellant, 56 kg empty, $124K\n\xD81.2 m x 3 m: 3.22 t propellant, 113 kg empty, $250K\n\xD81.2 m x 6 m: 6.43 t propellant, 225 kg empty, $499K\n\xD81.2 m x 12 m: 12.86 t propellant, 450 kg empty, $997K\n\xD81.8 m x 1.5 m: 3.62 t propellant, 163 kg empty, $181K\n\xD81.8 m x 3 m: 7.23 t propellant, 326 kg empty, $363K\n\xD81.8 m x 6 m: 14.47 t propellant, 651 kg empty, $724K\n\xD81.8 m x 12 m: 28.94 t propellant, 1.3 t empty, $1.45M\n\xD82.5 m x 1.5 m: 6.98 t propellant, 314 kg empty, $349K\n\xD82.5 m x 3 m: 13.96 t propellant, 628 kg empty, $698K\n\xD82.5 m x 6 m: 27.91 t propellant, 1.26 t empty, $1.4M\n\xD82.5 m x 12 m: 55.82 t propellant, 2.51 t empty, $2.79M\n\xD83.7 m x 1.5 m: 15.28 t propellant, 688 kg empty, $765K\n\xD83.7 m x 3 m: 30.57 t propellant, 1.38 t empty, $1.53M\n\xD83.7 m x 6 m: 61.13 t propellant, 2.75 t empty, $3.06M\n\xD83.7 m x 12 m: 122.26 t propellant, 5.5 t empty, $6.12M\n\xD85 m x 1.5 m: 27.91 t propellant, 1.26 t empty, $1.4M\n\xD85 m x 3 m: 55.82 t propellant, 2.51 t empty, $2.79M\n\xD85 m x 6 m: 111.64 t propellant, 5.02 t empty, $5.59M\n\xD85 m x 12 m: 223.27 t propellant, 10.05 t empty, $11.18M\n\xD86.6 m x 1.5 m: 48.63 t propellant, 2.19 t empty, $2.43M\n\xD86.6 m x 3 m: 97.26 t propellant, 4.38 t empty, $4.87M\n\xD86.6 m x 6 m: 194.52 t propellant, 8.75 t empty, $9.74M\n\xD86.6 m x 12 m: 389.03 t propellant, 17.51 t empty, $19.47M\n\xD810.1 m x 1.5 m: 113.88 t propellant, 5.13 t empty, $5.7M\n\xD810.1 m x 3 m: 227.76 t propellant, 10.25 t empty, $11.4M\n\xD810.1 m x 6 m: 455.52 t propellant, 20.5 t empty, $22.8M\n\xD810.1 m x 12 m: 911.04 t propellant, 41 t empty, $45.6M"
+      cost: "From $124K to $45.6M depending on size (estimates). Where the numbers come from: Computed: volume x bulk density 1030 kg/m\xB3; structure \u22483.5% of propellant at $2200/kg (est.)."
+      history: Part of the AscendCAD catalog (Propellant Tanks > Kerolox (RP-1 / LOX)).
+    - title: Methalox Tank
+      image: {fileID: 0}
+      shortDescription: 28 sizes in AscendCAD. Common-bulkhead methalox tank in aluminum-lithium.
+      purpose: "Common-bulkhead methalox tank in aluminum-lithium. Holds 1.3 t of propellant (1.6 m\xB3 usable). Stacks on top of or under other parts.\n\nBigger sizes hold more but weigh and cost more; match the diameter of the parts above and below it."
+      specs: "AscendCAD section: Propellant Tanks > Methalox (CH4 / LOX)\nSizes available: 28\n\xD81.2 m x 1.5 m: 1.3 t propellant, 65 kg empty, $72K\n\xD81.2 m x 3 m: 2.59 t propellant, 130 kg empty, $144K\n\xD81.2 m x 6 m: 5.18 t propellant, 259 kg empty, $286K\n\xD81.2 m x 12 m: 10.36 t propellant, 518 kg empty, $573K\n\xD81.8 m x 1.5 m: 2.92 t propellant, 146 kg empty, $161K\n\xD81.8 m x 3 m: 5.83 t propellant, 291 kg empty, $322K\n\xD81.8 m x 6 m: 11.66 t propellant, 583 kg empty, $645K\n\xD81.8 m x 12 m: 23.32 t propellant, 1.17 t empty, $1.29M\n\xD82.5 m x 1.5 m: 5.62 t propellant, 281 kg empty, $311K\n\xD82.5 m x 3 m: 11.25 t propellant, 562 kg empty, $622K\n\xD82.5 m x 6 m: 22.49 t propellant, 1.12 t empty, $1.24M\n\xD82.5 m x 12 m: 44.98 t propellant, 2.25 t empty, $2.49M\n\xD83.7 m x 1.5 m: 12.32 t propellant, 862 kg empty, $219K\n\xD83.7 m x 3 m: 24.63 t propellant, 1.72 t empty, $438K\n\xD83.7 m x 6 m: 49.26 t propellant, 3.45 t empty, $877K\n\xD83.7 m x 12 m: 98.52 t propellant, 6.9 t empty, $1.75M\n\xD85 m x 1.5 m: 22.49 t propellant, 1.57 t empty, $400K\n\xD85 m x 3 m: 44.98 t propellant, 3.15 t empty, $801K\n\xD85 m x 6 m: 89.96 t propellant, 6.3 t empty, $1.6M\n\xD85 m x 12 m: 179.92 t propellant, 12.59 t empty, $3.2M\n\xD86.6 m x 1.5 m: 39.19 t propellant, 2.74 t empty, $698K\n\xD86.6 m x 3 m: 78.37 t propellant, 5.49 t empty, $1.4M\n\xD86.6 m x 6 m: 156.75 t propellant, 10.97 t empty, $2.79M\n\xD86.6 m x 12 m: 313.49 t propellant, 21.94 t empty, $5.58M\n\xD810.1 m x 1.5 m: 91.77 t propellant, 6.42 t empty, $1.63M\n\xD810.1 m x 3 m: 183.54 t propellant, 12.85 t empty, $3.27M\n\xD810.1 m x 6 m: 367.07 t propellant, 25.7 t empty, $6.53M\n\xD810.1 m x 12 m: 734.14 t propellant, 51.39 t empty, $13.07M"
+      cost: "From $72K to $13.07M depending on size (estimates). Where the numbers come from: Computed: volume x bulk density 830 kg/m\xB3; structure \u22485% of propellant at $1100/kg (est.)."
+      history: Part of the AscendCAD catalog (Propellant Tanks > Methalox (CH4 / LOX)).
+    - title: Hydrolox Tank
+      image: {fileID: 0}
+      shortDescription: 28 sizes in AscendCAD. Common-bulkhead hydrolox tank in aluminum-lithium with spray-on foam.
+      purpose: "Common-bulkhead hydrolox tank in aluminum-lithium with spray-on foam. Holds 0.56 t of propellant (1.6 m\xB3 usable). Stacks on top of or under other parts.\n\nBigger sizes hold more but weigh and cost more; match the diameter of the parts above and below it."
+      specs: "AscendCAD section: Propellant Tanks > Hydrolox (LH2 / LOX)\nSizes available: 28\n\xD81.2 m x 1.5 m: 562 kg propellant, 62 kg empty, $81K\n\xD81.2 m x 3 m: 1.12 t propellant, 124 kg empty, $162K\n\xD81.2 m x 6 m: 2.25 t propellant, 247 kg empty, $323K\n\xD81.2 m x 12 m: 4.5 t propellant, 494 kg empty, $647K\n\xD81.8 m x 1.5 m: 1.26 t propellant, 139 kg empty, $182K\n\xD81.8 m x 3 m: 2.53 t propellant, 278 kg empty, $364K\n\xD81.8 m x 6 m: 5.06 t propellant, 556 kg empty, $728K\n\xD81.8 m x 12 m: 10.11 t propellant, 1.11 t empty, $1.46M\n\xD82.5 m x 1.5 m: 2.44 t propellant, 268 kg empty, $351K\n\xD82.5 m x 3 m: 4.88 t propellant, 536 kg empty, $702K\n\xD82.5 m x 6 m: 9.76 t propellant, 1.07 t empty, $1.41M\n\xD82.5 m x 12 m: 19.51 t propellant, 2.15 t empty, $2.81M\n\xD83.7 m x 1.5 m: 5.34 t propellant, 588 kg empty, $770K\n\xD83.7 m x 3 m: 10.68 t propellant, 1.18 t empty, $1.54M\n\xD83.7 m x 6 m: 21.37 t propellant, 2.35 t empty, $3.08M\n\xD83.7 m x 12 m: 42.73 t propellant, 4.7 t empty, $6.15M\n\xD85 m x 1.5 m: 9.76 t propellant, 1.07 t empty, $1.41M\n\xD85 m x 3 m: 19.51 t propellant, 2.15 t empty, $2.81M\n\xD85 m x 6 m: 39.02 t propellant, 4.29 t empty, $5.62M\n\xD85 m x 12 m: 78.04 t propellant, 8.58 t empty, $11.24M\n\xD86.6 m x 1.5 m: 17 t propellant, 1.87 t empty, $2.45M\n\xD86.6 m x 3 m: 33.99 t propellant, 3.74 t empty, $4.9M\n\xD86.6 m x 6 m: 67.99 t propellant, 7.48 t empty, $9.79M\n\xD86.6 m x 12 m: 135.97 t propellant, 14.96 t empty, $19.58M\n\xD810.1 m x 1.5 m: 39.8 t propellant, 4.38 t empty, $5.73M\n\xD810.1 m x 3 m: 79.61 t propellant, 8.76 t empty, $11.46M\n\xD810.1 m x 6 m: 159.21 t propellant, 17.51 t empty, $22.93M\n\xD810.1 m x 12 m: 318.42 t propellant, 35.03 t empty, $45.85M"
+      cost: "From $81K to $45.85M depending on size (estimates). Where the numbers come from: Computed: volume x bulk density 360 kg/m\xB3; structure \u224811% of propellant at $1300/kg (est.)."
+      history: Part of the AscendCAD catalog (Propellant Tanks > Hydrolox (LH2 / LOX)).
+    - title: Hypergolic Tank
+      image: {fileID: 0}
+      shortDescription: 9 sizes in AscendCAD. Common-bulkhead hypergolic tank in titanium / aluminum.
+      purpose: "Common-bulkhead hypergolic tank in titanium / aluminum. Holds 1.23 t of propellant (1 m\xB3 usable). Stacks on top of or under other parts.\n\nBigger sizes hold more but weigh and cost more; match the diameter of the parts above and below it."
+      specs: "AscendCAD section: Propellant Tanks > Hypergolic (MMH / NTO)\nSizes available: 9\n\xD81.2 m x 1 m: 1.23 t propellant, 98 kg empty, $429K\n\xD81.2 m x 2 m: 2.46 t propellant, 196 kg empty, $858K\n\xD81.2 m x 4 m: 4.91 t propellant, 393 kg empty, $1.72M\n\xD81.8 m x 1 m: 2.76 t propellant, 221 kg empty, $967K\n\xD81.8 m x 2 m: 5.53 t propellant, 442 kg empty, $1.93M\n\xD81.8 m x 4 m: 11.05 t propellant, 884 kg empty, $3.87M\n\xD82.5 m x 1 m: 5.33 t propellant, 426 kg empty, $1.86M\n\xD82.5 m x 2 m: 10.66 t propellant, 853 kg empty, $3.73M\n\xD82.5 m x 4 m: 21.32 t propellant, 1.71 t empty, $7.46M"
+      cost: "From $429K to $7.46M depending on size (estimates). Where the numbers come from: Computed: volume x bulk density 1180 kg/m\xB3; structure \u22488% of propellant at $3000/kg (est.)."
+      history: Part of the AscendCAD catalog (Propellant Tanks > Hypergolic (MMH / NTO)).
+  - name: 'AscendCAD Rocket: Structure'
+    description: Interstages, diameter adapters, nose cones and avionics bays.
+    parts:
+    - title: Interstage Decoupler
+      image: {fileID: 0}
+      shortDescription: 7 sizes in AscendCAD. Joins two stages and separates them with pneumatic pushers.
+      purpose: 'Joins two stages and separates them with pneumatic pushers. Everything above it is the next stage. Room inside for avionics. Stacks on top of or under other parts.
+
+
+        Bigger sizes hold more but weigh and cost more; match the diameter of the parts above and below it.'
+      specs: "AscendCAD section: Structure > Interstages & Decouplers\nSizes available: 7\n\xD81.2 m: 86 kg, 58 L inside, $155K\n\xD81.8 m: 194 kg, 130 L inside, $349K\n\xD82.5 m: 375 kg, 250 L inside, $675K\n\xD83.7 m: 821 kg, 548 L inside, $1.48M\n\xD85 m: 1.5 t, 1000 L inside, $2.7M\n\xD86.6 m: 2.61 t, 1742 L inside, $4.71M\n\xD810.1 m: 6.12 t, 4080 L inside, $11.02M"
+      cost: 'From $155K to $11.02M depending on size (estimates). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Structure > Interstages & Decouplers).
+    - title: Adapter
+      image: {fileID: 0}
+      shortDescription: 12 sizes in AscendCAD. Conical section joining two stack diameters so loads flow smoothly.
+      purpose: 'Conical section joining two stack diameters so loads flow smoothly. Stacks on top of or under other parts.
+
+
+        Bigger sizes hold more but weigh and cost more; match the diameter of the parts above and below it.'
+      specs: "AscendCAD section: Structure > Diameter Adapters\nSizes available: 12\n\xD81.2 m to \xD81.8 m: 68 kg, $102K\n\xD81.8 m to \xD81.2 m: 68 kg, $102K\n\xD81.8 m to \xD82.5 m: 139 kg, $208K\n\xD82.5 m to \xD81.8 m: 139 kg, $208K\n\xD82.5 m to \xD83.7 m: 288 kg, $432K\n\xD83.7 m to \xD82.5 m: 288 kg, $432K\n\xD83.7 m to \xD85 m: 568 kg, $852K\n\xD85 m to \xD83.7 m: 568 kg, $852K\n\xD85 m to \xD86.6 m: 1.01 t, $1.51M\n\xD86.6 m to \xD85 m: 1.01 t, $1.51M\n\xD86.6 m to \xD810.1 m: 2.09 t, $3.14M\n\xD810.1 m to \xD86.6 m: 2.09 t, $3.14M"
+      cost: 'From $102K to $3.14M depending on size (estimates). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Structure > Diameter Adapters).
+    - title: Nose Cone
+      image: {fileID: 0}
+      shortDescription: 7 sizes in AscendCAD. Low-drag tangent-ogive nose for vehicles or boosters without a fairing.
+      purpose: 'Low-drag tangent-ogive nose for vehicles or boosters without a fairing. Stacks on top of or under other parts.
+
+
+        Bigger sizes hold more but weigh and cost more; match the diameter of the parts above and below it.'
+      specs: "AscendCAD section: Structure > Nose Cones\nSizes available: 7\n\xD81.2 m: 20 kg, $30K\n\xD81.8 m: 45 kg, $68K\n\xD82.5 m: 88 kg, $132K\n\xD83.7 m: 192 kg, $288K\n\xD85 m: 350 kg, $525K\n\xD86.6 m: 610 kg, $915K\n\xD810.1 m: 1.43 t, $2.14M"
+      cost: 'From $30K to $2.14M depending on size (estimates). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Structure > Nose Cones).
+    - title: Avionics Bay
+      image: {fileID: 0}
+      shortDescription: 7 sizes in AscendCAD. Short ring that houses guidance, power and telemetry boxes.
+      purpose: 'Short ring that houses guidance, power and telemetry boxes. Install avionics inside it. Stacks on top of or under other parts.
+
+
+        Bigger sizes hold more but weigh and cost more; match the diameter of the parts above and below it.'
+      specs: "AscendCAD section: Structure > Avionics Bays\nSizes available: 7\n\xD81.2 m: 36 kg, 173 L inside, $90K\n\xD81.8 m: 81 kg, 389 L inside, $202K\n\xD82.5 m: 156 kg, 750 L inside, $390K\n\xD83.7 m: 342 kg, 1643 L inside, $855K\n\xD85 m: 625 kg, 3000 L inside, $1.56M\n\xD86.6 m: 1.09 t, 5227 L inside, $2.72M\n\xD810.1 m: 2.55 t, 12241 L inside, $6.38M"
+      cost: 'From $90K to $6.38M depending on size (estimates). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Structure > Avionics Bays).
+  - name: 'AscendCAD Rocket: Payload Integration'
+    description: Fairings and payload adapters that carry your satellite.
+    parts:
+    - title: Payload Fairing
+      image: {fileID: 0}
+      shortDescription: 5 sizes in AscendCAD. Electron-class composite fairing.
+      purpose: 'Electron-class composite fairing. Splits open and falls away after the first stage. Stacks on top of or under other parts.
+
+
+        Bigger sizes hold more but weigh and cost more; match the diameter of the parts above and below it.'
+      specs: "AscendCAD section: Payload Integration > Payload Fairings\nSizes available: 5\n\xD81.2 m: 55 kg, carries up to 500 kg, $350K\n\xD81.8 m: 140 kg, carries up to 1.5 t, $700K\n\xD82.5 m: 400 kg, carries up to 3.6 t, $1.6M\n\xD83.7 m: 1.1 t, carries up to 9.9 t, $3.5M\n\xD85.2 m: 1.9 t, carries up to 24 t, $6M"
+      cost: 'From $350K to $6M depending on size (estimates). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Payload Integration > Payload Fairings).
+    - title: Small Payload Adapter (0.6 m)
+      image: {fileID: 0}
+      shortDescription: Cone that bolts the satellite's separation system to the upper stage.
+      purpose: Cone that bolts the satellite's separation system to the upper stage. Stacks on top of or under other parts.
+      specs: "AscendCAD section: Payload Integration > Payload Adapters\nMass: 8 kg\nSize: \xD81 to \xD80.6 m, 0.3 m tall\nMax payload: 400 kg"
+      cost: '$45,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Payload Integration > Payload Adapters). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: PAF 937 Adapter
+      image: {fileID: 0}
+      shortDescription: Cone that bolts the satellite's separation system to the upper stage.
+      purpose: Cone that bolts the satellite's separation system to the upper stage. Stacks on top of or under other parts.
+      specs: "AscendCAD section: Payload Integration > Payload Adapters\nMass: 35 kg\nSize: \xD81.6 to \xD80.94 m, 0.6 m tall\nMax payload: 3 t"
+      cost: '$120,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Payload Integration > Payload Adapters). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: PAF 1194 Adapter
+      image: {fileID: 0}
+      shortDescription: Cone that bolts the satellite's separation system to the upper stage.
+      purpose: Cone that bolts the satellite's separation system to the upper stage. Stacks on top of or under other parts.
+      specs: "AscendCAD section: Payload Integration > Payload Adapters\nMass: 50 kg\nSize: \xD82 to \xD81.19 m, 0.7 m tall\nMax payload: 5 t"
+      cost: '$160,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Payload Integration > Payload Adapters). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: PAF 1666 Adapter
+      image: {fileID: 0}
+      shortDescription: Cone that bolts the satellite's separation system to the upper stage.
+      purpose: Cone that bolts the satellite's separation system to the upper stage. Stacks on top of or under other parts.
+      specs: "AscendCAD section: Payload Integration > Payload Adapters\nMass: 95 kg\nSize: \xD82.6 to \xD81.67 m, 0.9 m tall\nMax payload: 10 t"
+      cost: '$300,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Payload Integration > Payload Adapters). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+  - name: 'AscendCAD Rocket: Avionics (install inside a bay)'
+    description: Guidance, range safety, telemetry and power boxes. Install them inside an avionics bay or interstage.
+    parts:
+    - title: Flight Computer (triple-redundant)
+      image: {fileID: 0}
+      shortDescription: Three processors vote on every decision; runs guidance, sequencing and engine control.
+      purpose: 'Runs guidance, navigation and control software, and sequences everything from engine start to stage separation and payload release.
+
+
+        Three processors vote on every decision; runs guidance, sequencing and engine control. Installs inside a bay, interstage or satellite structure.'
+      specs: 'AscendCAD section: Avionics (install inside a bay) > Guidance & Navigation
+
+        Mass: 12 kg
+
+        Power draw: 60 W (100% of the time)
+
+        Volume: 15 L'
+      cost: '$650,000 (estimate). Where the numbers come from: est..'
+      history: The Saturn V's Launch Vehicle Digital Computer in the 1960s already used triple redundancy; modern rockets still use the same voting idea.
+    - title: Navigation IMU (ring-laser)
+      image: {fileID: 0}
+      shortDescription: 'Navigation-grade gyros and accelerometers: knows attitude and velocity without outside help.'
+      purpose: 'Navigation-grade gyros and accelerometers: knows attitude and velocity without outside help. Installs inside a bay, interstage or satellite structure.'
+      specs: 'AscendCAD section: Avionics (install inside a bay) > Guidance & Navigation
+
+        Mass: 9 kg
+
+        Power draw: 40 W (100% of the time)
+
+        Volume: 8 L'
+      cost: '$280,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Avionics (install inside a bay) > Guidance & Navigation). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: MEMS IMU (budget)
+      image: {fileID: 0}
+      shortDescription: Cheap and light, but drifts faster.
+      purpose: Cheap and light, but drifts faster. Pair it with GNSS. Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Avionics (install inside a bay) > Guidance & Navigation
+
+        Mass: 1.2 kg
+
+        Power draw: 5 W (100% of the time)
+
+        Volume: 1 L'
+      cost: '$45,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Avionics (install inside a bay) > Guidance & Navigation). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: GNSS Receiver (space-qualified)
+      image: {fileID: 0}
+      shortDescription: GPS/Galileo receiver that works at rocket speeds; corrects IMU drift and feeds range safety.
+      purpose: 'Corrects the slow drift of inertial sensors and provides accurate tracking for range safety.
+
+
+        GPS/Galileo receiver that works at rocket speeds; corrects IMU drift and feeds range safety. Installs inside a bay, interstage or satellite structure.'
+      specs: 'AscendCAD section: Avionics (install inside a bay) > Guidance & Navigation
+
+        Mass: 2.5 kg
+
+        Power draw: 10 W (100% of the time)
+
+        Volume: 2 L'
+      cost: '$60,000 (estimate). Where the numbers come from: est..'
+      history: GPS became fully operational in 1995 and is now standard equipment on launch vehicles.
+    - title: Autonomous Flight Termination System
+      image: {fileID: 0}
+      shortDescription: Ends the flight automatically if the rocket leaves its safety corridor.
+      purpose: Ends the flight automatically if the rocket leaves its safety corridor. Required by every range. Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Avionics (install inside a bay) > Range Safety & Telemetry
+
+        Mass: 18 kg
+
+        Power draw: 20 W (100% of the time)
+
+        Volume: 12 L'
+      cost: '$900,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Avionics (install inside a bay) > Range Safety & Telemetry). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: S-band Telemetry Transmitter
+      image: {fileID: 0}
+      shortDescription: Streams thousands of sensor channels and video to the ground.
+      purpose: Streams thousands of sensor channels and video to the ground. Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Avionics (install inside a bay) > Range Safety & Telemetry
+
+        Mass: 3.5 kg
+
+        Power draw: 45 W (100% of the time)
+
+        Volume: 3 L'
+      cost: '$90,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Avionics (install inside a bay) > Range Safety & Telemetry). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Command / Range Receiver
+      image: {fileID: 0}
+      shortDescription: Receives ground commands, including range-safety instructions.
+      purpose: Receives ground commands, including range-safety instructions. Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Avionics (install inside a bay) > Range Safety & Telemetry
+
+        Mass: 2 kg
+
+        Power draw: 10 W (100% of the time)
+
+        Volume: 2 L'
+      cost: '$55,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Avionics (install inside a bay) > Range Safety & Telemetry). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Avionics Li-ion Battery (28 V, 2 kWh)
+      image: {fileID: 0}
+      shortDescription: Screened space-grade cells powering computers, valves and actuators.
+      purpose: Screened space-grade cells powering computers, valves and actuators. Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Avionics (install inside a bay) > Power
+
+        Mass: 14 kg
+
+        Battery capacity: 2,000 Wh
+
+        Volume: 8 L'
+      cost: '$110,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Avionics (install inside a bay) > Power). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Backup Battery (600 Wh)
+      image: {fileID: 0}
+      shortDescription: Independent supply for the flight termination system and critical loads.
+      purpose: Independent supply for the flight termination system and critical loads. Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Avionics (install inside a bay) > Power
+
+        Mass: 6 kg
+
+        Battery capacity: 600 Wh
+
+        Volume: 3 L'
+      cost: '$35,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Avionics (install inside a bay) > Power). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Power Distribution Unit
+      image: {fileID: 0}
+      shortDescription: 'The rocket''s fuse box: switches and protects every circuit.'
+      purpose: 'Distributes battery power to each subsystem, switches loads on and off when commanded, and protects the rest of the rocket if one circuit shorts out.
+
+
+        The rocket''s fuse box: switches and protects every circuit. Installs inside a bay, interstage or satellite structure.'
+      specs: 'AscendCAD section: Avionics (install inside a bay) > Power
+
+        Mass: 9 kg
+
+        Power draw: 15 W (100% of the time)
+
+        Volume: 8 L'
+      cost: '$160,000 (estimate). Where the numbers come from: est..'
+      history: Early rockets used relays and mechanical timers; modern units use solid-state switches that report their health in real time.
+    - title: Wiring Harness Kit
+      image: {fileID: 0}
+      shortDescription: Hand-built cable bundles for power, data and pyro lines.
+      purpose: Hand-built cable bundles for power, data and pyro lines. Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Avionics (install inside a bay) > Power
+
+        Mass: 45 kg
+
+        Volume: 20 L'
+      cost: '$280,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Avionics (install inside a bay) > Power). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+  - name: 'AscendCAD Rocket: Recovery & Aero'
+    description: Fins, grid fins and landing legs.
+    parts:
+    - title: Aero Fin (small)
+      image: {fileID: 0}
+      shortDescription: Passive stabilizing fin for small rockets.
+      purpose: Passive stabilizing fin for small rockets. Mounts on the side or face of a part (symmetry works).
+      specs: 'AscendCAD section: Recovery & Aero > Fins
+
+        Mass: 6 kg
+
+        Size: 0.03 x 0.8 x 0.45 m'
+      cost: '$15,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Recovery & Aero > Fins). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Aero Fin (large)
+      image: {fileID: 0}
+      shortDescription: Large stabilizing fin.
+      purpose: Large stabilizing fin. Mounts on the side or face of a part (symmetry works).
+      specs: 'AscendCAD section: Recovery & Aero > Fins
+
+        Mass: 60 kg
+
+        Size: 0.06 x 2 x 1 m'
+      cost: '$120,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Recovery & Aero > Fins). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Titanium Grid Fin
+      image: {fileID: 0}
+      shortDescription: Steers a returning booster through the atmosphere.
+      purpose: Steers a returning booster through the atmosphere. Place near the top of the first stage. Mounts on the side or face of a part (symmetry works).
+      specs: 'AscendCAD section: Recovery & Aero > Fins
+
+        Mass: 250 kg
+
+        Size: 0.12 x 1.2 x 1.5 m'
+      cost: '$500,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Recovery & Aero > Fins). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Carbon Landing Leg
+      image: {fileID: 0}
+      shortDescription: Folds against the booster, deploys before touchdown.
+      purpose: Folds against the booster, deploys before touchdown. Use symmetry x4. Mounts on the side or face of a part (symmetry works).
+      specs: 'AscendCAD section: Recovery & Aero > Landing
+
+        Mass: 600 kg
+
+        Size: 0.45 x 7.5 x 0.35 m'
+      cost: '$600,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Recovery & Aero > Landing). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+  - name: 'AscendCAD Rocket: Heritage Hardware'
+    description: Real Saturn V, Apollo and Space Shuttle hardware used by the prebuilt rockets.
+    parts:
+    - title: J-2
+      image: {fileID: 0}
+      shortDescription: Restartable hydrogen engine of the Saturn V S-II (x5) and S-IVB (x1) stages.
+      purpose: Restartable hydrogen engine of the Saturn V S-II (x5) and S-IVB (x1) stages. Hangs under a tank (symmetry > 1 makes a cluster).
+      specs: "AscendCAD section: Heritage Hardware > Saturn V / Apollo\nMass: 1.79 t\nBurns: LH2/LOX\nThrust: 486 kN sea level, 1,033 kN vacuum\nSpecific impulse: 200 s sea level, 421 s vacuum\nSize: \xD82 m x 3.4 m"
+      cost: '$25,000,000 (estimate). Where the numbers come from: NASA historical; modern cost est..'
+      history: Part of the AscendCAD catalog (Heritage Hardware > Saturn V / Apollo). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: "S-II/S-IVB Conical Interstage \xD810.1 to 6.6 m"
+      image: {fileID: 0}
+      shortDescription: Tapered decoupler between Saturn V's second and third stages.
+      purpose: Tapered decoupler between Saturn V's second and third stages. The S-IVB's J-2 hides inside it. Stacks on top of or under other parts.
+      specs: "AscendCAD section: Heritage Hardware > Saturn V / Apollo\nMass: 3.65 t\nSize: \xD810.1 to \xD86.6 m, 5.65 m tall"
+      cost: '$9,000,000 (estimate). Where the numbers come from: NASA historical; cost est..'
+      history: Part of the AscendCAD catalog (Heritage Hardware > Saturn V / Apollo). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Spacecraft-LM Adapter (Lunar Module inside)
+      image: {fileID: 0}
+      shortDescription: Tapered shroud carrying the 15 t Lunar Module below the Apollo CSM.
+      purpose: Tapered shroud carrying the 15 t Lunar Module below the Apollo CSM. Stacks on top of or under other parts.
+      specs: "AscendCAD section: Heritage Hardware > Saturn V / Apollo\nMass: 16.9 t\nSize: \xD86.6 to \xD83.9 m, 8.5 m tall"
+      cost: '$300,000,000 (estimate). Where the numbers come from: NASA: SLA ~1.8 t + LM ~15.1 t; cost est..'
+      history: Part of the AscendCAD catalog (Heritage Hardware > Saturn V / Apollo). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Apollo Command/Service Module
+      image: {fileID: 0}
+      shortDescription: Three-person command capsule on top of the service module with its big SPS engine.
+      purpose: Three-person command capsule on top of the service module with its big SPS engine. Stacks on top of or under other parts.
+      specs: "AscendCAD section: Heritage Hardware > Saturn V / Apollo\nMass: 30.3 t\nSize: \xD83.9 m x 11 m\nRoom inside: 400 L"
+      cost: '$250,000,000 (estimate). Where the numbers come from: NASA: ~30.3 t fueled; cost est..'
+      history: Part of the AscendCAD catalog (Heritage Hardware > Saturn V / Apollo). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Launch Escape System
+      image: {fileID: 0}
+      shortDescription: Solid-rocket tower that pulls the capsule to safety in an emergency.
+      purpose: Solid-rocket tower that pulls the capsule to safety in an emergency. Jettisoned during ascent. Stacks on top of or under other parts.
+      specs: "AscendCAD section: Heritage Hardware > Saturn V / Apollo\nMass: 4.2 t\nSize: \xD83.9 m x 10 m"
+      cost: '$20,000,000 (estimate). Where the numbers come from: NASA: ~4.2 t; cost est..'
+      history: Part of the AscendCAD catalog (Heritage Hardware > Saturn V / Apollo). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Space Shuttle External Tank
+      image: {fileID: 0}
+      shortDescription: The giant orange tank feeding the orbiter's three RS-25s.
+      purpose: The giant orange tank feeding the orbiter's three RS-25s. Orbiter and SRBs attach to its sides. Stacks on top of or under other parts.
+      specs: "AscendCAD section: Heritage Hardware > Space Shuttle\nMass: 761.5 t full, 26.5 t empty\nPropellant: 735 t LH2/LOX\nSize: \xD88.4 m x 46.9 m"
+      cost: '$75,000,000 (estimate). Where the numbers come from: NASA: Super Lightweight Tank ~26.5 t empty, ~735 t propellant; cost est..'
+      history: Part of the AscendCAD catalog (Heritage Hardware > Space Shuttle). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Space Shuttle Orbiter (3x RS-25)
+      image: {fileID: 0}
+      shortDescription: Winged orbiter.
+      purpose: Winged orbiter. Mount it on the side of the External Tank; its RS-25s burn the tank's hydrogen. Satellites ride in its 18 m payload bay; avionics install inside. Straps onto the side of a core stage.
+      specs: "AscendCAD section: Heritage Hardware > Space Shuttle\nMass: 100 t\nBurns: LH2/LOX\nThrust: 5,580 kN sea level, 6,840 kN vacuum\nSpecific impulse: 366 s sea level, 452 s vacuum\nSize: \xD85.2 m x 37.2 m\nRoom inside: 3000 L\nMax payload: 24.4 t\nUsable space inside: \xD84.6 m x 18.3 m"
+      cost: '$1,700,000,000. Where the numbers come from: NASA: ~100 t with OMS propellant, 24.4 t payload to LEO; Endeavour cost ~$1.7B.'
+      history: Part of the AscendCAD catalog (Heritage Hardware > Space Shuttle). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+  - name: 'AscendCAD Satellite: Satellite Structure'
+    description: CubeSat frames, smallsat buses and separation systems.
+    parts:
+    - title: 1U CubeSat Frame
+      image: {fileID: 0}
+      shortDescription: 10 x 10 x 11.35 cm aluminum frame, the classic CubeSat unit (Maya-class).
+      purpose: 10 x 10 x 11.35 cm aluminum frame, the classic CubeSat unit (Maya-class). Stacks on top of or under other parts.
+      specs: 'AscendCAD section: Satellite Structure > CubeSat Frames
+
+        Mass: 100 g
+
+        Size: 0.1 x 0.114 x 0.1 m
+
+        Room inside: 0.85 L'
+      cost: '$3,500 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Satellite Structure > CubeSat Frames). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: 3U CubeSat Frame
+      image: {fileID: 0}
+      shortDescription: Three units long.
+      purpose: Three units long. Popular for imaging and science CubeSats. Stacks on top of or under other parts.
+      specs: 'AscendCAD section: Satellite Structure > CubeSat Frames
+
+        Mass: 300 g
+
+        Size: 0.1 x 0.341 x 0.1 m
+
+        Room inside: 2.7 L'
+      cost: '$6,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Satellite Structure > CubeSat Frames). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: 6U CubeSat Frame
+      image: {fileID: 0}
+      shortDescription: 'Double-wide 3U: room for a real camera plus 3-axis ADCS.'
+      purpose: 'Double-wide 3U: room for a real camera plus 3-axis ADCS. Stacks on top of or under other parts.'
+      specs: 'AscendCAD section: Satellite Structure > CubeSat Frames
+
+        Mass: 900 g
+
+        Size: 0.226 x 0.366 x 0.1 m
+
+        Room inside: 5.4 L'
+      cost: '$11,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Satellite Structure > CubeSat Frames). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: 12U CubeSat Frame
+      image: {fileID: 0}
+      shortDescription: Large CubeSat class for serious Earth-observation payloads.
+      purpose: Large CubeSat class for serious Earth-observation payloads. Stacks on top of or under other parts.
+      specs: 'AscendCAD section: Satellite Structure > CubeSat Frames
+
+        Mass: 1.6 kg
+
+        Size: 0.226 x 0.366 x 0.226 m
+
+        Room inside: 11 L'
+      cost: '$15,500 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Satellite Structure > CubeSat Frames). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: 16U CubeSat Frame
+      image: {fileID: 0}
+      shortDescription: The biggest common CubeSat frame.
+      purpose: The biggest common CubeSat frame. Stacks on top of or under other parts.
+      specs: 'AscendCAD section: Satellite Structure > CubeSat Frames
+
+        Mass: 2 kg
+
+        Size: 0.226 x 0.454 x 0.226 m
+
+        Room inside: 14.5 L'
+      cost: '$18,200 (estimate). Where the numbers come from: EnduroSat store list price $18,200; mass est..'
+      history: Part of the AscendCAD catalog (Satellite Structure > CubeSat Frames). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: 50 kg Microsat Bus (Diwata class)
+      image: {fileID: 0}
+      shortDescription: Honeycomb-panel box with the same 55 x 35 x 55 cm envelope as Diwata-1 (~50 kg when complete).
+      purpose: Honeycomb-panel box with the same 55 x 35 x 55 cm envelope as Diwata-1 (~50 kg when complete). Stacks on top of or under other parts.
+      specs: 'AscendCAD section: Satellite Structure > SmallSat Buses
+
+        Mass: 9 kg
+
+        Size: 0.55 x 0.55 x 0.35 m
+
+        Room inside: 85 L'
+      cost: '$250,000 (estimate). Where the numbers come from: Envelope: Diwata-1 (eoPortal); structure mass & cost est..'
+      history: Part of the AscendCAD catalog (Satellite Structure > SmallSat Buses). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: 100 kg SmallSat Bus
+      image: {fileID: 0}
+      shortDescription: Aluminum honeycomb bus for 100 kg-class missions.
+      purpose: Aluminum honeycomb bus for 100 kg-class missions. Stacks on top of or under other parts.
+      specs: 'AscendCAD section: Satellite Structure > SmallSat Buses
+
+        Mass: 18 kg
+
+        Size: 0.6 x 0.8 x 0.6 m
+
+        Room inside: 220 L'
+      cost: '$500,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Satellite Structure > SmallSat Buses). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: 200 kg SmallSat Bus
+      image: {fileID: 0}
+      shortDescription: ESPA-class bus with room for big optics or radar.
+      purpose: ESPA-class bus with room for big optics or radar. Stacks on top of or under other parts.
+      specs: 'AscendCAD section: Satellite Structure > SmallSat Buses
+
+        Mass: 30 kg
+
+        Size: 0.8 x 1 x 0.8 m
+
+        Room inside: 500 L'
+      cost: '$850,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Satellite Structure > SmallSat Buses). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Cylindrical Bus
+      image: {fileID: 0}
+      shortDescription: 2 sizes in AscendCAD. Spin-friendly cylinder bus for science missions.
+      purpose: 'Spin-friendly cylinder bus for science missions. Stacks on top of or under other parts.
+
+
+        Bigger sizes hold more but weigh and cost more; match the diameter of the parts above and below it.'
+      specs: "AscendCAD section: Satellite Structure > SmallSat Buses\nSizes available: 2\n\xD80.5 m: 8 kg, 90 L inside, $200K\n\xD81.0 m: 40 kg, 700 L inside, $1.2M"
+      cost: 'From $200K to $1.2M depending on size (estimates). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Satellite Structure > SmallSat Buses).
+    - title: CubeSat Deployer Interface
+      image: {fileID: 0}
+      shortDescription: Spring-rail dispenser interface; pushes the CubeSat out at about 1-2 m/s.
+      purpose: Spring-rail dispenser interface; pushes the CubeSat out at about 1-2 m/s. Stacks on top of or under other parts.
+      specs: 'AscendCAD section: Satellite Structure > Separation Systems
+
+        Mass: 2.5 kg
+
+        Size: 0.3 x 0.04 x 0.3 m
+
+        Max payload: 30 kg'
+      cost: '$30,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Satellite Structure > Separation Systems). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Motorized Lightband 8in
+      image: {fileID: 0}
+      shortDescription: Low-shock motorized separation ring for small satellites.
+      purpose: Low-shock motorized separation ring for small satellites. Stacks on top of or under other parts.
+      specs: "AscendCAD section: Satellite Structure > Separation Systems\nMass: 600 g\nSize: \xD80.25 m x 0.05 m\nMax payload: 60 kg"
+      cost: '$55,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Satellite Structure > Separation Systems). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Motorized Lightband 15in
+      image: {fileID: 0}
+      shortDescription: Low-shock separation ring for microsatellites.
+      purpose: Low-shock separation ring for microsatellites. Stacks on top of or under other parts.
+      specs: "AscendCAD section: Satellite Structure > Separation Systems\nMass: 1.2 kg\nSize: \xD80.42 m x 0.06 m\nMax payload: 180 kg"
+      cost: '$85,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Satellite Structure > Separation Systems). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Motorized Lightband 24in
+      image: {fileID: 0}
+      shortDescription: Separation ring for 100-500 kg satellites.
+      purpose: Separation ring for 100-500 kg satellites. Stacks on top of or under other parts.
+      specs: "AscendCAD section: Satellite Structure > Separation Systems\nMass: 2.5 kg\nSize: \xD80.66 m x 0.07 m\nMax payload: 500 kg"
+      cost: '$120,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Satellite Structure > Separation Systems). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Clamp Band 937 mm
+      image: {fileID: 0}
+      shortDescription: Marman clamp band for large satellites.
+      purpose: Marman clamp band for large satellites. Stacks on top of or under other parts.
+      specs: "AscendCAD section: Satellite Structure > Separation Systems\nMass: 20 kg\nSize: \xD81 m x 0.1 m\nMax payload: 2.5 t"
+      cost: '$250,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Satellite Structure > Separation Systems). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+  - name: 'AscendCAD Satellite: Power'
+    description: Solar panels, batteries and power electronics.
+    parts:
+    - title: 1U Body Solar Panel
+      image: {fileID: 0}
+      shortDescription: Triple-junction cells on a 1U face (~2.3 W in full sun).
+      purpose: Triple-junction cells on a 1U face (~2.3 W in full sun). Mounts on the side or face of a part (symmetry works).
+      specs: 'AscendCAD section: Power > Solar Panels
+
+        Mass: 50 g
+
+        Size: 0.1 x 0.1 x 0.006 m
+
+        Power output: 2.3 W in full sun'
+      cost: '$3,000. Where the numbers come from: EnduroSat $2,600-3,400; ~2.3 W/U typical.'
+      history: Part of the AscendCAD catalog (Power > Solar Panels). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: 3U Body Solar Panel
+      image: {fileID: 0}
+      shortDescription: Body-mounted panel for a 3U face.
+      purpose: Body-mounted panel for a 3U face. Mounts on the side or face of a part (symmetry works).
+      specs: 'AscendCAD section: Power > Solar Panels
+
+        Mass: 140 g
+
+        Size: 0.1 x 0.34 x 0.006 m
+
+        Power output: 7 W in full sun'
+      cost: '$6,450 (estimate). Where the numbers come from: EnduroSat $6,400-6,500; output est..'
+      history: Part of the AscendCAD catalog (Power > Solar Panels). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: 6U Body Solar Panel
+      image: {fileID: 0}
+      shortDescription: Body-mounted panel for a 6U face.
+      purpose: Body-mounted panel for a 6U face. Mounts on the side or face of a part (symmetry works).
+      specs: 'AscendCAD section: Power > Solar Panels
+
+        Mass: 300 g
+
+        Size: 0.226 x 0.366 x 0.006 m
+
+        Power output: 15 W in full sun'
+      cost: '$16,200 (estimate). Where the numbers come from: EnduroSat $16,200; output est..'
+      history: Part of the AscendCAD catalog (Power > Solar Panels). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: 3U Deployable Solar Array
+      image: {fileID: 0}
+      shortDescription: Hinged wing that unfolds after deployment.
+      purpose: Hinged wing that unfolds after deployment. Wings average far more power than body panels. Mounts on the side or face of a part (symmetry works).
+      specs: 'AscendCAD section: Power > Solar Panels
+
+        Mass: 300 g
+
+        Size: 0.008 x 0.34 x 0.2 m
+
+        Power output: 20 W in full sun'
+      cost: '$22,100 (estimate). Where the numbers come from: EnduroSat $22,100; output est..'
+      history: Part of the AscendCAD catalog (Power > Solar Panels). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: 6U Deployable Solar Array
+      image: {fileID: 0}
+      shortDescription: Large CubeSat wing.
+      purpose: Large CubeSat wing. Mounts on the side or face of a part (symmetry works).
+      specs: 'AscendCAD section: Power > Solar Panels
+
+        Mass: 680 g
+
+        Size: 0.008 x 0.366 x 0.45 m
+
+        Power output: 36 W in full sun'
+      cost: '$48,400 (estimate). Where the numbers come from: EnduroSat $48,400; ~677 g per array; output est..'
+      history: Part of the AscendCAD catalog (Power > Solar Panels). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: SmallSat Body Panel 0.5 m
+      image: {fileID: 0}
+      shortDescription: GaAs panel for microsat faces.
+      purpose: GaAs panel for microsat faces. Mounts on the side or face of a part (symmetry works).
+      specs: 'AscendCAD section: Power > Solar Panels
+
+        Mass: 1.6 kg
+
+        Size: 0.5 x 0.5 x 0.02 m
+
+        Power output: 75 W in full sun'
+      cost: '$90,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Power > Solar Panels). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: SmallSat Deployable Wing 1 x 2 m
+      image: {fileID: 0}
+      shortDescription: Sun-tracking wing for 100-200 kg satellites.
+      purpose: Sun-tracking wing for 100-200 kg satellites. Mounts on the side or face of a part (symmetry works).
+      specs: 'AscendCAD section: Power > Solar Panels
+
+        Mass: 9 kg
+
+        Size: 0.03 x 1 x 2 m
+
+        Power output: 500 W in full sun'
+      cost: '$450,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Power > Solar Panels). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Large Deployable Wing 2 x 4 m
+      image: {fileID: 0}
+      shortDescription: High-power wing for radar or electric propulsion.
+      purpose: High-power wing for radar or electric propulsion. Mounts on the side or face of a part (symmetry works).
+      specs: 'AscendCAD section: Power > Solar Panels
+
+        Mass: 32 kg
+
+        Size: 0.04 x 2 x 4 m
+
+        Power output: 2000 W in full sun'
+      cost: '$1,600,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Power > Solar Panels). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: CubeSat EPS Board
+      image: {fileID: 0}
+      shortDescription: Maximum-power-point tracking, regulators and switched outputs for every subsystem.
+      purpose: Maximum-power-point tracking, regulators and switched outputs for every subsystem. Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Power > Batteries & EPS
+
+        Mass: 200 g
+
+        Power draw: 0.2 W (100% of the time)
+
+        Volume: 0.15 L'
+      cost: '$12,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Power > Batteries & EPS). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: CubeSat Battery 40 Wh
+      image: {fileID: 0}
+      shortDescription: Li-ion pack for 1U-3U missions.
+      purpose: Li-ion pack for 1U-3U missions. Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Power > Batteries & EPS
+
+        Mass: 300 g
+
+        Battery capacity: 40 Wh
+
+        Volume: 0.12 L'
+      cost: '$6,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Power > Batteries & EPS). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: CubeSat Battery 99 Wh (4S2P)
+      image: {fileID: 0}
+      shortDescription: Larger Li-ion pack for 6U-16U missions.
+      purpose: Larger Li-ion pack for 6U-16U missions. Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Power > Batteries & EPS
+
+        Mass: 650 g
+
+        Battery capacity: 99 Wh
+
+        Volume: 0.3 L'
+      cost: '$14,000 (estimate). Where the numbers come from: Capacity: EnduroSat EPS spec; price est..'
+      history: Part of the AscendCAD catalog (Power > Batteries & EPS). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: SmallSat PCDU
+      image: {fileID: 0}
+      shortDescription: Power conditioning and distribution unit for microsats.
+      purpose: Power conditioning and distribution unit for microsats. Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Power > Batteries & EPS
+
+        Mass: 4 kg
+
+        Power draw: 8 W (100% of the time)
+
+        Volume: 4 L'
+      cost: '$250,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Power > Batteries & EPS). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: SmallSat Li-ion 1 kWh
+      image: {fileID: 0}
+      shortDescription: Microsat battery pack.
+      purpose: Microsat battery pack. Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Power > Batteries & EPS
+
+        Mass: 7 kg
+
+        Battery capacity: 1,000 Wh
+
+        Volume: 5 L'
+      cost: '$120,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Power > Batteries & EPS). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: SmallSat Li-ion 3.4 kWh
+      image: {fileID: 0}
+      shortDescription: Battery sized like NanoAvionics' 500 kg-class bus.
+      purpose: Battery sized like NanoAvionics' 500 kg-class bus. Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Power > Batteries & EPS
+
+        Mass: 22 kg
+
+        Battery capacity: 3,400 Wh
+
+        Volume: 15 L'
+      cost: '$380,000 (estimate). Where the numbers come from: Capacity: NanoAvionics MP42D; mass & cost est..'
+      history: Part of the AscendCAD catalog (Power > Batteries & EPS). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+  - name: 'AscendCAD Satellite: Command & Data'
+    description: Computers, memory, radios and antennas.
+    parts:
+    - title: CubeSat On-Board Computer
+      image: {fileID: 0}
+      shortDescription: Runs flight software, stores telemetry, schedules imaging.
+      purpose: Runs flight software, stores telemetry, schedules imaging. Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Command & Data > Computers
+
+        Mass: 130 g
+
+        Power draw: 0.9 W (100% of the time)
+
+        Volume: 0.12 L'
+      cost: '$16,000. Where the numbers come from: ~130 g, ~0.9 W, ~$16k (mission budgets).'
+      history: Part of the AscendCAD catalog (Command & Data > Computers). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Rad-Hard SmallSat Computer
+      image: {fileID: 0}
+      shortDescription: Radiation-hardened processor for long missions.
+      purpose: Radiation-hardened processor for long missions. Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Command & Data > Computers
+
+        Mass: 3 kg
+
+        Power draw: 12 W (100% of the time)
+
+        Volume: 4 L'
+      cost: '$350,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Command & Data > Computers). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Mass Memory Unit 1 TB
+      image: {fileID: 0}
+      shortDescription: Stores imagery until a ground pass.
+      purpose: Stores imagery until a ground pass. Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Command & Data > Computers
+
+        Mass: 1.5 kg
+
+        Power draw: 6 W (100% of the time)
+
+        Volume: 1.5 L'
+      cost: '$120,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Command & Data > Computers). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: UHF Transceiver
+      image: {fileID: 0}
+      shortDescription: Command and telemetry link (9.6 kbps).
+      purpose: Command and telemetry link (9.6 kbps). Needs a UHF antenna. Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Command & Data > Radios
+
+        Mass: 90 g
+
+        Power draw: 2.5 W (25% of the time)
+
+        Data rate: 9.6 kbps
+
+        Volume: 0.1 L'
+      cost: '$9,000 (estimate). Where the numbers come from: ~90 g (mission budgets); price est..'
+      history: Part of the AscendCAD catalog (Command & Data > Radios). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: S-band Transmitter
+      image: {fileID: 0}
+      shortDescription: Mid-rate downlink for images (~4 Mbps).
+      purpose: Mid-rate downlink for images (~4 Mbps). Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Command & Data > Radios
+
+        Mass: 200 g
+
+        Power draw: 6 W (15% of the time)
+
+        Data rate: 4 Mbps
+
+        Volume: 0.15 L'
+      cost: '$28,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Command & Data > Radios). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: X-band SDR Transmitter
+      image: {fileID: 0}
+      shortDescription: High-rate downlink for imaging CubeSats.
+      purpose: High-rate downlink for imaging CubeSats. Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Command & Data > Radios
+
+        Mass: 365 g
+
+        Power draw: 7.5 W (10% of the time)
+
+        Data rate: 100 Mbps
+
+        Volume: 0.2 L'
+      cost: '$40,000 (estimate). Where the numbers come from: ~365 g, 7.5 W, ~$40k (mission budgets); rate est..'
+      history: Part of the AscendCAD catalog (Command & Data > Radios). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: SmallSat X-band High-Rate
+      image: {fileID: 0}
+      shortDescription: Hundreds of Mbps for high-resolution imagery.
+      purpose: Hundreds of Mbps for high-resolution imagery. Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Command & Data > Radios
+
+        Mass: 3 kg
+
+        Power draw: 40 W (10% of the time)
+
+        Data rate: 800 Mbps
+
+        Volume: 3 L'
+      cost: '$400,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Command & Data > Radios). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: UHF Deployable Antenna
+      image: {fileID: 0}
+      shortDescription: Tape-spring whip that unrolls in orbit.
+      purpose: Tape-spring whip that unrolls in orbit. Mounts on the side or face of a part (symmetry works).
+      specs: 'AscendCAD section: Command & Data > Antennas
+
+        Mass: 85 g
+
+        Size: 0.02 x 0.02 x 0.5 m'
+      cost: '$5,500 (estimate). Where the numbers come from: ~85 g (mission budgets); price est..'
+      history: Part of the AscendCAD catalog (Command & Data > Antennas). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: S-band Patch Antenna
+      image: {fileID: 0}
+      shortDescription: Flat patch antenna for S-band.
+      purpose: Flat patch antenna for S-band. Mounts on the side or face of a part (symmetry works).
+      specs: 'AscendCAD section: Command & Data > Antennas
+
+        Mass: 50 g
+
+        Size: 0.08 x 0.08 x 0.01 m'
+      cost: '$6,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Command & Data > Antennas). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: X-band 4x4 Patch Array
+      image: {fileID: 0}
+      shortDescription: High-gain flat array for X-band.
+      purpose: High-gain flat array for X-band. Mounts on the side or face of a part (symmetry works).
+      specs: 'AscendCAD section: Command & Data > Antennas
+
+        Mass: 40 g
+
+        Size: 0.1 x 0.1 x 0.01 m'
+      cost: '$10,000. Where the numbers come from: ~$10k (mission budgets).'
+      history: Part of the AscendCAD catalog (Command & Data > Antennas). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: X-band Dish 0.5 m
+      image: {fileID: 0}
+      shortDescription: Parabolic high-gain antenna for big data volumes.
+      purpose: Parabolic high-gain antenna for big data volumes. Mounts on the side or face of a part (symmetry works).
+      specs: 'AscendCAD section: Command & Data > Antennas
+
+        Mass: 3 kg
+
+        Size: 0.5 x 0.5 x 0.25 m'
+      cost: '$250,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Command & Data > Antennas). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+  - name: 'AscendCAD Satellite: Attitude Control (ADCS)'
+    description: Sensors and actuators that point the satellite.
+    parts:
+    - title: Fine Sun Sensor
+      image: {fileID: 0}
+      shortDescription: "0.2\xB0 sun direction sensor."
+      purpose: "0.2\xB0 sun direction sensor. Installs inside a bay, interstage or satellite structure."
+      specs: 'AscendCAD section: Attitude Control (ADCS) > Sensors
+
+        Mass: 30 g
+
+        Power draw: 0.1 W (100% of the time)
+
+        Volume: 0.02 L'
+      cost: '$3,250. Where the numbers come from: CubeSpace list price $3,250.'
+      history: Part of the AscendCAD catalog (Attitude Control (ADCS) > Sensors). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: ADCS Magnetometer
+      image: {fileID: 0}
+      shortDescription: Measures Earth's field for detumbling.
+      purpose: Measures Earth's field for detumbling. Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Attitude Control (ADCS) > Sensors
+
+        Mass: 50 g
+
+        Power draw: 0.1 W (100% of the time)
+
+        Volume: 0.02 L'
+      cost: '$2,300. Where the numbers come from: CubeSpace list price $2,300.'
+      history: Part of the AscendCAD catalog (Attitude Control (ADCS) > Sensors). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: CubeStar Star Tracker
+      image: {fileID: 0}
+      shortDescription: Miniature star tracker (~55 g).
+      purpose: Miniature star tracker (~55 g). Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Attitude Control (ADCS) > Sensors
+
+        Mass: 55 g
+
+        Power draw: 0.3 W (100% of the time)
+
+        Volume: 0.06 L'
+      cost: '$15,390. Where the numbers come from: CubeSpace list price $15,390.'
+      history: Part of the AscendCAD catalog (Attitude Control (ADCS) > Sensors). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Twinkle Star Tracker
+      image: {fileID: 0}
+      shortDescription: High-accuracy CubeSat star tracker.
+      purpose: High-accuracy CubeSat star tracker. Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Attitude Control (ADCS) > Sensors
+
+        Mass: 60 g
+
+        Power draw: 0.5 W (100% of the time)
+
+        Volume: 0.06 L'
+      cost: '$45,000 (estimate). Where the numbers come from: satcatalog avg $40-50k; mass est..'
+      history: Part of the AscendCAD catalog (Attitude Control (ADCS) > Sensors). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Satellite GNSS Receiver
+      image: {fileID: 0}
+      shortDescription: Position and precise time.
+      purpose: Position and precise time. Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Attitude Control (ADCS) > Sensors
+
+        Mass: 100 g
+
+        Power draw: 1 W (100% of the time)
+
+        Volume: 0.05 L'
+      cost: '$12,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Attitude Control (ADCS) > Sensors). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: SmallSat Star Tracker
+      image: {fileID: 0}
+      shortDescription: Arcsecond-class tracker for microsats.
+      purpose: Arcsecond-class tracker for microsats. Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Attitude Control (ADCS) > Sensors
+
+        Mass: 1.5 kg
+
+        Power draw: 6 W (100% of the time)
+
+        Volume: 2 L'
+      cost: '$220,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Attitude Control (ADCS) > Sensors). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Magnetorquer Set (3 rods)
+      image: {fileID: 0}
+      shortDescription: Pushes against Earth's magnetic field to dump momentum.
+      purpose: Pushes against Earth's magnetic field to dump momentum. Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Attitude Control (ADCS) > Actuators
+
+        Mass: 100 g
+
+        Power draw: 0.6 W (100% of the time)
+
+        Volume: 0.08 L'
+      cost: '$3,700. Where the numbers come from: Based on CubeSpace $870-1,650 per rod.'
+      history: Part of the AscendCAD catalog (Attitude Control (ADCS) > Actuators). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: CubeWheel S Reaction Wheel
+      image: {fileID: 0}
+      shortDescription: Small reaction wheel.
+      purpose: Small reaction wheel. Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Attitude Control (ADCS) > Actuators
+
+        Mass: 60 g
+
+        Power draw: 0.25 W (100% of the time)
+
+        Volume: 0.04 L'
+      cost: '$5,170. Where the numbers come from: CubeSpace $5,170, 60 g.'
+      history: Part of the AscendCAD catalog (Attitude Control (ADCS) > Actuators). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: CubeWheel M Reaction Wheel
+      image: {fileID: 0}
+      shortDescription: Medium reaction wheel.
+      purpose: Medium reaction wheel. Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Attitude Control (ADCS) > Actuators
+
+        Mass: 150 g
+
+        Power draw: 0.5 W (100% of the time)
+
+        Volume: 0.07 L'
+      cost: '$7,540. Where the numbers come from: CubeSpace $7,540, 150 g.'
+      history: Part of the AscendCAD catalog (Attitude Control (ADCS) > Actuators). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: CubeWheel L Reaction Wheel
+      image: {fileID: 0}
+      shortDescription: Large CubeSat wheel.
+      purpose: Large CubeSat wheel. Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Attitude Control (ADCS) > Actuators
+
+        Mass: 225 g
+
+        Power draw: 0.8 W (100% of the time)
+
+        Volume: 0.11 L'
+      cost: '$8,640. Where the numbers come from: CubeSpace $8,640, 225 g.'
+      history: Part of the AscendCAD catalog (Attitude Control (ADCS) > Actuators). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: NanoAvionics RW0 Wheel
+      image: {fileID: 0}
+      shortDescription: Sealed brushless wheel (vendor sells in sets of 4).
+      purpose: Sealed brushless wheel (vendor sells in sets of 4). Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Attitude Control (ADCS) > Actuators
+
+        Mass: 140 g
+
+        Power draw: 0.15 W (100% of the time)
+
+        Volume: 0.07 L'
+      cost: '$4,450 (estimate). Where the numbers come from: EUR 4,100 starting price (~$4,450); mass est..'
+      history: Part of the AscendCAD catalog (Attitude Control (ADCS) > Actuators). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: SmallSat Reaction Wheel
+      image: {fileID: 0}
+      shortDescription: 0.1 Nms-class wheel for microsats.
+      purpose: 0.1 Nms-class wheel for microsats. Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Attitude Control (ADCS) > Actuators
+
+        Mass: 1.1 kg
+
+        Power draw: 3 W (100% of the time)
+
+        Volume: 1.2 L'
+      cost: '$65,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Attitude Control (ADCS) > Actuators). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: CubeADCS 3-Axis Small
+      image: {fileID: 0}
+      shortDescription: 'Complete 3-axis package: computer, sensors, wheels and torquers.'
+      purpose: 'Complete 3-axis package: computer, sensors, wheels and torquers. Installs inside a bay, interstage or satellite structure.'
+      specs: 'AscendCAD section: Attitude Control (ADCS) > Integrated ADCS
+
+        Mass: 350 g
+
+        Power draw: 1.2 W (100% of the time)
+
+        Volume: 0.35 L'
+      cost: '$37,000 (estimate). Where the numbers come from: CubeSpace base price $37,000; mass est..'
+      history: Part of the AscendCAD catalog (Attitude Control (ADCS) > Integrated ADCS). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: CubeADCS Y-Momentum
+      image: {fileID: 0}
+      shortDescription: Nadir pointing with one biased wheel; cheaper, less agile.
+      purpose: Nadir pointing with one biased wheel; cheaper, less agile. Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Attitude Control (ADCS) > Integrated ADCS
+
+        Mass: 300 g
+
+        Power draw: 0.7 W (100% of the time)
+
+        Volume: 0.3 L'
+      cost: '$26,780. Where the numbers come from: CubeSpace base price $26,780.'
+      history: Part of the AscendCAD catalog (Attitude Control (ADCS) > Integrated ADCS). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+  - name: 'AscendCAD Satellite: Propulsion'
+    description: 'Thrusters that let a satellite change or hold its orbit: cold gas, electric and chemical.'
+    parts:
+    - title: Cold-Gas Thruster 0.5U
+      image: {fileID: 0}
+      shortDescription: Simple butane/nitrogen thruster for small maneuvers.
+      purpose: Simple butane/nitrogen thruster for small maneuvers. Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Propulsion > Thrusters
+
+        Mass: 700 g full, 600 g empty
+
+        Propellant: 100 g cold gas
+
+        Specific impulse: 65 s vacuum
+
+        Power draw: 1 W (10% of the time)
+
+        Volume: 0.5 L'
+      cost: '$55,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Propulsion > Thrusters). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Electric Thruster 1U (FEEP)
+      image: {fileID: 0}
+      shortDescription: Very efficient, very low thrust.
+      purpose: Very efficient, very low thrust. Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Propulsion > Thrusters
+
+        Mass: 1 kg full, 800 g empty
+
+        Propellant: 200 g electric
+
+        Specific impulse: 2000 s vacuum
+
+        Power draw: 25 W (20% of the time)
+
+        Volume: 1 L'
+      cost: '$140,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Propulsion > Thrusters). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Hydrazine Propulsion Module
+      image: {fileID: 0}
+      shortDescription: Monopropellant thrusters for microsats.
+      purpose: Monopropellant thrusters for microsats. Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Propulsion > Thrusters
+
+        Mass: 25 kg full, 10 kg empty
+
+        Propellant: 15 kg hydrazine
+
+        Specific impulse: 220 s vacuum
+
+        Power draw: 12 W (100% of the time)
+
+        Volume: 30 L'
+      cost: '$1,100,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Propulsion > Thrusters). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Hall Thruster System 300 W
+      image: {fileID: 0}
+      shortDescription: Xenon Hall thruster for orbit raising.
+      purpose: Xenon Hall thruster for orbit raising. Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Propulsion > Thrusters
+
+        Mass: 15 kg full, 7 kg empty
+
+        Propellant: 8 kg electric
+
+        Specific impulse: 1400 s vacuum
+
+        Power draw: 300 W (15% of the time)
+
+        Volume: 20 L'
+      cost: '$800,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Propulsion > Thrusters). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+  - name: 'AscendCAD Satellite: Thermal'
+    description: Insulation, heaters and radiators that keep electronics at a safe temperature.
+    parts:
+    - title: CubeSat MLI Blanket Kit
+      image: {fileID: 0}
+      shortDescription: Multilayer insulation to hold temperatures steady.
+      purpose: Multilayer insulation to hold temperatures steady. Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Thermal > Thermal Control
+
+        Mass: 50 g
+
+        Volume: 0.05 L'
+      cost: '$2,500 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Thermal > Thermal Control). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Kapton Heater Set
+      image: {fileID: 0}
+      shortDescription: Keeps the battery warm in eclipse.
+      purpose: Keeps the battery warm in eclipse. Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Thermal > Thermal Control
+
+        Mass: 40 g
+
+        Power draw: 1.5 W (30% of the time)
+
+        Volume: 0.02 L'
+      cost: '$1,800 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Thermal > Thermal Control). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: SmallSat MLI Blankets
+      image: {fileID: 0}
+      shortDescription: Gold-foil blankets for microsats.
+      purpose: Gold-foil blankets for microsats. Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Thermal > Thermal Control
+
+        Mass: 2.5 kg
+
+        Volume: 1 L'
+      cost: '$60,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Thermal > Thermal Control). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Radiator Panel 0.5 m
+      image: {fileID: 0}
+      shortDescription: White-painted panel that dumps electronics heat to space.
+      purpose: White-painted panel that dumps electronics heat to space. Mounts on the side or face of a part (symmetry works).
+      specs: 'AscendCAD section: Thermal > Thermal Control
+
+        Mass: 1.8 kg
+
+        Size: 0.5 x 0.5 x 0.012 m'
+      cost: '$45,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Thermal > Thermal Control). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+  - name: 'AscendCAD Satellite: Scientific Instruments'
+    description: 'The reason a satellite flies: cameras, spectrometers, receivers and more.'
+    parts:
+    - title: High Precision Telescope (Diwata class)
+      image: {fileID: 0}
+      shortDescription: Few-meter resolution telescope for disaster damage assessment, as flown on Diwata-1/2.
+      purpose: Few-meter resolution telescope for disaster damage assessment, as flown on Diwata-1/2. Mounts on the side or face of a part (symmetry works).
+      specs: 'AscendCAD section: Scientific Instruments > Earth Observation
+
+        Mass: 7 kg
+
+        Size: 0.2 x 0.2 x 0.45 m
+
+        Power draw: 12 W (20% of the time)
+
+        Data rate: 50 Mbps'
+      cost: '$650,000 (estimate). Where the numbers come from: Heritage: Diwata-1; mass, power & cost est..'
+      history: Part of the AscendCAD catalog (Scientific Instruments > Earth Observation). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Multispectral Imager w/ LCTF (Diwata class)
+      image: {fileID: 0}
+      shortDescription: 'Tunable-filter imager, 80 m resolution, 420-1050 nm: vegetation and ocean color.'
+      purpose: 'Tunable-filter imager, 80 m resolution, 420-1050 nm: vegetation and ocean color. Mounts on the side or face of a part (symmetry works).'
+      specs: 'AscendCAD section: Scientific Instruments > Earth Observation
+
+        Mass: 3 kg
+
+        Size: 0.15 x 0.15 x 0.25 m
+
+        Power draw: 8 W (20% of the time)
+
+        Data rate: 20 Mbps'
+      cost: '$300,000 (estimate). Where the numbers come from: Specs: Diwata-1 SMI (eoPortal); mass & cost est..'
+      history: Part of the AscendCAD catalog (Scientific Instruments > Earth Observation). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Wide Field Camera
+      image: {fileID: 0}
+      shortDescription: "7 km resolution, 180 x 134\xB0 view for watching typhoons."
+      purpose: "7 km resolution, 180 x 134\xB0 view for watching typhoons. Mounts on the side or face of a part (symmetry works)."
+      specs: 'AscendCAD section: Scientific Instruments > Earth Observation
+
+        Mass: 300 g
+
+        Size: 0.06 x 0.06 x 0.08 m
+
+        Power draw: 1.5 W (30% of the time)
+
+        Data rate: 2 Mbps'
+      cost: '$15,000 (estimate). Where the numbers come from: Specs: Diwata-1 WFC (eoPortal); mass & cost est..'
+      history: Part of the AscendCAD catalog (Scientific Instruments > Earth Observation). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Middle Field Camera
+      image: {fileID: 0}
+      shortDescription: 185 m color camera that helps locate high-resolution images.
+      purpose: 185 m color camera that helps locate high-resolution images. Mounts on the side or face of a part (symmetry works).
+      specs: 'AscendCAD section: Scientific Instruments > Earth Observation
+
+        Mass: 500 g
+
+        Size: 0.08 x 0.08 x 0.1 m
+
+        Power draw: 2 W (30% of the time)
+
+        Data rate: 4 Mbps'
+      cost: '$25,000 (estimate). Where the numbers come from: Specs: Diwata-1 MFC; mass & cost est..'
+      history: Part of the AscendCAD catalog (Scientific Instruments > Earth Observation). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Mantis Imager (1U)
+      image: {fileID: 0}
+      shortDescription: RGB / multispectral / hyperspectral imager; 16 m at 500 km.
+      purpose: RGB / multispectral / hyperspectral imager; 16 m at 500 km. Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Scientific Instruments > Earth Observation
+
+        Mass: 500 g
+
+        Power draw: 6 W (20% of the time)
+
+        Data rate: 30 Mbps
+
+        Volume: 0.63 L'
+      cost: '$150,000 (estimate). Where the numbers come from: Dragonfly Aerospace: 0.5 kg, 4-6 W, 16 m GSD; price est..'
+      history: Part of the AscendCAD catalog (Scientific Instruments > Earth Observation). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: MultiScape100 CIS
+      image: {fileID: 0}
+      shortDescription: Multispectral push-broom imager for 3U/6U CubeSats.
+      purpose: Multispectral push-broom imager for 3U/6U CubeSats. Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Scientific Instruments > Earth Observation
+
+        Mass: 1.2 kg
+
+        Power draw: 5.8 W (20% of the time)
+
+        Data rate: 40 Mbps
+
+        Volume: 2.2 L'
+      cost: '$280,000 (estimate). Where the numbers come from: satcatalog: 1.2 kg, 5.8 W; price est..'
+      history: Part of the AscendCAD catalog (Scientific Instruments > Earth Observation). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: HyperScape100 Hyperspectral
+      image: {fileID: 0}
+      shortDescription: Up to 32 hyperspectral bands; 4.75 m GSD at 500 km.
+      purpose: Up to 32 hyperspectral bands; 4.75 m GSD at 500 km. Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Scientific Instruments > Earth Observation
+
+        Mass: 1.2 kg
+
+        Power draw: 7.5 W (20% of the time)
+
+        Data rate: 60 Mbps
+
+        Volume: 2.2 L'
+      cost: '$380,000 (estimate). Where the numbers come from: Simera Sense / satcatalog: 1.2 kg, 7.5 W; price est..'
+      history: Part of the AscendCAD catalog (Scientific Instruments > Earth Observation). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Monitor Imager (PAN + 4 MS)
+      image: {fileID: 0}
+      shortDescription: Higher-resolution multispectral camera for 50-100 kg satellites.
+      purpose: Higher-resolution multispectral camera for 50-100 kg satellites. Mounts on the side or face of a part (symmetry works).
+      specs: 'AscendCAD section: Scientific Instruments > Earth Observation
+
+        Mass: 6 kg
+
+        Size: 0.2 x 0.2 x 0.4 m
+
+        Power draw: 14 W (20% of the time)
+
+        Data rate: 80 Mbps'
+      cost: '$750,000 (estimate). Where the numbers come from: Dragonfly Aerospace: 6 kg, 14 W; price est..'
+      history: Part of the AscendCAD catalog (Scientific Instruments > Earth Observation). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: MultiScape200 CIS
+      image: {fileID: 0}
+      shortDescription: 1.5 m resolution, 7 VNIR bands.
+      purpose: 1.5 m resolution, 7 VNIR bands. Mounts on the side or face of a part (symmetry works).
+      specs: 'AscendCAD section: Scientific Instruments > Earth Observation
+
+        Mass: 12.1 kg
+
+        Size: 0.3 x 0.3 x 0.6 m
+
+        Power draw: 5.8 W (20% of the time)
+
+        Data rate: 120 Mbps'
+      cost: '$1,600,000 (estimate). Where the numbers come from: Simera Sense / satcatalog: 12.1 kg, 5.8 W; price est..'
+      history: Part of the AscendCAD catalog (Scientific Instruments > Earth Observation). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Thermal Infrared Camera
+      image: {fileID: 0}
+      shortDescription: Microbolometer camera for fires, volcanoes and urban heat.
+      purpose: Microbolometer camera for fires, volcanoes and urban heat. Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Scientific Instruments > Earth Observation
+
+        Mass: 600 g
+
+        Power draw: 3 W (25% of the time)
+
+        Data rate: 5 Mbps
+
+        Volume: 0.6 L'
+      cost: '$90,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Scientific Instruments > Earth Observation). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Fluxgate Magnetometer on Boom
+      image: {fileID: 0}
+      shortDescription: Measures Earth's magnetic field far from the spacecraft's own noise.
+      purpose: Measures Earth's magnetic field far from the spacecraft's own noise. Mounts on the side or face of a part (symmetry works).
+      specs: 'AscendCAD section: Scientific Instruments > Space Science
+
+        Mass: 400 g
+
+        Size: 0.03 x 0.03 x 1 m
+
+        Power draw: 0.6 W (100% of the time)
+
+        Data rate: 2 kbps'
+      cost: '$35,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Scientific Instruments > Space Science). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Compact Ionospheric Probe
+      image: {fileID: 0}
+      shortDescription: Measures ionospheric plasma density and temperature.
+      purpose: Measures ionospheric plasma density and temperature. Mounts on the side or face of a part (symmetry works).
+      specs: 'AscendCAD section: Scientific Instruments > Space Science
+
+        Mass: 1 kg
+
+        Size: 0.1 x 0.1 x 0.1 m
+
+        Power draw: 12 W (30% of the time)
+
+        Data rate: 50 kbps'
+      cost: '$70,000 (estimate). Where the numbers come from: Power/duty: CIP mission budget (12 W, 30%); mass & cost est..'
+      history: Part of the AscendCAD catalog (Scientific Instruments > Space Science). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Radiation Dosimeter
+      image: {fileID: 0}
+      shortDescription: Maps the radiation environment along the orbit.
+      purpose: Maps the radiation environment along the orbit. Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Scientific Instruments > Space Science
+
+        Mass: 150 g
+
+        Power draw: 0.4 W (100% of the time)
+
+        Data rate: 1 kbps
+
+        Volume: 0.1 L'
+      cost: '$18,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Scientific Instruments > Space Science). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Gamma / X-ray Burst Detector
+      image: {fileID: 0}
+      shortDescription: Watches for gamma-ray bursts and solar flares.
+      purpose: Watches for gamma-ray bursts and solar flares. Mounts on the side or face of a part (symmetry works).
+      specs: 'AscendCAD section: Scientific Instruments > Space Science
+
+        Mass: 2.5 kg
+
+        Size: 0.2 x 0.2 x 0.15 m
+
+        Power draw: 5 W (100% of the time)
+
+        Data rate: 200 kbps'
+      cost: '$320,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Scientific Instruments > Space Science). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: 30 cm Space Telescope
+      image: {fileID: 0}
+      shortDescription: Astronomy telescope for a 100-200 kg satellite.
+      purpose: Astronomy telescope for a 100-200 kg satellite. Mounts on the side or face of a part (symmetry works).
+      specs: 'AscendCAD section: Scientific Instruments > Space Science
+
+        Mass: 28 kg
+
+        Size: 0.4 x 0.4 x 0.9 m
+
+        Power draw: 35 W (50% of the time)
+
+        Data rate: 50 Mbps'
+      cost: '$4,500,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Scientific Instruments > Space Science). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: UV-Vis Spectrometer
+      image: {fileID: 0}
+      shortDescription: Measures ozone, NO2 and aerosols.
+      purpose: Measures ozone, NO2 and aerosols. Mounts on the side or face of a part (symmetry works).
+      specs: 'AscendCAD section: Scientific Instruments > Space Science
+
+        Mass: 3.5 kg
+
+        Size: 0.15 x 0.15 x 0.3 m
+
+        Power draw: 9 W (30% of the time)
+
+        Data rate: 3 Mbps'
+      cost: '$520,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Scientific Instruments > Space Science). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: AIS Ship-Tracking Receiver
+      image: {fileID: 0}
+      shortDescription: Tracks ships across Philippine waters (MULA carries AIS).
+      purpose: Tracks ships across Philippine waters (MULA carries AIS). Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Scientific Instruments > Radio & Tracking
+
+        Mass: 150 g
+
+        Power draw: 1 W (100% of the time)
+
+        Data rate: 10 kbps
+
+        Volume: 0.1 L'
+      cost: '$25,000 (estimate). Where the numbers come from: Payload type: PhilSA MULA; numbers est..'
+      history: Part of the AscendCAD catalog (Scientific Instruments > Radio & Tracking). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: ADS-B Aircraft Receiver
+      image: {fileID: 0}
+      shortDescription: Tracks aircraft over oceans.
+      purpose: Tracks aircraft over oceans. Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Scientific Instruments > Radio & Tracking
+
+        Mass: 150 g
+
+        Power draw: 1.5 W (100% of the time)
+
+        Data rate: 10 kbps
+
+        Volume: 0.1 L'
+      cost: '$25,000 (estimate). Where the numbers come from: Payload type: PhilSA MULA; numbers est..'
+      history: Part of the AscendCAD catalog (Scientific Instruments > Radio & Tracking). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Amateur Radio Unit
+      image: {fileID: 0}
+      shortDescription: Store-and-forward ham radio for disaster comms (Diwata-2 heritage).
+      purpose: Store-and-forward ham radio for disaster comms (Diwata-2 heritage). Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Scientific Instruments > Radio & Tracking
+
+        Mass: 300 g
+
+        Power draw: 3 W (20% of the time)
+
+        Data rate: 10 kbps
+
+        Volume: 0.2 L'
+      cost: '$12,000 (estimate). Where the numbers come from: Heritage: Diwata-2 ARU; numbers est..'
+      history: Part of the AscendCAD catalog (Scientific Instruments > Radio & Tracking). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: GNSS Radio Occultation Receiver
+      image: {fileID: 0}
+      shortDescription: Profiles atmospheric temperature and humidity for weather models.
+      purpose: Profiles atmospheric temperature and humidity for weather models. Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Scientific Instruments > Radio & Tracking
+
+        Mass: 1.5 kg
+
+        Power draw: 8 W (100% of the time)
+
+        Data rate: 200 kbps
+
+        Volume: 1.5 L'
+      cost: '$260,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Scientific Instruments > Radio & Tracking). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: IoT Store-and-Forward Receiver
+      image: {fileID: 0}
+      shortDescription: Collects data from remote sensors (farms, rivers, buoys).
+      purpose: Collects data from remote sensors (farms, rivers, buoys). Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Scientific Instruments > Radio & Tracking
+
+        Mass: 200 g
+
+        Power draw: 2 W (50% of the time)
+
+        Data rate: 20 kbps
+
+        Volume: 0.1 L'
+      cost: '$22,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Scientific Instruments > Radio & Tracking). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Compact X-band SAR
+      image: {fileID: 0}
+      shortDescription: Radar that sees through clouds and at night.
+      purpose: Radar that sees through clouds and at night. Needs a lot of power. Mounts on the side or face of a part (symmetry works).
+      specs: 'AscendCAD section: Scientific Instruments > Radio & Tracking
+
+        Mass: 45 kg
+
+        Size: 1.5 x 0.5 x 0.08 m
+
+        Power draw: 600 W (10% of the time)
+
+        Data rate: 500 Mbps'
+      cost: '$9,000,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Scientific Instruments > Radio & Tracking). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Microwave Sounder
+      image: {fileID: 0}
+      shortDescription: Temperature and moisture profiles inside typhoons.
+      purpose: Temperature and moisture profiles inside typhoons. Mounts on the side or face of a part (symmetry works).
+      specs: 'AscendCAD section: Scientific Instruments > Weather
+
+        Mass: 16 kg
+
+        Size: 0.4 x 0.4 x 0.5 m
+
+        Power draw: 30 W (100% of the time)
+
+        Data rate: 300 kbps'
+      cost: '$3,200,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Scientific Instruments > Weather). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+  - name: 'AscendCAD Satellite: Heritage Spacecraft'
+    description: Hardware from Maya-1, Diwata-1/2, Hayabusa and the James Webb Space Telescope.
+    parts:
+    - title: Diwata-1 Bus (55 x 35 x 55 cm)
+      image: {fileID: 0}
+      shortDescription: The Philippines' first microsatellite body, built by Filipino engineers with Tohoku and Hokkaido universities.
+      purpose: The Philippines' first microsatellite body, built by Filipino engineers with Tohoku and Hokkaido universities. Includes structure, harness and thermal hardware. Stacks on top of or under other parts.
+      specs: 'AscendCAD section: Heritage Spacecraft > Philippine Satellites
+
+        Mass: 25 kg
+
+        Size: 0.55 x 0.55 x 0.35 m
+
+        Room inside: 85 L'
+      cost: '$2,500,000 (estimate). Where the numbers come from: Size: Diwata-1 (eoPortal); mass and cost est..'
+      history: Part of the AscendCAD catalog (Heritage Spacecraft > Philippine Satellites). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Diwata-2 Bus (50 cm cube)
+      image: {fileID: 0}
+      shortDescription: 'Diwata-2''s 50 cm cube body: the same bus design as Diwata-1, with room for an amateur radio unit and deployable paddles.'
+      purpose: 'Diwata-2''s 50 cm cube body: the same bus design as Diwata-1, with room for an amateur radio unit and deployable paddles. Stacks on top of or under other parts.'
+      specs: 'AscendCAD section: Heritage Spacecraft > Philippine Satellites
+
+        Mass: 27.5 kg
+
+        Size: 0.5 x 0.5 x 0.5 m
+
+        Room inside: 100 L'
+      cost: '$2,800,000 (estimate). Where the numbers come from: Size: PHL-Microsat (50 x 50 x 50 cm); mass and cost est..'
+      history: Part of the AscendCAD catalog (Heritage Spacecraft > Philippine Satellites). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Deployable Solar Array Paddle (DSAP)
+      image: {fileID: 0}
+      shortDescription: Diwata-2's experimental fold-out paddle; stowed against the side for launch.
+      purpose: Diwata-2's experimental fold-out paddle; stowed against the side for launch. Mounts on the side or face of a part (symmetry works).
+      specs: 'AscendCAD section: Heritage Spacecraft > Philippine Satellites
+
+        Mass: 900 g
+
+        Size: 0.01 x 0.45 x 0.45 m
+
+        Power output: 30 W in full sun'
+      cost: '$60,000 (estimate). Where the numbers come from: Heritage: Diwata-2 DSAP; numbers est..'
+      history: Part of the AscendCAD catalog (Heritage Spacecraft > Philippine Satellites). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Enhanced Resolution Camera (ERC)
+      image: {fileID: 0}
+      shortDescription: Sharpens the multispectral images (pan-sharpening).
+      purpose: Sharpens the multispectral images (pan-sharpening). Flown on Diwata-2. Mounts on the side or face of a part (symmetry works).
+      specs: 'AscendCAD section: Heritage Spacecraft > Philippine Satellites
+
+        Mass: 800 g
+
+        Size: 0.1 x 0.1 x 0.15 m
+
+        Power draw: 3 W (20% of the time)
+
+        Data rate: 10 Mbps'
+      cost: '$60,000 (estimate). Where the numbers come from: Payload: Diwata-2 (STAMINA4Space); numbers est..'
+      history: Part of the AscendCAD catalog (Heritage Spacecraft > Philippine Satellites). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Tiny RGB Camera (CubeSat)
+      image: {fileID: 0}
+      shortDescription: Matchbox-size camera for Earth snapshots, as on the BIRDS CubeSats.
+      purpose: Matchbox-size camera for Earth snapshots, as on the BIRDS CubeSats. Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Heritage Spacecraft > Philippine Satellites
+
+        Mass: 20 g
+
+        Power draw: 0.2 W (10% of the time)
+
+        Data rate: 100 kbps
+
+        Volume: 0.02 L'
+      cost: '$3,000 (estimate). Where the numbers come from: Heritage: Maya-1 / BIRDS-2; numbers est..'
+      history: Part of the AscendCAD catalog (Heritage Spacecraft > Philippine Satellites). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Passive Magnetic Attitude (magnet + hysteresis rods)
+      image: {fileID: 0}
+      shortDescription: A permanent magnet lines the CubeSat up with Earth's field and hysteresis rods damp the wobble.
+      purpose: A permanent magnet lines the CubeSat up with Earth's field and hysteresis rods damp the wobble. No power needed. Used on BIRDS CubeSats like Maya-1. Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Heritage Spacecraft > Philippine Satellites
+
+        Mass: 30 g
+
+        Volume: 0.02 L'
+      cost: '$600 (estimate). Where the numbers come from: Heritage: BIRDS-2 (Maya-1); numbers est..'
+      history: Part of the AscendCAD catalog (Heritage Spacecraft > Philippine Satellites). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: CubeSat Separation Springs & Switches
+      image: {fileID: 0}
+      shortDescription: Spring plungers and kill switches on the CubeSat rails.
+      purpose: Spring plungers and kill switches on the CubeSat rails. The deployer itself stays with the rocket. Stacks on top of or under other parts.
+      specs: 'AscendCAD section: Heritage Spacecraft > Philippine Satellites
+
+        Mass: 20 g
+
+        Size: 0.1 x 0.008 x 0.1 m
+
+        Max payload: 6 kg'
+      cost: '$1,500 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Heritage Spacecraft > Philippine Satellites). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Hayabusa Bus (1.6 x 1.1 x 1.0 m)
+      image: {fileID: 0}
+      shortDescription: Box body of JAXA's asteroid sample-return probe (launched 2003 on an M-V rocket).
+      purpose: Box body of JAXA's asteroid sample-return probe (launched 2003 on an M-V rocket). Stacks on top of or under other parts.
+      specs: 'AscendCAD section: Heritage Spacecraft > Hayabusa (JAXA)
+
+        Mass: 190 kg
+
+        Size: 1.6 x 1.1 x 1 m
+
+        Room inside: 900 L'
+      cost: '$40,000,000 (estimate). Where the numbers come from: Size: JAXA/ISAS; mass and cost est..'
+      history: Part of the AscendCAD catalog (Heritage Spacecraft > Hayabusa (JAXA)). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Hayabusa Solar Paddle
+      image: {fileID: 0}
+      shortDescription: One of two fixed paddles; 5.7 m tip to tip with the body.
+      purpose: One of two fixed paddles; 5.7 m tip to tip with the body. Mounts on the side or face of a part (symmetry works).
+      specs: 'AscendCAD section: Heritage Spacecraft > Hayabusa (JAXA)
+
+        Mass: 15 kg
+
+        Size: 0.03 x 1.1 x 2.05 m
+
+        Power output: 1300 W in full sun'
+      cost: '$6,000,000 (estimate). Where the numbers come from: Span: JAXA/ISAS (5.7 m); power, mass and cost est..'
+      history: Part of the AscendCAD catalog (Heritage Spacecraft > Hayabusa (JAXA)). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: "\xB510 Ion Engine System (4 thrusters)"
+      image: {fileID: 0}
+      shortDescription: 'Microwave-discharge xenon ion engines: tiny thrust, huge efficiency.'
+      purpose: 'Microwave-discharge xenon ion engines: tiny thrust, huge efficiency. They ran for about 40,000 thruster-hours. Mounts on the side or face of a part (symmetry works).'
+      specs: 'AscendCAD section: Heritage Spacecraft > Hayabusa (JAXA)
+
+        Mass: 119 kg full, 59 kg empty
+
+        Propellant: 60 kg electric
+
+        Specific impulse: 3000 s vacuum
+
+        Size: 0.6 x 0.6 x 0.4 m
+
+        Power draw: 1100 W (30% of the time)'
+      cost: '$15,000,000 (estimate). Where the numbers come from: JAXA: 4 thrusters, Isp ~3,000 s, ~60 kg xenon; system mass and power est..'
+      history: Part of the AscendCAD catalog (Heritage Spacecraft > Hayabusa (JAXA)). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Bipropellant RCS (12 thrusters)
+      image: {fileID: 0}
+      shortDescription: Chemical thrusters for touchdowns and attitude control.
+      purpose: Chemical thrusters for touchdowns and attitude control. Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Heritage Spacecraft > Hayabusa (JAXA)
+
+        Mass: 90 kg full, 20 kg empty
+
+        Propellant: 70 kg MMH/NTO
+
+        Specific impulse: 290 s vacuum
+
+        Power draw: 10 W (5% of the time)
+
+        Volume: 120 L'
+      cost: '$4,000,000 (estimate). Where the numbers come from: ~70 kg chemical propellant (JAXA via NSS); hardware est..'
+      history: Part of the AscendCAD catalog (Heritage Spacecraft > Hayabusa (JAXA)). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: 1.5 m High-Gain Antenna
+      image: {fileID: 0}
+      shortDescription: Deep-space X-band dish for talking to Earth from the asteroid.
+      purpose: Deep-space X-band dish for talking to Earth from the asteroid. Mounts on the side or face of a part (symmetry works).
+      specs: 'AscendCAD section: Heritage Spacecraft > Hayabusa (JAXA)
+
+        Mass: 6 kg
+
+        Size: 1.5 x 1.5 x 0.5 m'
+      cost: '$5,000,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Heritage Spacecraft > Hayabusa (JAXA)). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Sample Return Capsule
+      image: {fileID: 0}
+      shortDescription: Heat-shielded capsule that carried the Itokawa grains back to Earth in 2010.
+      purpose: Heat-shielded capsule that carried the Itokawa grains back to Earth in 2010. Mounts on the side or face of a part (symmetry works).
+      specs: 'AscendCAD section: Heritage Spacecraft > Hayabusa (JAXA)
+
+        Mass: 17 kg
+
+        Size: 0.4 x 0.4 x 0.2 m'
+      cost: '$8,000,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Heritage Spacecraft > Hayabusa (JAXA)). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Sampler Horn
+      image: {fileID: 0}
+      shortDescription: Funnel that touched the asteroid and caught kicked-up grains.
+      purpose: Funnel that touched the asteroid and caught kicked-up grains. Mounts on the side or face of a part (symmetry works).
+      specs: 'AscendCAD section: Heritage Spacecraft > Hayabusa (JAXA)
+
+        Mass: 5 kg
+
+        Size: 0.15 x 0.15 x 1 m
+
+        Power draw: 5 W (1% of the time)'
+      cost: '$3,000,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Heritage Spacecraft > Hayabusa (JAXA)). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: AMICA Multiband Imaging Camera
+      image: {fileID: 0}
+      shortDescription: Telescopic camera with color filters for mapping the asteroid.
+      purpose: Telescopic camera with color filters for mapping the asteroid. Mounts on the side or face of a part (symmetry works).
+      specs: 'AscendCAD section: Heritage Spacecraft > Hayabusa (JAXA)
+
+        Mass: 1.6 kg
+
+        Size: 0.15 x 0.15 x 0.2 m
+
+        Power draw: 6 W (30% of the time)
+
+        Data rate: 2 Mbps'
+      cost: '$3,000,000 (estimate). Where the numbers come from: Instrument: JAXA; numbers est..'
+      history: Part of the AscendCAD catalog (Heritage Spacecraft > Hayabusa (JAXA)). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: LIDAR Laser Altimeter
+      image: {fileID: 0}
+      shortDescription: Measures the distance to the surface for navigation and shape mapping.
+      purpose: Measures the distance to the surface for navigation and shape mapping. Mounts on the side or face of a part (symmetry works).
+      specs: 'AscendCAD section: Heritage Spacecraft > Hayabusa (JAXA)
+
+        Mass: 3.7 kg
+
+        Size: 0.25 x 0.25 x 0.3 m
+
+        Power draw: 17 W (30% of the time)
+
+        Data rate: 10 kbps'
+      cost: '$4,000,000 (estimate). Where the numbers come from: Instrument: JAXA; numbers est..'
+      history: Part of the AscendCAD catalog (Heritage Spacecraft > Hayabusa (JAXA)). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: NIRS Near-Infrared Spectrometer
+      image: {fileID: 0}
+      shortDescription: Maps the asteroid's minerals.
+      purpose: Maps the asteroid's minerals. Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Heritage Spacecraft > Hayabusa (JAXA)
+
+        Mass: 2.4 kg
+
+        Power draw: 5 W (30% of the time)
+
+        Data rate: 50 kbps
+
+        Volume: 5 L'
+      cost: '$3,000,000 (estimate). Where the numbers come from: Instrument: JAXA; numbers est..'
+      history: Part of the AscendCAD catalog (Heritage Spacecraft > Hayabusa (JAXA)). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: XRS X-Ray Fluorescence Spectrometer
+      image: {fileID: 0}
+      shortDescription: Measures the elements on the surface.
+      purpose: Measures the elements on the surface. Mounts on the side or face of a part (symmetry works).
+      specs: 'AscendCAD section: Heritage Spacecraft > Hayabusa (JAXA)
+
+        Mass: 3 kg
+
+        Size: 0.2 x 0.2 x 0.15 m
+
+        Power draw: 5 W (30% of the time)
+
+        Data rate: 20 kbps'
+      cost: '$3,000,000 (estimate). Where the numbers come from: Instrument: JAXA; numbers est..'
+      history: Part of the AscendCAD catalog (Heritage Spacecraft > Hayabusa (JAXA)). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: MINERVA Hopping Rover
+      image: {fileID: 0}
+      shortDescription: Tiny rover that hopped using an internal flywheel.
+      purpose: Tiny rover that hopped using an internal flywheel. Mounts on the side or face of a part (symmetry works).
+      specs: 'AscendCAD section: Heritage Spacecraft > Hayabusa (JAXA)
+
+        Mass: 590 g
+
+        Size: 0.12 x 0.1 x 0.12 m
+
+        Data rate: 1 kbps'
+      cost: '$2,000,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Heritage Spacecraft > Hayabusa (JAXA)). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Webb Spacecraft Bus
+      image: {fileID: 0}
+      shortDescription: Hot-side bus with power, computers, propulsion and pointing.
+      purpose: Hot-side bus with power, computers, propulsion and pointing. Everything below the sunshield. Stacks on top of or under other parts.
+      specs: 'AscendCAD section: Heritage Spacecraft > James Webb (NASA/ESA/CSA)
+
+        Mass: 2 t
+
+        Size: 2.6 x 1.2 x 2.6 m
+
+        Room inside: 3000 L'
+      cost: '$1,500,000,000 (estimate). Where the numbers come from: Total observatory ~6,200 kg (ESA); bus share est..'
+      history: Part of the AscendCAD catalog (Heritage Spacecraft > James Webb (NASA/ESA/CSA)). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Deployable Tower + Instrument Module (ISIM)
+      image: {fileID: 0}
+      shortDescription: Cold-side structure holding the four science instruments behind the mirror.
+      purpose: Cold-side structure holding the four science instruments behind the mirror. Stacks on top of or under other parts.
+      specs: 'AscendCAD section: Heritage Spacecraft > James Webb (NASA/ESA/CSA)
+
+        Mass: 1.5 t
+
+        Size: 2.2 x 2.6 x 1.8 m
+
+        Room inside: 3000 L'
+      cost: '$1,500,000,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Heritage Spacecraft > James Webb (NASA/ESA/CSA)). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: 5-Layer Sunshield (21.2 x 14.2 m)
+      image: {fileID: 0}
+      shortDescription: "Tennis-court-size kapton shield that keeps the telescope at about -233 \xB0C."
+      purpose: "Tennis-court-size kapton shield that keeps the telescope at about -233 \xB0C. Folded for launch. Mounts on the side or face of a part (symmetry works)."
+      specs: 'AscendCAD section: Heritage Spacecraft > James Webb (NASA/ESA/CSA)
+
+        Mass: 1 t
+
+        Size: 21.2 x 14.2 x 0.25 m
+
+        Folded for launch: 4.2 x 4.2 x 1 m'
+      cost: '$1,000,000,000 (estimate). Where the numbers come from: Size: NASA/ESA (21.2 x 14.2 m); mass and cost est..'
+      history: Part of the AscendCAD catalog (Heritage Spacecraft > James Webb (NASA/ESA/CSA)). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Primary Mirror 6.5 m (18 gold segments)
+      image: {fileID: 0}
+      shortDescription: 18 gold-coated beryllium hexagons.
+      purpose: 18 gold-coated beryllium hexagons. The side wings fold back for launch. Mounts on the side or face of a part (symmetry works).
+      specs: 'AscendCAD section: Heritage Spacecraft > James Webb (NASA/ESA/CSA)
+
+        Mass: 705 kg
+
+        Size: 6.5 x 6.5 x 1.2 m
+
+        Folded for launch: 3.9 x 6.5 x 2 m
+
+        Power draw: 20 W (100% of the time)'
+      cost: '$2,500,000,000 (estimate). Where the numbers come from: NASA: 6.5 m, 705 kg; cost est..'
+      history: Part of the AscendCAD catalog (Heritage Spacecraft > James Webb (NASA/ESA/CSA)). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Secondary Mirror Tripod
+      image: {fileID: 0}
+      shortDescription: Holds the small secondary mirror about 7 m in front of the primary.
+      purpose: Holds the small secondary mirror about 7 m in front of the primary. Folded for launch. Mounts on the side or face of a part (symmetry works).
+      specs: 'AscendCAD section: Heritage Spacecraft > James Webb (NASA/ESA/CSA)
+
+        Mass: 200 kg
+
+        Size: 0.15 x 0.15 x 7 m
+
+        Folded for launch: 0.5 x 0.5 x 1.5 m
+
+        Power draw: 5 W (100% of the time)'
+      cost: '$300,000,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Heritage Spacecraft > James Webb (NASA/ESA/CSA)). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Webb Solar Array (2 kW)
+      image: {fileID: 0}
+      shortDescription: Fold-out array on the hot side.
+      purpose: Fold-out array on the hot side. Mounts on the side or face of a part (symmetry works).
+      specs: 'AscendCAD section: Heritage Spacecraft > James Webb (NASA/ESA/CSA)
+
+        Mass: 60 kg
+
+        Size: 0.05 x 1.3 x 5.9 m
+
+        Power output: 2000 W in full sun'
+      cost: '$100,000,000 (estimate). Where the numbers come from: CSA: 2,000 W; size, mass and cost est..'
+      history: Part of the AscendCAD catalog (Heritage Spacecraft > James Webb (NASA/ESA/CSA)). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: NIRCam Near-Infrared Camera
+      image: {fileID: 0}
+      shortDescription: "Webb's main camera, 0.6-5 \xB5m."
+      purpose: "Webb's main camera, 0.6-5 \xB5m. Installs inside a bay, interstage or satellite structure."
+      specs: 'AscendCAD section: Heritage Spacecraft > James Webb (NASA/ESA/CSA)
+
+        Mass: 160 kg
+
+        Power draw: 40 W (100% of the time)
+
+        Data rate: 30 Mbps
+
+        Volume: 600 L'
+      cost: '$500,000,000 (estimate). Where the numbers come from: Instrument: NASA/UArizona; numbers est..'
+      history: Part of the AscendCAD catalog (Heritage Spacecraft > James Webb (NASA/ESA/CSA)). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: NIRSpec Spectrograph
+      image: {fileID: 0}
+      shortDescription: Takes spectra of up to 100 objects at once (ESA).
+      purpose: Takes spectra of up to 100 objects at once (ESA). Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Heritage Spacecraft > James Webb (NASA/ESA/CSA)
+
+        Mass: 196 kg
+
+        Power draw: 40 W (100% of the time)
+
+        Data rate: 30 Mbps
+
+        Volume: 900 L'
+      cost: '$500,000,000 (estimate). Where the numbers come from: Instrument: ESA; numbers est..'
+      history: Part of the AscendCAD catalog (Heritage Spacecraft > James Webb (NASA/ESA/CSA)). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: MIRI Mid-Infrared Instrument + Cryocooler
+      image: {fileID: 0}
+      shortDescription: "5-28 \xB5m camera and spectrograph, chilled to about 7 K."
+      purpose: "5-28 \xB5m camera and spectrograph, chilled to about 7 K. Installs inside a bay, interstage or satellite structure."
+      specs: 'AscendCAD section: Heritage Spacecraft > James Webb (NASA/ESA/CSA)
+
+        Mass: 160 kg
+
+        Power draw: 90 W (100% of the time)
+
+        Data rate: 20 Mbps
+
+        Volume: 600 L'
+      cost: '$500,000,000 (estimate). Where the numbers come from: Instrument: ESA/NASA; numbers est..'
+      history: Part of the AscendCAD catalog (Heritage Spacecraft > James Webb (NASA/ESA/CSA)). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: FGS/NIRISS Guider + Spectrograph
+      image: {fileID: 0}
+      shortDescription: Fine guidance sensor and slitless spectrograph (Canada).
+      purpose: Fine guidance sensor and slitless spectrograph (Canada). Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Heritage Spacecraft > James Webb (NASA/ESA/CSA)
+
+        Mass: 82 kg
+
+        Power draw: 30 W (100% of the time)
+
+        Data rate: 10 Mbps
+
+        Volume: 300 L'
+      cost: '$300,000,000 (estimate). Where the numbers come from: Instrument: CSA; numbers est..'
+      history: Part of the AscendCAD catalog (Heritage Spacecraft > James Webb (NASA/ESA/CSA)). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Clamp Band 1666 mm
+      image: {fileID: 0}
+      shortDescription: Large clamp band for multi-tonne spacecraft.
+      purpose: Large clamp band for multi-tonne spacecraft. Stacks on top of or under other parts.
+      specs: "AscendCAD section: Heritage Spacecraft > James Webb (NASA/ESA/CSA)\nMass: 45 kg\nSize: \xD81.67 m x 0.12 m\nMax payload: 8 t"
+      cost: '$400,000 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Heritage Spacecraft > James Webb (NASA/ESA/CSA)). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+  - name: 'AscendCAD: Launch Pads'
+    description: Launch pads and support vehicles. Bought once, kept forever. Each has limits on rocket height, width and mass.
+    parts:
+    - title: Basic Launch Mount
+      image: {fileID: -6941893666776508460, guid: 975e18d1435cc8724a8bedb32515d1a1, type: 3}
+      shortDescription: Government-provided concrete pad with a hold-down clamp and a small umbilical mast.
+      purpose: Government-provided concrete pad with a hold-down clamp and a small umbilical mast. Fine for small launchers like Electron. Buy it once on the AscendCAD Launch Pad tab and choose it for any compatible rocket.
+      specs: 'Type: Launch pad
+
+        Max rocket height: 40 m
+
+        Max rocket width: 6 m
+
+        Max liftoff mass: 150 t'
+      cost: 'Free: provided by the government. Where the numbers come from: Electron: 18 m tall, 1.2 m wide, ~13 t (Rocket Lab). Limits est..'
+      history: Launch infrastructure in AscendCAD.
+    - title: Gantry Launch Pad
+      image: {fileID: -4919171722757787144, guid: 3856d1d91a3a38ee29789496f9bcb958, type: 3}
+      shortDescription: Fixed pad with a service gantry tower, flame trench and propellant farm.
+      purpose: Fixed pad with a service gantry tower, flame trench and propellant farm. The rocket is erected and serviced right at the pad. Medium rockets up to Falcon 9 class. Buy it once on the AscendCAD Launch Pad tab and choose it for any compatible rocket.
+      specs: 'Type: Launch pad
+
+        Max rocket height: 80 m
+
+        Max rocket width: 14 m
+
+        Max liftoff mass: 1,300 t'
+      cost: '$150,000,000 (estimate). Where the numbers come from: Falcon 9: ~70 m tall, 3.7 m wide, ~550 t. Limits and cost est..'
+      history: Launch infrastructure in AscendCAD.
+    - title: Mobile Launcher
+      image: {fileID: -852393517329727934, guid: 2d79cd3f3acb1b000bad5e520aa297e7, type: 3}
+      shortDescription: Two-story launch platform with a ~116 m umbilical tower.
+      purpose: Two-story launch platform with a ~116 m umbilical tower. The rocket is stacked on it indoors, then the Crawler carries both to the pad. Built for super-heavy rockets. Buy it once on the AscendCAD Launch Pad tab and choose it for any compatible rocket.
+      specs: 'Type: Launch pad
+
+        Max rocket height: 125 m
+
+        Max rocket width: 36 m
+
+        Max liftoff mass: 3,600 t
+
+        Needs: Crawler-Transporter'
+      cost: '$900,000,000 (estimate). Where the numbers come from: NASA: SLS Mobile Launcher tower ~116 m. Mass, limits and cost est..'
+      history: Launch infrastructure in AscendCAD.
+    - title: Crawler-Transporter
+      image: {fileID: 7666178372080435337, guid: ec6cf5a89b0f864379ccd29ebd7a009e, type: 3}
+      shortDescription: Tracked giant that carries the Mobile Launcher and its rocket to the pad at about 1.6 km/h.
+      purpose: Tracked giant that carries the Mobile Launcher and its rocket to the pad at about 1.6 km/h. Required to use the Mobile Launcher. Buy it once on the AscendCAD Launch Pad tab and choose it for any compatible rocket.
+      specs: 'Type: Support vehicle
+
+        Carries up to: 8,165 t (rocket + launcher)'
+      cost: '$150,000,000 (estimate). Where the numbers come from: NASA: Crawler-Transporter 2 upgraded to ~8,165 t capacity. Cost est..'
+      history: Launch infrastructure in AscendCAD.
