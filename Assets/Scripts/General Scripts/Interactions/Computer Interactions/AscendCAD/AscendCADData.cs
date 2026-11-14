@@ -199,7 +199,7 @@ public class AscendCADData : ScriptableObject
     public List<CADPart> parts = new List<CADPart>();
 
     [HideInInspector] public int catalogVersion;
-    public const int CatalogVersion = 5;
+    public const int CatalogVersion = 7;
 
     [NonSerialized] Dictionary<string, CADPart> lookup;
     static AscendCADData fallback;
@@ -311,7 +311,7 @@ public static class AscendCADDefaults
     static string cat, sub;
 
     const CADPropellant KL = CADPropellant.Kerolox, ML = CADPropellant.Methalox, HL = CADPropellant.Hydrolox, HY = CADPropellant.Hypergolic;
-    static readonly Color White = new Color(0.94f, 0.94f, 0.95f), EngineGrey = new Color(0.32f, 0.32f, 0.34f),
+    static readonly Color White = new Color(0.94f, 0.94f, 0.95f), EngineGrey = new Color(0.47f, 0.44f, 0.41f),
         Foam = new Color(0.86f, 0.47f, 0.18f), Steel = new Color(0.74f, 0.75f, 0.78f), Carbon = new Color(0.26f, 0.27f, 0.30f),
         Gold = new Color(0.86f, 0.69f, 0.27f), Alu = new Color(0.80f, 0.81f, 0.83f), Black = new Color(0.12f, 0.12f, 0.13f);
 
@@ -423,6 +423,8 @@ public static class AscendCADDefaults
         var f = Body(id, "Payload Fairing Ø" + F(d) + " m", CADRole.Fairing, CADShape.Fairing, d, -1f, len, mass, cost,
             desc + " Splits open and falls away after the first stage.", White, src);
         f.innerDiameter = d * 0.88f; f.innerHeight = len * 0.78f;
+        // Comes with a matching payload attach fitting, so a fairing alone can hold the satellite
+        f.maxPayloadKg = d <= 1.2f ? 300f : d <= 1.8f ? 1000f : d <= 2.5f ? 4000f : d <= 3.7f ? 10000f : 22000f;
     }
 
     static void PAF(string id, string name, float bottom, float top, float len, float mass, double cost, float maxKg)
@@ -1395,10 +1397,22 @@ public class CADReview
         else if (lockWhy != null) rv.errors.Add(lockWhy);
         else if (why.Count > 0) foreach (var w in why) rv.errors.Add($"{pad.name}: {w}");
         else rv.passed.Add($"Launch pad: {pad.name} can handle this rocket.");
+
+        // Connect CAD and trajectory: fly it in the Mission Simulator before approving
+        if (rv.errors.Count == 0 && payload != null && !payload.IsEmpty)
+        {
+            string path = AscendMissionGuide.FlightCheck(rocket, payload, data, out string flightWhy);
+            if (path == null) rv.errors.Add("Test flight failed: " + flightWhy + " Try the guide's suggested rocket.");
+            else rv.passed.Add($"Test flight: works with the \"{path}\" flight path.");
+        }
         return rv;
     }
 
-    static CADReview RunChecks(CADDesign rocket, CADDesign payload, AscendCADData data, out CADStats rs, out CADStats ps)
+    // The rocket half of the review (used by the Mission Guide to test its suggestions)
+    public static CADReview RocketOnly(CADDesign rocket, CADDesign payload, AscendCADData data, out CADStats rs)
+        => RunChecks(rocket, payload, data, out rs, out _, true);
+
+    static CADReview RunChecks(CADDesign rocket, CADDesign payload, AscendCADData data, out CADStats rs, out CADStats ps, bool rocketOnly = false)
     {
         var r = new CADReview();
         var mission = AscendMissionGuide.Mission;
@@ -1476,6 +1490,7 @@ public class CADReview
                 $"{adapter.name} is only rated for {adapter.maxPayloadKg:N0} kg; satellite is {ps.wetMass:N0} kg.");
         r.Check(ps.wetMass <= rs.maxPayloadLEO, $"Rocket can carry the {ps.wetMass:N1} kg payload for {mName} (max {rs.maxPayloadLEO:N1} kg).",
             $"Payload is {ps.wetMass:N1} kg but this rocket can only carry {rs.maxPayloadLEO:N1} kg for {mName}.");
+        if (rocketOnly) return r;
 
         if (sky)
         {
@@ -1583,6 +1598,13 @@ public static class AscendEconomy
     }
 
     public static void ChoosePad(string id) { SelectedPad = id; Save(); Changed?.Invoke(); }
+
+    // Money from (or taken back by) the government after a mission
+    public static void Grant(double usd)
+    {
+        Balance = Math.Max(0, Balance + usd);
+        Save(); Changed?.Invoke();
+    }
 
     static double configuredFund;
     static double FundOf(AscendCADData d) => d.sandboxMode ? 1e13 : d.governmentFundUSD;
@@ -2081,6 +2103,52 @@ public static class CADModels
     struct Piece { public Mesh mesh; public int tex; public bool fix; public Color color; }
     static readonly Dictionary<string, List<Piece>> cache = new Dictionary<string, List<Piece>>();
     static Material lit, ghostOk, ghostBad, gridMat;
+    static readonly Dictionary<int, Material> finishMats = new Dictionary<int, Material>();
+    enum Finish { Paint, Metal, Carbon, Foam, Foil, Solar, Dark, Brushed }
+
+    // Same values as the catalog's default colors
+    static readonly Color CarbonC = new Color(0.26f, 0.27f, 0.30f), FoamC = new Color(0.86f, 0.47f, 0.18f), GoldC = new Color(0.86f, 0.69f, 0.27f),
+        SteelC = new Color(0.74f, 0.75f, 0.78f), AluC = new Color(0.80f, 0.81f, 0.83f), BlackC = new Color(0.12f, 0.12f, 0.13f);
+    static bool Near(Color a, Color b) => Mathf.Abs(a.r - b.r) + Mathf.Abs(a.g - b.g) + Mathf.Abs(a.b - b.b) < 0.06f;
+
+    static Finish FinishFor(CADPart p, Piece pc)
+    {
+        if (pc.tex == 1) return Finish.Solar;
+        if (p.shape == CADShape.Engine) return Finish.Metal;
+        if (pc.fix) return pc.color.grayscale < 0.2f ? Finish.Dark : Finish.Metal;
+        var c = p.defaultColor;
+        if (Near(c, CarbonC) || Near(c, BlackC)) return Finish.Carbon;
+        if (Near(c, FoamC)) return Finish.Foam;
+        if (Near(c, GoldC)) return Finish.Foil;
+        if (Near(c, SteelC) || Near(c, AluC)) return Finish.Brushed;
+        return Finish.Paint;
+    }
+
+    // One material per finish (your own Part Material on the data asset always wins)
+    static Material LitFinish(AscendCADData d, Finish f)
+    {
+        if (d && d.partMaterial) return d.partMaterial;
+        int k = (int)f;
+        if (finishMats.TryGetValue(k, out var m) && m) return m;
+        m = new Material(Lit(d)) { name = "AscendCAD " + f };
+        float smooth, metal;
+        switch (f)
+        {
+            case Finish.Metal: smooth = 0.6f; metal = 0.8f; break;
+            case Finish.Brushed: smooth = 0.5f; metal = 0.65f; break;
+            case Finish.Carbon: smooth = 0.78f; metal = 0.15f; break;
+            case Finish.Foam: smooth = 0.12f; metal = 0f; break;
+            case Finish.Foil: smooth = 0.75f; metal = 0.95f; break;
+            case Finish.Solar: smooth = 0.9f; metal = 0.4f; break;
+            case Finish.Dark: smooth = 0.3f; metal = 0.05f; break;
+            default: smooth = 0.62f; metal = 0f; break;
+        }
+        if (m.HasProperty("_Smoothness")) m.SetFloat("_Smoothness", smooth);
+        if (m.HasProperty("_Glossiness")) m.SetFloat("_Glossiness", smooth);
+        if (m.HasProperty("_Metallic")) m.SetFloat("_Metallic", metal);
+        finishMats[k] = m;
+        return m;
+    }
     static Texture2D panelTex, solarTex, gridTex;
     static Mesh quad;
     public static bool LowSpec;
@@ -2217,7 +2285,7 @@ public static class CADModels
                 c.transform.SetParent(go.transform, false);
                 c.AddComponent<MeshFilter>().sharedMesh = pc.mesh;
                 var r = c.AddComponent<MeshRenderer>();
-                r.sharedMaterial = Lit(data);
+                r.sharedMaterial = LitFinish(data, FinishFor(p, pc));
                 Paint(r, pc.fix ? pc.color : color, TexFor(pc.tex));
                 if (pc.fix) c.AddComponent<CADFixedColor>().color = pc.color;
             }
@@ -3557,13 +3625,17 @@ public static class AscendTemplates
     public static CADDesign AutoHobby(AscendCADData data, string name, bool bigMotor, int fins, bool extras)
     {
         var b = new B(data, name);
+        Color phBlue = new Color(0f, 0.22f, 0.66f), phRed = new Color(0.81f, 0.07f, 0.15f), white = new Color(0.95f, 0.95f, 0.94f), black = new Color(0.12f, 0.12f, 0.13f);
         int motor = b.Root(bigMotor ? "snd.motor.k" : "snd.motor.j");
-        b.Side(motor, "snd.fin", fins, -0.2f, 0f);
+        var fins3 = b.Side(motor, "snd.fin", fins, -0.2f, 0f);
         int tube = b.On(motor, "snd.tube");
         if (extras) b.Inside(tube, "snd.alt", "snd.imu", "snd.gps", "snd.batt");
         else b.Inside(tube, "snd.alt", "snd.batt");
         int bay = b.On(tube, "snd.bay");
-        b.On(bay, "snd.nose");
+        int nose = b.On(bay, "snd.nose");
+        b.Paint(motor, black); b.Paint(tube, white); b.Paint(bay, phBlue); b.Paint(nose, phRed);
+        foreach (int f in fins3) b.Paint(f, phBlue);
+        b.Label(tube, "ASCEND", phBlue, 0.08f);
         return b.Done();
     }
 
@@ -3582,6 +3654,11 @@ public static class AscendTemplates
         b.Engines(u, e2, 0, true);
         int av = b.On(top2, "str.avbay." + Fm(d));
         b.Inside(av, AvionicsBasic);
+        Color phBlue = new Color(0f, 0.22f, 0.66f), white = new Color(0.95f, 0.95f, 0.94f);
+        b.Paint(av, phBlue);
+        var topTank = data.Get(b.IdOf(top));
+        bool darkTank = topTank != null && topTank.defaultColor.grayscale < 0.5f;
+        b.Label(top, "ASCEND", darkTank ? white : phBlue, d * 0.32f);
         // Fairing: same width as the rocket if the payload fits, otherwise widen with an adapter
         float[] dias = { 1.2f, 1.8f, 2.5f, 3.7f, 5f };
         float[] fl = { 2.5f, 3.6f, 6f, 9.5f, 13.1f };
@@ -3593,7 +3670,8 @@ public static class AscendTemplates
             below = b.On(below, "str.adapter." + Fm(dias[k]) + "-" + Fm(dias[k + 1]));
             k++;
         }
-        b.On(below, "fair." + (dias[k] >= 5f ? "5.2" : Fm(dias[k])));
+        int fair = b.On(below, "fair." + (dias[k] >= 5f ? "5.2" : Fm(dias[k])));
+        b.Paint(fair, new Color(0.96f, 0.96f, 0.95f));
         return b.Done();
     }
 
@@ -3738,12 +3816,74 @@ public static class AscendTemplates
 
         public void Inside(int host, params string[] ids) { var H = d.parts[host]; foreach (var id in ids) Add(P(id), host, CADLink.Internal, H.pos, H.rot); }
         public void Paint(int i, Color c) => d.parts[i].color = c;
+        public void Label(int i, string text, Color c, float sizeM, bool vertical = true, float angleDeg = 90f, float height01 = 0.5f) =>
+            d.parts[i].labels.Add(new CADLabel { text = text, color = c, sizeM = sizeM, vertical = vertical, angleDeg = angleDeg, height01 = height01 });
+        public string IdOf(int i) => d.parts[i].partId;
 
         public CADDesign Done()
         {
             float y = CADStats.DesignBounds(d, data).min.y;
             foreach (var p in d.parts) p.pos.y -= y;   // stand on the ground
             return d;
+        }
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  SNAPSHOT: a picture of a whole design (rocket or satellite), rendered once
+// ═════════════════════════════════════════════════════════════════════════════
+public static class AscendSnapshot
+{
+    public static RenderTexture Design(CADDesign d, AscendCADData data, int width, int height, Color background)
+    {
+        if (d == null || d.IsEmpty || data == null) return null;
+        int layer = data.cadLayer;
+        var holder = new GameObject("Ascend Snapshot");
+        holder.transform.position = new Vector3(-30000f, -9000f, 60000f);
+        try
+        {
+            var model = AscendLaunchSite.BuildDesign(d, data, holder.transform, layer, false);
+            CADModels.SetLayer(holder, layer);
+            var rends = model.GetComponentsInChildren<Renderer>();
+            if (rends.Length == 0) return null;
+            var b = rends[0].bounds;
+            foreach (var r in rends) b.Encapsulate(r.bounds);
+
+            var camGo = new GameObject("Snapshot Camera");
+            camGo.transform.SetParent(holder.transform, false);
+            var c = camGo.AddComponent<Camera>();
+            c.enabled = false;
+            c.clearFlags = CameraClearFlags.SolidColor; c.backgroundColor = background;
+            c.cullingMask = 1 << layer; c.fieldOfView = 26f; c.allowHDR = false;
+            float aspect = width / (float)height;
+            var look = Quaternion.Euler(10f, 30f, 0f);
+            float halfV = c.fieldOfView * 0.5f * Mathf.Deg2Rad, halfH = Mathf.Atan(Mathf.Tan(halfV) * aspect);
+            float dist = Mathf.Max(b.extents.y / Mathf.Tan(halfV), Mathf.Max(b.extents.x, b.extents.z) / Mathf.Tan(halfH)) * 1.15f + b.extents.magnitude * 0.5f;
+            c.transform.SetPositionAndRotation(b.center - look * Vector3.forward * dist, look);
+            c.nearClipPlane = Mathf.Max(0.01f, dist * 0.01f); c.farClipPlane = dist * 4f;
+
+            Light Make(Quaternion r, float i)
+            {
+                var lg = new GameObject("Snapshot Light");
+                lg.transform.SetParent(holder.transform, false);
+                lg.transform.rotation = r;
+                var l = lg.AddComponent<Light>();
+                l.type = LightType.Directional; l.intensity = i; l.cullingMask = 1 << layer; l.shadows = LightShadows.None;
+                return l;
+            }
+            Make(Quaternion.Euler(40f, -30f, 0f), 1.2f);
+            Make(Quaternion.Euler(-10f, 160f, 0f), 0.45f);
+
+            var t = new RenderTexture(width, height, 24) { name = "Snapshot " + d.name, antiAliasing = 1 };
+            c.targetTexture = t; c.aspect = aspect;
+            c.Render();
+            c.targetTexture = null;
+            return t;
+        }
+        finally
+        {
+            holder.SetActive(false);
+            Object.Destroy(holder);
         }
     }
 }
@@ -3782,7 +3922,9 @@ public static class AscendMissionGuide
     public struct Item { public bool ok; public string kid, expert; public Item(bool o, string k, string e) { ok = o; kid = k; expert = e; } }
 
     // ───────────── Live checklist ─────────────
-    public static List<Item> Checklist(CADBuilder builder, CADDesign rocket, CADDesign payload, AscendCADData data)
+    // designOnly = true: judge only the design itself (used for suggestions), not which pad is selected
+    // right now or whether the payload has been built yet.
+    public static List<Item> Checklist(CADBuilder builder, CADDesign rocket, CADDesign payload, AscendCADData data, bool designOnly = false)
     {
         var l = new List<Item>();
         var m = Mission; bool sky = m == AscendSimMission.SkySensor;
@@ -3818,10 +3960,11 @@ public static class AscendMissionGuide
                 }
                 var sel = data.GetPad(AscendEconomy.SelectedPad);
                 bool selOk = sel != null && !sel.isTransporter && AscendEconomy.OwnsPad(sel, data) && AscendPads.Problems(sel, rs, data).Count == 0;
+                if (designOnly) selOk = fit != null;
                 l.Add(new Item(selOk, "A launch pad that fits (Launch Pad tab)",
                     selOk ? sel.name : fit != null ? (owned ? $"Choose the {fit.name}" : $"Buy the {fit.name} ({AscendReport.Money(fit.costUSD)})") : "No pad can hold this rocket"));
             }
-            if (ps == null) l.Add(new Item(false, sky ? "CanSat built (Payload Builder)" : "Satellite built (Payload Builder)", "The guide sizes the rocket for it"));
+            if (ps == null) { if (!designOnly) l.Add(new Item(false, sky ? "CanSat built (Payload Builder)" : "Satellite built (Payload Builder)", "The guide sizes the rocket for it")); }
             else
             {
                 CADPart fairing = null;
@@ -3867,7 +4010,21 @@ public static class AscendMissionGuide
     public static bool AllOk(List<Item> l) { foreach (var i in l) if (!i.ok) return false; return true; }
 
     // ───────────── Step-by-step build guide ─────────────
-    public class Step { public string text, key, parentId; public CADPart part; public CADLink link; public int needTotal; }
+    public class Step
+    {
+        public string title, how, why, text, key, parentId;
+        public CADPart part;
+        public CADLink link;
+        public int needTotal, count = 1, sym = 1, parentIndex = -1;
+        public readonly List<int> idx = new List<int>();   // parts of the guide design this step places
+    }
+
+    static string FirstSentence(string s)
+    {
+        if (string.IsNullOrEmpty(s)) return "";
+        int k = s.IndexOf(". ", StringComparison.Ordinal);
+        return k > 0 ? s.Substring(0, k + 1) : s;
+    }
 
     public static List<Step> Steps(CADDesign d, AscendCADData data)
     {
@@ -3876,78 +4033,113 @@ public static class AscendMissionGuide
         int n = d.parts.Count;
         var done = new bool[n];
         var need = new Dictionary<string, int>();
-        bool payload = d.builder == CADBuilder.Payload;
-        int cur = 0;
-        void Add(CADPart p, int count, string text)
-        {
-            var pl0 = d.parts[cur];
-            string pid = pl0.parent >= 0 ? d.parts[pl0.parent].partId : "";
-            string key = StepKey(p.id, pl0.link, pid);
-            need.TryGetValue(key, out var c); c += count; need[key] = c;
-            steps.Add(new Step { part = p, needTotal = c, text = text, key = key, link = pl0.link, parentId = pid });
-        }
-        string Name(int i) { var q = i >= 0 ? data.Get(d.parts[i].partId) : null; return q != null ? q.name : "part"; }
+        string Name(int i) { var q = i >= 0 && i < n ? data.Get(d.parts[i].partId) : null; return q != null ? q.name : "part"; }
 
         for (int i = 0; i < n; i++)
         {
             if (done[i]) continue;
-            cur = i;
             var pl = d.parts[i]; var p = data.Get(pl.partId);
             if (p == null) { done[i] = true; continue; }
-            var grp = new List<int> { i };
-            if (pl.symGroup >= 0) for (int j = i + 1; j < n; j++) if (d.parts[j].symGroup == pl.symGroup) grp.Add(j);
-            foreach (int j in grp) done[j] = true;
-            int cnt = grp.Count;
-            string sym = cnt > 1 ? $" Set <b>Symmetry x{cnt}</b> first." : "";
+            var st = new Step { part = p, link = pl.link, parentIndex = pl.parent, why = FirstSentence(p.description) };
+            st.idx.Add(i);
+            if (pl.symGroup >= 0) for (int j = i + 1; j < n; j++) if (!done[j] && d.parts[j].symGroup == pl.symGroup) st.idx.Add(j);
+            if (pl.link == CADLink.Internal)
+                for (int j = i + 1; j < n; j++)
+                    if (!done[j] && !st.idx.Contains(j) && d.parts[j].link == CADLink.Internal && d.parts[j].parent == pl.parent && d.parts[j].partId == pl.partId) st.idx.Add(j);
+            foreach (int j in st.idx) done[j] = true;
+            int cnt = st.count = st.idx.Count;
             string parent = Name(pl.parent);
+            string many = cnt > 1 ? cnt + " x " : "";
 
             switch (pl.link)
             {
                 case CADLink.Root:
-                    Add(p, 1, payload ? $"Place the <b>{p.name}</b> first. It is what holds the satellite to the rocket until release."
-                                      : $"Place the <b>{p.name}</b> first. It is the bottom of the rocket.");
+                    st.title = $"Start with the {p.name}";
+                    st.how = "It is picked for you. Click anywhere in the empty 3D view to place it." +
+                             (d.builder == CADBuilder.Payload ? " This is what holds the satellite to the rocket." : " This is the bottom of the rocket.");
                     break;
                 case CADLink.Top:
-                    Add(p, 1, $"Stack the <b>{p.name}</b> on top of the {parent} (click its top half).");
+                    st.title = $"Stack the {p.name}";
+                    st.how = $"Click the <b>top half of the {parent}</b>. It snaps on top.";
                     break;
                 case CADLink.Bottom:
-                    Add(p, 1, $"Attach the <b>{p.name}</b> under the {parent} (click its bottom half).");
+                    st.title = $"Hang the {p.name} under the {parent}";
+                    st.how = $"Click the <b>bottom half of the {parent}</b>.";
                     break;
                 case CADLink.Cluster:
                 {
-                    // Upper-stage engine: it sits under a tank that stands on an interstage
                     var tankPl = pl.parent >= 0 ? d.parts[pl.parent] : null;
                     var under = tankPl != null && tankPl.parent >= 0 ? data.Get(d.parts[tankPl.parent].partId) : null;
                     bool upper = under != null && under.role == CADRole.Decoupler;
-                    string where = upper ? $"Click the <b>bottom half of the {parent}</b> (the upper tank, NOT the interstage): the engine hides inside the interstage."
-                                         : $"Click the <b>bottom half of the {parent}</b>.";
-                    Add(p, cnt, (cnt == 1 ? $"Put one <b>{p.name}</b> in the center under the {parent}. Set <b>Symmetry x1</b>. "
-                                          : $"Add a ring of {cnt} <b>{p.name}</b> under the {parent}.{sym} ") + where);
+                    st.sym = cnt;
+                    st.title = cnt == 1 ? (upper ? $"Add the upper-stage engine ({p.name})" : $"Add the center engine ({p.name})")
+                                        : $"Add a ring of {cnt} x {p.name}";
+                    st.how = $"Symmetry <b>x{cnt}</b> is set for you. Click the <b>{parent}</b>" +
+                             (upper ? " (or the black interstage below it). The engine snaps under the tank and hides inside the interstage." : ". The engines snap under it.");
                     break;
                 }
                 case CADLink.RadialUpright:
-                    Add(p, cnt, $"Attach {cnt} <b>{p.name}</b> upright on the side of the {parent}.{sym}");
+                    st.sym = cnt;
+                    st.title = $"Attach {many}{p.name} to the side";
+                    st.how = $"Symmetry <b>x{cnt}</b> is set for you. Click the <b>side of the {parent}</b>.";
                     break;
                 case CADLink.Radial:
                 {
                     var pp = pl.parent >= 0 ? data.Get(d.parts[pl.parent].partId) : null;
                     float dy = pl.parent >= 0 ? pl.pos.y - d.parts[pl.parent].pos.y : 0f;
-                    string where = pp != null && Mathf.Abs(dy) >= pp.StackHeight * 0.45f ? (dy > 0 ? "on the top face of" : "on the bottom face of") : "on the side of";
-                    Add(p, cnt, $"Attach {(cnt > 1 ? cnt + " " : "the ")}<b>{p.name}</b> {where} the {parent}.{sym}");
+                    bool face = pp != null && Mathf.Abs(dy) >= pp.StackHeight * 0.45f;
+                    string where = face ? (dy > 0 ? "top face" : "bottom face") : (pp != null && dy < -pp.StackHeight * 0.15f ? "side, near the bottom," : "side");
+                    st.sym = cnt;
+                    st.title = $"Attach {many}{p.name}";
+                    st.how = $"Symmetry <b>x{cnt}</b> is set for you. Click the <b>{where} of the {parent}</b>.";
                     break;
                 }
                 case CADLink.Internal:
-                {
-                    // Group every copy of this part installed in the same host
-                    int same = 1;
-                    for (int j = i + 1; j < n; j++)
-                        if (!done[j] && d.parts[j].link == CADLink.Internal && d.parts[j].parent == pl.parent && d.parts[j].partId == pl.partId) { done[j] = true; same++; }
-                    Add(p, same, $"Install {(same > 1 ? same + " x " : "the ")}<b>{p.name}</b> inside the {parent} (pick it, then click the {parent}).");
+                    st.title = $"Install {many}{p.name} inside";
+                    st.how = $"Click the <b>{parent}</b>{(cnt > 1 ? $" <b>{cnt} times</b> (one per click)" : "")}. It goes inside, so you won't see it, but it's counted.";
                     break;
-                }
             }
+            string pid = pl.parent >= 0 ? d.parts[pl.parent].partId : "";
+            st.parentId = pid;
+            st.key = StepKey(p.id, pl.link, pid);
+            need.TryGetValue(st.key, out var c); c += cnt; need[st.key] = c;
+            st.needTotal = c;
+            st.text = st.title + ". " + st.how;
+            steps.Add(st);
         }
         return steps;
+    }
+
+    // Which part of your design matches each part of the guide design (-1 = not built yet).
+    // Matched by part type and by what it is attached to, so the angle you clicked doesn't matter.
+    static int LinkClass(CADLink l) => l == CADLink.Internal ? 3 : l == CADLink.Cluster ? 1 : (l == CADLink.Radial || l == CADLink.RadialUpright) ? 2 : 0;
+
+    public static int[] Match(CADDesign guide, CADDesign d)
+    {
+        var map = new int[guide.parts.Count];
+        for (int i = 0; i < map.Length; i++) map[i] = -1;
+        if (d == null || d.IsEmpty) return map;
+        var used = new bool[d.parts.Count];
+        for (int i = 0; i < guide.parts.Count; i++)
+        {
+            var gp = guide.parts[i];
+            int up = -1;
+            if (gp.link != CADLink.Root) { if (gp.parent < 0 || map[gp.parent] < 0) continue; up = map[gp.parent]; }
+            int best = -1; float bestD = float.MaxValue;
+            Vector3 want = gp.parent >= 0 ? gp.pos - guide.parts[gp.parent].pos : Vector3.zero;
+            for (int j = 0; j < d.parts.Count; j++)
+            {
+                if (used[j]) continue;
+                var q = d.parts[j];
+                if (q.partId != gp.partId) continue;
+                if (gp.link == CADLink.Root) { if (q.link != CADLink.Root) continue; }
+                else if (q.parent != up || LinkClass(q.link) != LinkClass(gp.link)) continue;
+                float dd = up >= 0 ? (q.pos - d.parts[up].pos - want).sqrMagnitude : 0f;
+                if (dd < bestD) { bestD = dd; best = j; }
+            }
+            if (best >= 0) { map[i] = best; used[best] = true; }
+        }
+        return map;
     }
 
     public static string StepKey(string id, CADLink link, string parentId) => id + "|" + link + "|" + parentId;
@@ -4001,6 +4193,29 @@ public static class AscendMissionGuide
     {
         public string tier; public CADDesign design; public double cost; public bool works, affordable;
         public float margin; public string summary = "", why = "";
+        public bool liftsOff, padOwned;
+        public string problem;
+    }
+
+    // Flies the rocket in the Mission Simulator on the suggested flight paths (recommended one first).
+    // Returns the name of the first path that works, or null if none works (why = the reason).
+    public static string FlightCheck(CADDesign rocket, CADDesign payload, AscendCADData data, out string why)
+    {
+        why = "";
+        var plans = AscendSimPlan.Suggestions(Mission);
+        if (plans == null || plans.Length == 0) return "";
+        int[] order = plans.Length > 1 ? new[] { 1, 0, 2 } : new[] { 0 };
+        foreach (int i in order)
+        {
+            if (i >= plans.Length) continue;
+            AscendSimResult r;
+            try { r = AscendMissionSim.Run(rocket, payload, data, plans[i]); }
+            catch (Exception e) { why = e.Message; continue; }
+            if (r == null) continue;
+            if (r.go) return plans[i].name;
+            if (i == order[0]) why = r.verdict + ": " + r.kid;
+        }
+        return null;
     }
 
     public static List<Option> Suggest(CADBuilder builder, CADDesign rocket, CADDesign payload, AscendCADData data, out string intro)
@@ -4044,13 +4259,41 @@ public static class AscendMissionGuide
             var rs = CADStats.Rocket(d, data, ps != null ? ps.wetMass : 0f, req);
             var o = new Option { design = d, cost = AscendEconomy.Quote(data, d).total };
             // Margin so small building differences can't turn a GO into a NO-GO
-            o.works = AllOk(Checklist(CADBuilder.Rocket, d, pay, data)) && rs.deltaV >= req * 1.05f && (ps == null || rs.maxPayloadLEO >= ps.wetMass * 1.25f);
+            var rv = CADReview.RocketOnly(d, pay, data, out _);
+            if (rv.errors.Count > 0) o.problem = rv.errors[0];
+            else if (rs.liftoffTWR < data.minLiftoffTWR * 1.08f) o.problem = $"Thrust-to-weight {rs.liftoffTWR:0.00} is too close to the {data.minLiftoffTWR:0.0} minimum";
+            else if (rs.deltaV < req * 1.03f) o.problem = $"Delta-v {rs.deltaV:N0} m/s has no spare over the {req:N0} m/s needed";
+            o.works = o.problem == null;
+            o.liftsOff = rs.liftoffTWR >= data.minLiftoffTWR;
+            // Which pad to use: one you own first, otherwise the cheapest that fits
+            CADLaunchPad padFit = null; bool padOwned = false;
+            foreach (var pad in data.launchPads)
+            {
+                if (pad == null || pad.isTransporter || AscendPads.Problems(pad, rs, data).Count > 0) continue;
+                bool own = AscendEconomy.OwnsPad(pad, data) && AscendPads.Lock(pad, data) == null;
+                if (padFit == null || (own && !padOwned) || (own == padOwned && pad.costUSD < padFit.costUSD)) { padFit = pad; padOwned = own; }
+            }
+            o.padOwned = padOwned;
+            if (padFit == null) { o.works = false; o.problem = o.problem ?? "No launch pad can hold it"; }
+            if (padFit != null && !padOwned) o.why = $"Needs the {padFit.name} (Launch Pad tab, {AscendReport.Money(padFit.costUSD)}).";
+            else if (padFit != null) o.why = $"Launch it from the {padFit.name} (select it on the Launch Pad tab).";
             o.affordable = o.cost <= avail + 0.01;
             o.margin = req > 0 ? rs.deltaV / req : 0f;
             o.summary = $"{rs.stages.Count} stage(s), {AscendReport.Mass(rs.wetMass)}, delta-v {rs.deltaV:N0}/{req:N0} m/s, TWR {rs.liftoffTWR:0.00}, carries {AscendReport.Mass(rs.maxPayloadLEO)}";
             all.Add(o);
         }
-        var good = all.Where(o => o.works).OrderBy(o => o.cost).ToList();
+        // Only suggest rockets that really fly the mission in the simulator (checked cheapest first, max 3 that pass + 1 spare)
+        var good = new List<Option>();
+        // (good is re-sorted by price below)
+        int passedAffordable = 0;
+        foreach (var o in all.Where(o => o.works).OrderBy(o => o.padOwned ? 0 : 1).ThenBy(o => o.cost))
+        {
+            if (passedAffordable >= 3 && good.Count >= 4) break;
+            if (FlightCheck(o.design, pay, data, out string flightWhy) == null) { o.works = false; o.problem = "Test flight: " + System.Text.RegularExpressions.Regex.Replace(flightWhy ?? "", "<.*?>", ""); continue; }
+            good.Add(o);
+            if (o.affordable) passedAffordable++;
+        }
+        good = good.OrderBy(o => o.cost).ToList();
         var cheapOk = good.Where(o => o.affordable).ToList();
         if (cheapOk.Count > 0)
         {
@@ -4068,8 +4311,24 @@ public static class AscendMissionGuide
         }
         else
         {
-            var o = all.OrderByDescending(x => x.margin).FirstOrDefault();
-            if (o != null) { o.tier = "Closest try"; o.why = "None of the guide's rockets can do this mission with this payload. Make the payload lighter."; opts.Add(o); }
+            // Tell exactly why (also written to the Unity Console so it can be fixed)
+            var counts = new Dictionary<string, int>();
+            foreach (var x in all)
+            {
+                string k = x.problem ?? "unknown";
+                Debug.Log($"[Mission Guide] {x.design.name}: delta-v margin {x.margin:0.00}x, problem: {k}");
+                string shortK = k.Length > 90 ? k.Substring(0, 90) : k;
+                counts[shortK] = counts.TryGetValue(shortK, out var c) ? c + 1 : 1;
+            }
+            var top = counts.OrderByDescending(kv => kv.Value).Take(3).Select(kv => $"• {kv.Key} ({kv.Value} rockets)");
+            var o = all.Where(x => x.liftsOff).OrderBy(x => x.cost).FirstOrDefault() ?? all.FirstOrDefault();
+            if (o != null)
+            {
+                o.tier = "Closest try (won't finish the mission)";
+                o.why = "None of the guide's rockets passed. Most common problems:\n" + string.Join("\n", top) +
+                        "\n(Send a screenshot of this list to get it fixed.)";
+                opts.Add(o);
+            }
         }
         intro = $"Rockets made for <b>{Title}</b>" + (ps != null ? $" carrying <b>{pay.name}</b> ({AscendReport.Mass(ps.wetMass)})" : "") +
                 (sizedForBest ? " <color=#D29922>(you haven't built a payload yet, so it's sized for the heaviest suggested one; build the payload first for a better fit)</color>" : "") +
@@ -4108,8 +4367,11 @@ public class AscendPointer : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
 public static class AUI
 {
     public static TMP_FontAsset Font;
-    // Global size multiplier for AscendCAD / PhMail text and buttons
+    // Global size multiplier for AscendCAD / PhMail panels and buttons
     public static float FontScale = 1f;
+    // Every AscendCAD / PhMail / Mission Simulator text uses this size (0 = the old per-text sizes).
+    // Set from ComputerInteraction > UI Text Size.
+    public static float FixedFontSize = 20f;
     public static float S(float v) => v * FontScale;
     public static Color Hex(string h) => ColorUtility.TryParseHtmlString(h, out var c) ? c : Color.magenta;
 
@@ -4141,7 +4403,7 @@ public static class AUI
         go.transform.SetParent(p, false);
         var t = go.AddComponent<TextMeshProUGUI>();
         if (Font) t.font = Font;
-        t.text = s; t.fontSize = size * FontScale; t.color = c; t.fontStyle = st; t.raycastTarget = false; t.richText = true;
+        t.text = s; t.fontSize = FixedFontSize > 0f ? FixedFontSize : size * FontScale; t.color = c; t.fontStyle = st; t.raycastTarget = false; t.richText = true;
         return t;
     }
 
@@ -4187,6 +4449,8 @@ public static class AUI
         var t = Text(r, label, size, txt, FontStyles.Bold);
         Fill(t.rectTransform, 6, 0, 6, 0);
         t.alignment = TextAlignmentOptions.Center; t.textWrappingMode = TextWrappingModes.NoWrap; t.overflowMode = TextOverflowModes.Truncate;
+        // Long button labels shrink a little instead of being cut off
+        t.enableAutoSizing = true; t.fontSizeMax = t.fontSize; t.fontSizeMin = Mathf.Min(11f, t.fontSize);
         LE(r, w > 0 ? w * FontScale : w, h > 0 ? h * FontScale : h);
         return b;
     }
@@ -4218,7 +4482,7 @@ public static class AUI
         var f = r.gameObject.AddComponent<TMP_InputField>();
         f.textViewport = area; f.textComponent = tx; f.placeholder = ph; f.targetGraphic = hit;
         if (Font) f.fontAsset = Font;
-        f.pointSize = size * FontScale; f.lineType = TMP_InputField.LineType.SingleLine;
+        f.pointSize = FixedFontSize > 0f ? FixedFontSize : size * FontScale; f.lineType = TMP_InputField.LineType.SingleLine;
         f.customCaretColor = true; f.caretColor = txt; f.caretWidth = 2;
         f.navigation = new Navigation { mode = Navigation.Mode.None };
         return f;
@@ -4471,6 +4735,8 @@ public class AscendCADScreen
         if (prt) { prt.Release(); Object.Destroy(prt); }
         foreach (var v in padViews.Values) if (v.rt) { v.rt.Release(); Object.Destroy(v.rt); }
         padViews.Clear(); padCams.Clear();
+        foreach (var t in icons.Values) if (t) { t.Release(); Object.Destroy(t); }
+        icons.Clear(); iconQueue.Clear();
     }
 
     // ───────────────────────────── Pictures of the launch pads ─────────────────────────────
@@ -4538,6 +4804,7 @@ public class AscendCADScreen
     void LateTick()
     {
         if (!view) return;
+        if (iconQueue.Count > 0) PumpIcons();
         var r = view.rectTransform.rect;
         float scale = (view.canvas ? view.canvas.scaleFactor : 1f) * data.viewportResolution;
         int w = Mathf.Clamp(Mathf.RoundToInt(r.width * scale), 32, 2048), h = Mathf.Clamp(Mathf.RoundToInt(r.height * scale), 32, 2048);
@@ -4797,7 +5064,12 @@ public class AscendCADScreen
         bool on = picked == p;
         var b = AUI.Btn(sideContent, "", 13, Txt, on ? new Color(Accent.r, Accent.g, Accent.b, 0.4f) : RowBg, () => Pick(p), -1, 44);
         var t = b.GetComponentInChildren<TextMeshProUGUI>();
-        t.alignment = TextAlignmentOptions.MidlineLeft; t.fontStyle = FontStyles.Normal; t.margin = new Vector4(indent, 0, 0, 0);
+        float ic = S(36f);
+        var pic = PartIcon(b.transform, p);
+        var prt2 = pic.rectTransform;
+        prt2.anchorMin = prt2.anchorMax = prt2.pivot = new Vector2(0f, 0.5f);
+        prt2.sizeDelta = new Vector2(ic, ic); prt2.anchoredPosition = new Vector2(indent, 0f);
+        t.alignment = TextAlignmentOptions.MidlineLeft; t.fontStyle = FontStyles.Normal; t.margin = new Vector4(indent + ic + 6f, 0, 0, 0);
         bool afford = p.costUSD <= AscendEconomy.Balance || AscendEconomy.Owned(p.id) > 0;
         t.text = "<noparse>" + p.name + "</noparse>\n<size=85%><color=" + (afford ? "#9AA0A6" : "#F85149") + ">" +
                  AscendReport.Money(p.costUSD) + "  •  " + AscendReport.Mass(p.WetMassKg) +
@@ -4843,7 +5115,7 @@ public class AscendCADScreen
         CloseModal(); CloseMenu();
         padsOpen = false; if (padPanel) padPanel.gameObject.SetActive(false);
         if (padTab) ((Image)padTab.targetGraphic).color = Panel2;
-        mode = m; picked = null; sel = -1;
+        mode = m; picked = null; sel = -1; guideLastCur = -2;
         DestroyGhosts();
         bool r = m == CADBuilder.Rocket;
         rocketRoot.gameObject.SetActive(r);
@@ -5005,11 +5277,34 @@ public class AscendCADScreen
 
     Plan StackPlan(CADPart p, int ti, CADPart tp, CADPlaced T, Vector3 lp)
     {
+        if (p.role == CADRole.Engine)
+        {
+            // Engines are forgiving: clicking an engine, a tank, or the interstage below a tank all mean "under that tank"
+            if (T.link == CADLink.Cluster && T.parent >= 0)
+            {
+                ti = T.parent; T = D.parts[ti]; tp = data.Get(T.partId);
+                if (tp == null) return Fail("Unknown part.");
+            }
+            if (tp.role == CADRole.Decoupler)
+            {
+                int above = -1;
+                for (int i = 0; i < D.parts.Count; i++) if (D.parts[i].parent == ti && D.parts[i].link == CADLink.Top) { above = i; break; }
+                if (above < 0) return Fail("Put the upper-stage tank on this interstage first. Its engine goes under that tank and hides inside the interstage.");
+                ti = above; T = D.parts[ti]; tp = data.Get(T.partId);
+                if (tp == null) return Fail("Unknown part.");
+            }
+            int guard = 0;
+            while (tp.role == CADRole.Tank && T.link == CADLink.Top && T.parent >= 0 && guard++ < 64)
+            {
+                var below = data.Get(D.parts[T.parent].partId);
+                if (below == null || below.role != CADRole.Tank) break;
+                ti = T.parent; T = D.parts[ti]; tp = below;
+            }
+            if (tp.role == CADRole.Tank) return ClusterPlan(p, ti, tp, T);
+        }
         if (!tp.IsBody) return Fail("Can't stack onto a side-mounted part.");
         if (T.link == CADLink.Cluster) return Fail("Attach to the tank above the engine ring instead.");
         bool top = lp.y >= 0f;
-        if (p.role == CADRole.Engine && !top && tp.role == CADRole.Decoupler)
-            return Fail("Engines can't hang from an interstage. Click the BOTTOM half of the tank ABOVE the interstage: the upper-stage engine hides inside the interstage, like on Falcon 9.");
         if (p.role == CADRole.Engine && !top) return ClusterPlan(p, ti, tp, T);
         float h = p.StackHeight, hT = tp.StackHeight;
         var up = T.rot * Vector3.up;
@@ -5171,9 +5466,10 @@ public class AscendCADScreen
         Ground();
         Sync(true);
         if (wasEmpty) Frame();
+        guidePrefix = $"Placed {(picked != null ? picked.name : "part")}" + (plan.adds.Count > 1 ? $" x{plan.adds.Count}" : "") + "." +
+                      (skirted ? " Vacuum engine hidden in a skirt (click it to show it again)." : "");
         Changed();
-        Status($"Placed {picked.name}" + (plan.adds.Count > 1 ? $" x{plan.adds.Count}" : "") + "." +
-               (skirted ? " Vacuum engine hidden in a skirt (click it to show it again)." : ""), Good);
+        if (guidePrefix != null) { Status(guidePrefix, Good); guidePrefix = null; }
     }
 
     // Keeps the design standing on the grid
@@ -5233,7 +5529,12 @@ public class AscendCADScreen
             {
                 foreach (var r in objs[i].GetComponentsInChildren<MeshRenderer>()) if (!r.GetComponent<TMP_Text>()) r.SetPropertyBlock(null);
             }
-            else CADModels.Tint(objs[i], s ? Color.Lerp(D.parts[i].color, Blue, 0.55f) : D.parts[i].color, s ? Blue : (Color?)null);
+            else
+            {
+                bool h = !s && i == hintIdx && picked != null;
+                CADModels.Tint(objs[i], s ? Color.Lerp(D.parts[i].color, Blue, 0.55f) : h ? Color.Lerp(D.parts[i].color, Good, 0.5f) : D.parts[i].color,
+                    s ? Blue : h ? Good : (Color?)null);
+            }
         }
         dirty = 2;
     }
@@ -5587,8 +5888,8 @@ public class AscendCADScreen
             if (!string.IsNullOrEmpty(o.why)) sb.Append("<size=90%><color=#D29922>").Append(o.why).Append("</color></size>\n");
             sb.Append('\n');
         }
-        sb.Append("<color=#9AA0A6>Pick a guide to get <b>step-by-step building instructions</b> on the right, with every part shown in 3D. " +
-                  "You build it yourself, part by part. Prices are what the parts cost to buy (parts you already own count as free).</color>");
+        sb.Append("<color=#9AA0A6>Pick a guide to get <b>one step at a time</b> on the right: a picture of the part, where to click (it glows green), " +
+                  "and a 'Do this step for me' button if you get stuck. Prices are what the parts cost (parts you already own count as free).</color>");
 
         var buttons = new List<(string, bool, Action)>();
         foreach (var o in opts) { var oo = o; buttons.Add(("Guide: " + o.tier, true, () => StartGuide(oo))); }
@@ -5599,57 +5900,359 @@ public class AscendCADScreen
 
     // ───────────── Build guide (right panel) ─────────────
     List<AscendMissionGuide.Step> guideSteps;
-    string guideName;
+    CADDesign guideDesign;
+    string guideName, guidePrefix;
     CADBuilder guideMode;
     RectTransform guideBox;
+    int guideCur = -1, guideLastCur = -2, hintIdx = -1;
+    bool showDoneSteps;
+    static readonly Color GuideCard = AUI.Hex("#2B2618"), GuideBorder = AUI.Hex("#F07A26");
+
+    bool GuideActive => guideSteps != null && guideSteps.Count > 0 && guideDesign != null;
+    CADDesign GuideTarget => guideMode == CADBuilder.Rocket ? rocket : payload;
 
     void StartGuide(AscendMissionGuide.Option o)
     {
-        guideSteps = AscendMissionGuide.Steps(o.design, data);
+        guideDesign = o.design.Clone();
+        guideSteps = AscendMissionGuide.Steps(guideDesign, data);
         guideName = $"{o.design.name} ({o.tier})";
         guideMode = o.design.builder;
+        guideLastCur = -2; showDoneSteps = false;
         CloseModal();
         if (mode != guideMode) SetMode(guideMode);
-        sel = -1; picked = null;
-        BuildGuidePanel(); ShowInfo();
-        Status("Follow the BUILD GUIDE on the right: press 'Show part' on each step, then place it.", Blue);
+        else { sel = -1; picked = null; Changed(); }
+        // Pick a launch pad you own that fits the guide's rocket, so that check is done for you
+        if (guideMode == CADBuilder.Rocket)
+        {
+            try
+            {
+                var grs = CADStats.Rocket(guideDesign, data, 0f, AscendMissionGuide.RequiredDeltaV(data));
+                var cur = data.GetPad(AscendEconomy.SelectedPad);
+                bool curOk = cur != null && !cur.isTransporter && AscendEconomy.OwnsPad(cur, data) && AscendPads.Lock(cur, data) == null && AscendPads.Problems(cur, grs, data).Count == 0;
+                if (!curOk)
+                    foreach (var pad in data.launchPads)
+                        if (pad != null && !pad.isTransporter && AscendEconomy.OwnsPad(pad, data) && AscendPads.Lock(pad, data) == null && AscendPads.Problems(pad, grs, data).Count == 0)
+                        { AscendEconomy.ChoosePad(pad.id); break; }
+            }
+            catch (Exception e) { Debug.LogWarning("AscendCAD guide pad: " + e.Message); }
+        }
+        if (!D.IsEmpty && AscendMissionGuide.Match(guideDesign, D)[0] < 0)
+            Status("Your current design doesn't match this guide. Press 'Start fresh' in the BUILD GUIDE to clear it and begin at step 1.", Bad);
+    }
+
+    static string Plain(string s)
+    {
+        var sb = new System.Text.StringBuilder();
+        bool tag = false;
+        foreach (char c in s ?? "") { if (c == '<') tag = true; else if (c == '>') tag = false; else if (!tag) sb.Append(c); }
+        return sb.ToString();
+    }
+
+    // Picks the step's part and sets the right symmetry, so the player only has to click
+    void SelectStepPart(int k)
+    {
+        var st = guideSteps[k];
+        picked = st.part; sel = -1;
+        DestroyGhosts(); CloseMenu();
+        SetSym(st.sym);
+        Status((guidePrefix != null ? guidePrefix + "  " : "") + $"STEP {k + 1}: {Plain(st.how)}  (The part to click glows green.)", Blue);
+        guidePrefix = null;
+        BuildSidebar(); Recolor(); ShowInfo();
     }
 
     void BuildGuidePanel()
     {
         if (!guideBox) return;
-        for (int i = guideBox.childCount - 1; i >= 0; i--) { var c = guideBox.GetChild(i).gameObject; c.SetActive(false); Object.Destroy(c); }
-        bool show = guideSteps != null && guideSteps.Count > 0;
-        guideBox.gameObject.SetActive(show);
-        if (!show) return;
-        var design = guideMode == CADBuilder.Rocket ? rocket : payload;
-        int doneCount = 0;
-        foreach (var st in guideSteps) if (AscendMissionGuide.CountOf(design, st) >= st.needTotal) doneCount++;
-        AUI.Text(guideBox, $"BUILD GUIDE  <size=75%><color=#9AA0A6>{doneCount}/{guideSteps.Count} steps done</color></size>", 17, Txt, FontStyles.Bold);
-        AUI.Text(guideBox, $"<color=#8AB4F8>{guideName}</color>", 13.5f, Txt);
-        if (mode != guideMode)
-            AUI.Text(guideBox, $"<color=#D29922>Switch to the {(guideMode == CADBuilder.Rocket ? "Rocket" : "Payload")} Builder to follow this guide.</color>", 13, Txt);
-        for (int i = 0; i < guideSteps.Count; i++)
+        Clear(guideBox);
+        int oldHint = hintIdx;
+        hintIdx = -1;
+        guideBox.gameObject.SetActive(GuideActive);
+        if (!GuideActive) { if (oldHint != -1) Recolor(); return; }
+        guideBox.SetSiblingIndex(0);   // the guide sits at the top of the right panel
+
+        int n = guideSteps.Count;
+        bool here = mode == guideMode;
+        var map = AscendMissionGuide.Match(guideDesign, GuideTarget);
+        var done = new bool[n];
+        int doneCount = 0, cur = -1;
+        for (int i = 0; i < n; i++)
         {
-            var st = guideSteps[i];
-            bool ok = AscendMissionGuide.CountOf(design, st) >= st.needTotal;
-            var t = AUI.Text(guideBox, (ok ? "<color=#3FB950>DONE</color>  " : $"<color=#F07A26>STEP {i + 1}</color>  ") + st.text, 13, ok ? Sub : Txt);
-            t.lineSpacing = 2f;
-            if (!ok && mode == guideMode)
+            done[i] = guideSteps[i].idx.All(k => map[k] >= 0);
+            if (done[i]) doneCount++; else if (cur < 0) cur = i;
+        }
+        guideCur = cur;
+
+        // Header + progress bar
+        AUI.Text(guideBox, $"BUILD GUIDE  <size=80%><color=#9AA0A6>{doneCount} of {n} steps done</color></size>", 17, Txt, FontStyles.Bold);
+        AUI.Text(guideBox, $"<color=#8AB4F8>{guideName}</color>", 13, Txt);
+        var track = AUI.Rect("Progress", guideBox);
+        AUI.LE(track, -1, S(8));
+        AUI.Img(track, Panel2, true);
+        var fillRt = AUI.Rect("Fill", track);
+        fillRt.anchorMin = Vector2.zero; fillRt.anchorMax = new Vector2(n > 0 ? doneCount / (float)n : 0f, 1f);
+        fillRt.offsetMin = fillRt.offsetMax = Vector2.zero;
+        AUI.Img(fillRt, Good, true);
+
+        if (!here)
+        {
+            AUI.Text(guideBox, $"<color=#D29922>This guide is for the {(guideMode == CADBuilder.Rocket ? "Rocket" : "Payload")} Builder.</color>", 13, Txt);
+            AUI.Btn(guideBox, $"Go to the {(guideMode == CADBuilder.Rocket ? "Rocket" : "Payload")} Builder", 13, Color.white, Accent, () => SetMode(guideMode), -1, 34);
+        }
+        else if (!GuideTarget.IsEmpty && map[0] < 0)
+        {
+            AUI.Text(guideBox, $"<color=#D29922>Your design doesn't start with the <b>{guideSteps[0].part.name}</b>, so the guide can't follow it.</color>", 13, Txt);
+            AUI.Btn(guideBox, "Start fresh (clear this design)", 13, Color.white, AUI.Hex("#8B2C2C"), AskClear, -1, 34);
+        }
+
+        if (cur >= 0)
+        {
+            var st = guideSteps[cur];
+            // Current step card: picture, title, where to click, why
+            var card = AUI.Rect("Current Step", guideBox);
+            AUI.Img(card, GuideBorder, true);
+            AUI.V(card, 2, 2, 2, 2, 0);
+            var inner = AUI.Rect("Inner", card);
+            AUI.Img(inner, GuideCard, true);
+            AUI.V(inner, 12, 12, 10, 12, 8);
+            var head = AUI.Rect("Head", inner);
+            AUI.H(head, 0, 0, 0, 0, 10, TextAnchor.UpperLeft);
+            var pic = PartIcon(head, st.part);
+            AUI.LE(pic, S(92), S(92));
+            var titles = AUI.Rect("Titles", head);
+            AUI.V(titles, 0, 0, 2, 0, 3);
+            AUI.LE(titles, -1, -1, 1);
+            AUI.Text(titles, $"<color=#F07A26>STEP {cur + 1} OF {n}</color>", 12, Txt, FontStyles.Bold);
+            AUI.Text(titles, st.title, 15, Txt, FontStyles.Bold);
+            AUI.Text(titles, $"<color=#9AA0A6>{AscendReport.Money(st.part.costUSD)} each  •  {AscendReport.Mass(st.part.WetMassKg)}</color>", 11.5f, Txt);
+            AUI.Text(inner, "<b>How:</b> " + st.how, 14, Txt).lineSpacing = 3f;
+            if (!string.IsNullOrEmpty(st.why)) AUI.Text(inner, "<color=#9AA0A6><b>Why:</b> " + st.why + "</color>", 12, Txt);
+            if (here)
             {
-                var part = st.part;
-                AUI.Btn(guideBox, "Show part: " + part.name, 12, Color.white, Panel2, () => Pick(part), -1, 30);
+                var row = AUI.Rect("Buttons", inner);
+                AUI.H(row, 0, 0, 0, 0, 6);
+                AUI.LE(row, -1, S(34));
+                bool isPicked = picked == st.part;
+                var pb = AUI.Btn(row, isPicked ? "Part picked" : "Pick part", 12.5f, Color.white, isPicked ? AUI.Hex("#2E7D5B") : Panel2, () => SelectStepPart(guideCur), -1, 34);
+                var ple = pb.GetComponent<LayoutElement>(); ple.minWidth = 0f; ple.preferredWidth = 0f; ple.flexibleWidth = 1f;
+                var wb = AUI.Btn(row, "Show me where", 12.5f, Color.white, Panel2, ShowWhere, -1, 34);
+                var wle = wb.GetComponent<LayoutElement>(); wle.minWidth = 0f; wle.preferredWidth = 0f; wle.flexibleWidth = 1f;
+                AUI.Btn(inner, "Do this step for me", 13, Color.white, AUI.Hex("#0B57D0"), () => DoGuideStep(guideCur), -1, 36);
             }
         }
-        if (doneCount == guideSteps.Count)
+        else
         {
             var chk = AscendMissionGuide.Checklist(guideMode, rocket, payload, data);
             var bad = chk.Where(x => !x.ok).ToList();
-            if (bad.Count == 0) AUI.Text(guideBox, "<color=#3FB950><b>All steps done and the mission check passes!</b></color> Press SUBMIT.", 13.5f, Txt);
-            else
-                AUI.Text(guideBox, "<color=#D29922><b>All steps done, but the mission check still finds:</b></color>\n" + AscendMissionGuide.ChecklistText(bad), 13.5f, Txt);
+            if (bad.Count == 0) AUI.Text(guideBox, "<color=#3FB950><b>All steps done and the mission check passes!</b></color> Press SUBMIT.", 14, Txt);
+            else AUI.Text(guideBox, "<color=#D29922><b>All steps done, but the mission check still finds:</b></color>\n" + AscendMissionGuide.ChecklistText(bad), 13.5f, Txt);
         }
-        AUI.Btn(guideBox, "Hide build guide", 12, Txt, Panel2, () => { guideSteps = null; BuildGuidePanel(); }, -1, 30);
+
+        // What comes next (with pictures)
+        int shown = 0, left = 0;
+        for (int i = 0; i < n; i++)
+        {
+            if (done[i] || i == cur) continue;
+            if (shown >= 4) { left++; continue; }
+            if (shown == 0) AUI.Text(guideBox, "<b>NEXT</b>", 12, Sub);
+            StepRow(guideBox, guideSteps[i], i, false);
+            shown++;
+        }
+        if (left > 0) AUI.Text(guideBox, $"<color=#9AA0A6>+ {left} more step{(left > 1 ? "s" : "")}</color>", 12, Txt);
+
+        if (doneCount > 0)
+        {
+            AUI.Btn(guideBox, showDoneSteps ? "Hide done steps" : $"Show {doneCount} done step{(doneCount > 1 ? "s" : "")}", 12, Txt, Panel2,
+                () => { showDoneSteps = !showDoneSteps; BuildGuidePanel(); }, -1, 30);
+            if (showDoneSteps) for (int i = 0; i < n; i++) if (done[i]) StepRow(guideBox, guideSteps[i], i, true);
+        }
+        AUI.Btn(guideBox, "Close build guide", 12, Sub, Panel2, () => { guideSteps = null; guideDesign = null; BuildGuidePanel(); ShowInfo(); }, -1, 30);
+
+        // Highlight the part to click and pick the step's part automatically when a new step starts
+        if (here && cur >= 0)
+        {
+            var st = guideSteps[cur];
+            hintIdx = st.link == CADLink.Root || st.parentIndex < 0 ? -1 : map[st.parentIndex];
+            if (cur != guideLastCur) { guideLastCur = cur; SelectStepPart(cur); return; }
+        }
+        if (oldHint != hintIdx) Recolor();
+    }
+
+    void StepRow(RectTransform parent, AscendMissionGuide.Step st, int i, bool isDone)
+    {
+        var row = AUI.Rect("Step " + (i + 1), parent);
+        AUI.H(row, 0, 0, 0, 0, 8);
+        var pic = PartIcon(row, st.part);
+        AUI.LE(pic, S(34), S(34));
+        var t = AUI.Text(row, (isDone ? "<color=#3FB950>DONE</color>  " : $"<color=#9AA0A6>{i + 1}.</color>  ") + st.title, 12.5f, isDone ? Sub : Txt);
+        t.alignment = TextAlignmentOptions.MidlineLeft;
+        AUI.LE(t, -1, -1, 1);
+    }
+
+    // Zooms the 3D view onto the part you have to click
+    void ShowWhere()
+    {
+        var objs = Objs;
+        if (hintIdx < 0 || hintIdx >= objs.Count || !objs[hintIdx]) { Frame(); Status("Click anywhere in the empty 3D view to place the first part.", Blue); return; }
+        var rends = objs[hintIdx].GetComponentsInChildren<Renderer>();
+        if (rends.Length == 0) { Frame(); return; }
+        var b = rends[0].bounds;
+        foreach (var r in rends) b.Encapsulate(r.bounds);
+        target = b.center - world.transform.position;
+        float rad = Mathf.Max(b.extents.magnitude, mode == CADBuilder.Rocket ? 0.6f : 0.05f);
+        dist = rad / Mathf.Sin(cam.fieldOfView * 0.5f * Mathf.Deg2Rad) * 2.2f;
+        dirty = 2;
+        var tp = data.Get(D.parts[hintIdx].partId);
+        Status($"This is the {(tp != null ? tp.name : "part")} (glowing green). Click it to place the {(picked != null ? picked.name : "part")}.", Good);
+    }
+
+    // Places exactly what this step needs (you still pay for the parts when you SUBMIT)
+    void DoGuideStep(int k)
+    {
+        if (!GuideActive || k < 0 || k >= guideSteps.Count || mode != guideMode) return;
+        var st = guideSteps[k];
+        var map = AscendMissionGuide.Match(guideDesign, D);
+        var adds = new List<CADPlaced>();
+        foreach (int gi in st.idx)
+        {
+            if (map[gi] >= 0) continue;
+            var gp = guideDesign.parts[gi];
+            int up = -1; Vector3 pos = gp.pos; Quaternion rot = gp.rot;
+            if (gp.link == CADLink.Root)
+            {
+                if (!D.IsEmpty) { Status("Your design already has other parts. Press 'Start fresh' in the BUILD GUIDE to begin at step 1.", Bad); return; }
+            }
+            else
+            {
+                up = gp.parent >= 0 ? map[gp.parent] : -1;
+                if (up < 0) { Status("Finish the earlier steps first.", Bad); return; }
+                var gpar = guideDesign.parts[gp.parent];
+                var rel = Quaternion.Inverse(gpar.rot);
+                pos = D.parts[up].pos + D.parts[up].rot * (rel * (gp.pos - gpar.pos));
+                rot = D.parts[up].rot * (rel * gp.rot);
+                if (gp.link == CADLink.Top || gp.link == CADLink.Bottom)
+                    for (int j = 0; j < D.parts.Count; j++)
+                        if (D.parts[j].parent == up && D.parts[j].link == gp.link)
+                        {
+                            var other = data.Get(D.parts[j].partId);
+                            Status($"The {(other != null ? other.name : "part")} is in the way on the {data.Get(D.parts[up].partId)?.name}. Delete it, then try again.", Bad);
+                            return;
+                        }
+            }
+            var copy = new CADPlaced { partId = gp.partId, parent = up, link = gp.link, pos = pos, rot = rot, color = gp.color, shroud = gp.shroud };
+            foreach (var l in gp.labels)
+                copy.labels.Add(new CADLabel { text = l.text, angleDeg = l.angleDeg, height01 = l.height01, sizeM = l.sizeM, color = l.color, vertical = l.vertical });
+            adds.Add(copy);
+        }
+        if (adds.Count == 0) { BuildGuidePanel(); return; }
+
+        var counts = AscendEconomy.Count(rocket, payload);
+        foreach (var a in adds) { counts.TryGetValue(a.partId, out var c); counts[a.partId] = c + 1; }
+        var q = AscendEconomy.QuoteCounts(data, counts);
+        if (q.total > AscendEconomy.Balance + 0.01)
+        {
+            Status($"Over budget: the build would cost {AscendReport.Money(q.total)} but the fund only has {AscendReport.Money(AscendEconomy.Balance)}.", Bad);
+            return;
+        }
+        bool wasEmpty = D.IsEmpty;
+        int g = adds.Count > 1 && st.link != CADLink.Internal ? D.nextSymGroup++ : -1;
+        foreach (var a in adds) { a.symGroup = g; D.parts.Add(a); }
+        Ground();
+        Sync(true);
+        if (wasEmpty) Frame();
+        guidePrefix = $"Step {k + 1} done: {st.title}.";
+        Changed();
+        if (guidePrefix != null) { Status(guidePrefix, Good); guidePrefix = null; }
+    }
+
+    // ───────────── Part pictures (rendered once per part, then reused) ─────────────
+    readonly Dictionary<string, RenderTexture> icons = new Dictionary<string, RenderTexture>();
+    readonly List<(CADPart p, RawImage img)> iconQueue = new List<(CADPart, RawImage)>();
+    static readonly Vector3 IconOffset = new Vector3(0f, 0f, -25000f);
+
+    RawImage PartIcon(Transform parent, CADPart p)
+    {
+        var img = AUI.Rect("Picture", parent).gameObject.AddComponent<RawImage>();
+        img.raycastTarget = false;
+        if (icons.TryGetValue(p.id, out var t) && t) { img.texture = t; img.color = Color.white; }
+        else { img.color = new Color(1f, 1f, 1f, 0.05f); iconQueue.Add((p, img)); }
+        return img;
+    }
+
+    // A few pictures per frame, so opening a big category never freezes the game
+    void PumpIcons()
+    {
+        int made = 0;
+        while (iconQueue.Count > 0 && made < 3)
+        {
+            var (p, img) = iconQueue[0];
+            iconQueue.RemoveAt(0);
+            if (!img) continue;
+            if (!icons.TryGetValue(p.id, out var t) || !t)
+            {
+                try { t = RenderIcon(p); } catch (Exception e) { Debug.LogWarning("AscendCAD: couldn't draw a picture of " + p.name + ": " + e.Message); t = null; }
+                icons[p.id] = t; made++;
+            }
+            if (t) { img.texture = t; img.color = Color.white; }
+        }
+    }
+
+    static Color InsideColor(CADPart p)
+    {
+        switch (p.role)
+        {
+            case CADRole.FlightComputer: case CADRole.OBC: case CADRole.IMU: case CADRole.GNSS: case CADRole.EPS: case CADRole.PowerDistribution:
+                return AUI.Hex("#2E7D4F");                               // circuit-board green
+            case CADRole.Battery: case CADRole.SatBattery: return AUI.Hex("#2F5FA8");
+            case CADRole.Instrument: return AUI.Hex("#3A3D44");
+            case CADRole.Thermal: return AUI.Hex("#D9B25C");
+            case CADRole.FlightTermination: return AUI.Hex("#C0392B");
+            case CADRole.SatPropulsion: return AUI.Hex("#B8BBC2");
+            default: return AUI.Hex("#8A8F99");
+        }
+    }
+
+    RenderTexture RenderIcon(CADPart p)
+    {
+        var holder = new GameObject("Icon " + p.name);
+        holder.transform.SetParent(world.transform, false);
+        holder.transform.localPosition = IconOffset;
+        GameObject model;
+        if (p.attach == CADAttach.Internal || p.shape == CADShape.None)
+        {
+            // Inside parts have no outside shape: show them as a little box in their typical color
+            model = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            var col = model.GetComponent<Collider>(); if (col) Object.Destroy(col);
+            float e = Mathf.Clamp(Mathf.Pow(Mathf.Max(0.005f, p.volumeL) / 1000f, 1f / 3f), 0.03f, 2f);
+            model.transform.localScale = new Vector3(e * 1.4f, e * 0.55f, e);
+            var mr = model.GetComponent<Renderer>();
+            mr.sharedMaterial = CADModels.Lit(data);
+            CADModels.Paint(mr, InsideColor(p), null);
+        }
+        else model = CADModels.Build(p, p.defaultColor, layer, false, data.labelFont ? data.labelFont : font, null, data);
+        model.transform.SetParent(holder.transform, false);
+        CADModels.SetLayer(holder, layer);
+
+        var rends = model.GetComponentsInChildren<Renderer>();
+        var b = rends.Length > 0 ? rends[0].bounds : new Bounds(holder.transform.position, Vector3.one);
+        foreach (var r in rends) b.Encapsulate(r.bounds);
+        var c = MakeCam("Icon Camera");
+        c.backgroundColor = AUI.Hex("#15161A");
+        c.fieldOfView = 30f;
+        var look = Quaternion.Euler(20f, 35f, 0f);
+        float d = Mathf.Max(0.01f, b.extents.magnitude) / Mathf.Sin(15f * Mathf.Deg2Rad) * 1.02f;
+        c.transform.SetPositionAndRotation(b.center - look * Vector3.forward * d, look);
+        c.nearClipPlane = d * 0.01f; c.farClipPlane = d * 4f;
+        var t = new RenderTexture(160, 160, 16) { name = "Part Picture " + p.name, antiAliasing = 1 };
+        c.targetTexture = t; c.aspect = 1f;
+        padCams.Add(c);
+        c.Render();
+        padCams.Remove(c);
+        if (key) { key.enabled = false; fill.enabled = false; }
+        c.targetTexture = null;
+        Object.Destroy(c.gameObject);
+        holder.SetActive(false);   // hidden right away; destroyed at the end of the frame
+        Object.Destroy(holder);
+        return t;
     }
 
     void ShowMissionPicker()
@@ -5754,6 +6357,14 @@ public class AscendCADScreen
         CADPart p = picked; CADPlaced pl = null;
         if (p == null && sel >= 0 && sel < D.parts.Count) { pl = D.parts[sel]; p = data.Get(pl.partId); }
         infoTools.gameObject.SetActive(pl != null);
+        if (p == null && GuideActive && mode == guideMode)
+        {
+            var gl = AscendMissionGuide.Checklist(mode, rocket, payload, data);
+            infoTitle.text = "Mission checklist  <size=70%><color=#8AB4F8>" + AscendMissionGuide.Title + "</color></size>";
+            infoText.text = $"<color=#9AA0A6>{gl.Count(x => x.ok)}/{gl.Count} done</color>\n" + AscendMissionGuide.ChecklistText(gl, false);
+            previewBox.SetActive(false);
+            return;
+        }
         if (p == null)
         {
             infoTitle.text = (mode == CADBuilder.Rocket ? "Build a rocket" : "Build a satellite") + "  <size=70%><color=#8AB4F8>" + AscendMissionGuide.Title + "</color></size>";
@@ -5766,7 +6377,8 @@ public class AscendCADScreen
             previewBox.SetActive(false);
             return;
         }
-        infoTitle.text = (picked != null ? "<color=#F07A26>Placing:</color> " : "") + "<noparse>" + p.name + "</noparse>";
+        infoTitle.text = (picked != null ? "<color=#F07A26>Placing:</color> " : "") + "<noparse>" + p.name + "</noparse>" +
+                         (picked != null ? "\n<size=65%><color=#9AA0A6>3D view below: drag to turn it around</color></size>" : "");
         infoText.text = AscendReport.PartInfo(p);
         bool show = p.attach != CADAttach.Internal;
         previewBox.SetActive(show);

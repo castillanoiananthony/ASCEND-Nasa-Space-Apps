@@ -1,8 +1,9 @@
 // ═════════════════════════════════════════════════════════════════════════════
 //  AscendFlight.cs  -  launch the approved rocket with real physics
 //
-//  Put "AscendLaunchController" on your launch cube (it needs a Collider).
-//  Look at the cube and press E: countdown, ignition, liftoff.
+//  Put "AscendLaunchController" on your Launch Computer (it needs a Collider).
+//  Look at it and press E: the LAUNCH COMPUTER screen opens (rocket, payload, info, T-minus, LAUNCH).
+//  Press LAUNCH: countdown, ignition, liftoff. Esc or X closes the screen.
 //
 //  Real physics, using the real numbers from the AscendCAD part catalog:
 //    - thrust changes with air pressure (sea level -> vacuum), propellant burns away so the rocket gets lighter
@@ -19,7 +20,9 @@
 //    - out of fuel before space -> falls back and crashes
 //  Reaching 100 km (Karman line) = SPACE: the screen fades and the rocket vanishes (next scene comes later).
 //
-//  Keys while flying: C = camera, 1-4 = time speed, mouse = look around, scroll = zoom.
+//  Keys while flying: 1 = chase camera (hold right mouse to look), 2 = nose camera, 3 = ground tracking camera,
+//  - / + = time speed (up to 2x), H = hide/show the windows, scroll = zoom.
+//  Earth missions: at the Karman line the rocket continues in the Solar System scene (AscendOrbit.cs).
 // ═════════════════════════════════════════════════════════════════════════════
 using System;
 using System.Collections;
@@ -29,6 +32,7 @@ using System.Text;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 #if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
@@ -37,7 +41,7 @@ using Object = UnityEngine.Object;
 
 public class AscendLaunchController : MonoBehaviour
 {
-    [Header("Launch cube (this object needs a Collider)")]
+    [Header("Launch Computer (this object needs a Collider)")]
     public KeyCode launchKey = KeyCode.E;
     public float interactDistance = 5f;
 
@@ -60,6 +64,25 @@ public class AscendLaunchController : MonoBehaviour
     [Tooltip("Most g-force the structure survives.")]
     public float maxGForce = 10f;
 
+    [Header("The Philippines below (shown during the flight)")]
+    [Tooltip("Show the real-size Philippines and the sea around the launch site, with Earth's curve.")]
+    public bool showPhilippines = true;
+    [Tooltip("Where your launch site is: latitude, longitude. Default: Baler, Aurora (east coast of Luzon, so rockets fly out over the Pacific).")]
+    public Vector2 launchSiteLatLon = new Vector2(15.76f, 121.56f);
+    [Tooltip("Ground height of your world at the launch site (the map sits just under it).")]
+    public float groundHeight = 0.5f;
+    [Tooltip("Show a layer of clouds about 2.5 km up (you fly through it).")]
+    public bool showClouds = true;
+    [Tooltip("Optional: a real satellite image of the area (e.g. NASA Blue Marble). Leave empty for the painted map.")]
+    public Texture2D customMap;
+    [Tooltip("The custom image's edges: west longitude, south latitude, east longitude, north latitude.")]
+    public Vector4 customMapBounds = new Vector4(110f, -2f, 138f, 26f);
+
+    [Header("After the Karman line (Earth Watcher / Moon Mapper)")]
+    [Tooltip("Continue the flight in orbit in this scene (it must be in File > Build Profiles / Build Settings).")]
+    public bool continueInOrbitScene = true;
+    public string orbitSceneName = "Solar System";
+
     [Header("Player")]
     [Tooltip("Movement and mouse-look scripts to switch off during the flight.")]
     public Behaviour[] disableWhileFlying;
@@ -78,7 +101,7 @@ public class AscendLaunchController : MonoBehaviour
     // ───────────── constants ─────────────
     const double EarthR = 6371000.0, Mu = 3.986004418e14;
     const float G0 = 9.80665f, StepDt = 0.02f;
-    static readonly float[] Warps = { 1f, 2f, 4f, 10f };
+    static readonly float[] Warps = { 0.5f, 1f, 1.5f, 2f };   // time speed, up to 2x
 
     // ───────────── runtime: parts ─────────────
     class Eng
@@ -132,22 +155,55 @@ public class AscendLaunchController : MonoBehaviour
     Vector3 basePos, downDir;
     readonly List<GameObject> debris = new List<GameObject>();
     Camera flightCam, playerCam;
-    bool groundView;
+    int camMode = 1;   // 1 chase, 2 nose, 3 ground tracking
     float camYaw, camPitch = 8f, camDist;
     float shake;
     Material skyCopy, skyOriginal;
+    GameObject earthMap, cloudLayer;
     float skyExposure = 1f, skyAtmo = 1f;
     CursorLockMode savedLock; bool savedVisible;
 
     // ───────────── UI ─────────────
-    TextMeshProUGUI promptText, bigText, telemetryText, logText, altLabel, endTitle, endBody, warpText;
+    TextMeshProUGUI promptText, bigText, logText, altLabel, endTitle, endBody, warpText, metText, stageText, warpLabel;
+    readonly List<(TextMeshProUGUI value, RectTransform fill, Image img)> gauges = new List<(TextMeshProUGUI, RectTransform, Image)>();
+    float thrustNow;
     GameObject hudRoot, endCard;
-    RectTransform altFill, qFill;
-    Image qFillImg;
+    RectTransform altFill;
+    readonly List<(string name, GameObject go)> windows = new List<(string, GameObject)>();
+    readonly List<Image> windowBtns = new List<Image>();
+
+    void ToggleWindow(int i)
+    {
+        if (i < 0 || i >= windows.Count || !windows[i].go) return;
+        windows[i].go.SetActive(!windows[i].go.activeSelf);
+        RefreshWindowButtons();
+    }
+
+    void ToggleAllWindows()
+    {
+        bool anyOn = windows.Any(w => w.go && w.go.activeSelf);
+        foreach (var w in windows) if (w.go) w.go.SetActive(!anyOn);
+        RefreshWindowButtons();
+    }
+
+    void RefreshWindowButtons()
+    {
+        for (int i = 0; i < windowBtns.Count && i < windows.Count; i++)
+            if (windowBtns[i]) windowBtns[i].color = windows[i].go && windows[i].go.activeSelf ? new Color(0.1f, 0.3f, 0.6f) : new Color(0.25f, 0.25f, 0.3f, 0.8f);
+    }
     CanvasGroup fade;
     readonly List<(Grp g, RectTransform fill, TextMeshProUGUI label)> fuelRows = new List<(Grp, RectTransform, TextMeshProUGUI)>();
     readonly List<string> log = new List<string>();
     float bigUntil;
+
+    // Launch Computer screen
+    GameObject consoleRoot, infoBox;
+    RawImage rocketPic, payloadPic;
+    RenderTexture rocketTex, payloadTex;
+    TextMeshProUGUI conRocket, conPayload, conInfo, conMsg, infoBtnText;
+    TMP_InputField tMinusField;
+    bool consoleOpen;
+    CursorLockMode consoleLock; bool consoleVisible;
     Coroutine flashRoutine;
 
     // ═════════════════════════════════════════════════════════════════════════
@@ -155,6 +211,7 @@ public class AscendLaunchController : MonoBehaviour
     // ═════════════════════════════════════════════════════════════════════════
     void Start()
     {
+        if (showPhilippines) AscendEarthMap.Prepare();   // paint the map and clouds in the background
         BuildUI();
         hudRoot.SetActive(false);
         endCard.SetActive(false);
@@ -163,6 +220,11 @@ public class AscendLaunchController : MonoBehaviour
 
     void Update()
     {
+        if (consoleOpen)
+        {
+            if (KeyDown(KeyCode.Escape)) CloseConsole();
+            return;
+        }
         switch (phase)
         {
             case Phase.Idle: IdleUpdate(); break;
@@ -179,6 +241,8 @@ public class AscendLaunchController : MonoBehaviour
     void OnDestroy()
     {
         if (skyOriginal) RenderSettings.skybox = skyOriginal;
+        if (rocketTex) rocketTex.Release();
+        if (payloadTex) payloadTex.Release();
     }
 
     // ═════════════════════════════════════════════════════════════════════════
@@ -188,7 +252,7 @@ public class AscendLaunchController : MonoBehaviour
     {
         bool looking = LookingAtMe();
         if (flashRoutine == null)
-            promptText.text = looking ? (AscendLaunchSite.Current ? KeyName(launchKey) + " to LAUNCH the rocket" : KeyName(launchKey) + " to check the launch pad") : "";
+            promptText.text = looking ? KeyName(launchKey) + " to use the Launch Computer" : "";
         if (!looking || !KeyDown(launchKey)) return;
 
         if (!AscendLaunchSite.Current)
@@ -196,7 +260,191 @@ public class AscendLaunchController : MonoBehaviour
             Flash("No rocket on the launch pad yet. Get your design APPROVED in AscendCAD first.");
             return;
         }
+        OpenConsole();
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    //  LAUNCH COMPUTER SCREEN
+    // ═════════════════════════════════════════════════════════════════════════
+    void OpenConsole()
+    {
+        consoleOpen = true;
+        if (flashRoutine != null) { StopCoroutine(flashRoutine); flashRoutine = null; }
+        promptText.text = "";
+        consoleLock = Cursor.lockState; consoleVisible = Cursor.visible;
+        Cursor.lockState = CursorLockMode.None; Cursor.visible = true;
+        if (disableWhileFlying != null) foreach (var b in disableWhileFlying) if (b) b.enabled = false;
+        if (hideWhileFlying != null) foreach (var g in hideWhileFlying) if (g) g.SetActive(false);
+        conMsg.text = "";
+        if (string.IsNullOrEmpty(tMinusField.text)) tMinusField.text = Mathf.RoundToInt(countdownSeconds).ToString();
+        infoBox.SetActive(false); infoBtnText.text = "ROCKET INFO   +";
+        RefreshConsole();
+        consoleRoot.SetActive(true);
+    }
+
+    void CloseConsole()
+    {
+        consoleOpen = false;
+        consoleRoot.SetActive(false);
+        var es = UnityEngine.EventSystems.EventSystem.current;
+        if (es) es.SetSelectedGameObject(null);
+        Cursor.lockState = consoleLock; Cursor.visible = consoleVisible;
+        if (disableWhileFlying != null) foreach (var b in disableWhileFlying) if (b) b.enabled = true;
+        if (hideWhileFlying != null) foreach (var g in hideWhileFlying) if (g) g.SetActive(true);
+    }
+
+    void ToggleInfo()
+    {
+        bool on = !infoBox.activeSelf;
+        infoBox.SetActive(on);
+        infoBtnText.text = on ? "ROCKET INFO   -" : "ROCKET INFO   +";
+    }
+
+    void ConsoleLaunch()
+    {
+        string txt = (tMinusField.text ?? "").Trim().Replace("T-", "").Replace("t-", "").Replace("s", "");
+        if (!int.TryParse(txt, out int sec) || sec < 3 || sec > 60)
+        {
+            conMsg.text = "<color=#FFD166>Type the T-minus countdown in seconds: a number from 3 to 60.</color>";
+            return;
+        }
+        if (!AscendLaunchSite.Current) { conMsg.text = "<color=#FFD166>The rocket is no longer on the pad.</color>"; return; }
+        countdownSeconds = sec;
+        CloseConsole();
         StartCoroutine(LaunchSequence());
+    }
+
+    void RefreshConsole()
+    {
+        var site = AscendLaunchSite.Current;
+        var rk = site ? site.GetComponent<AscendRocket>() : null;
+        var d = ascendCADData ? AscendCADData.Resolve(ascendCADData) : (AscendCADData.Active ? AscendCADData.Active : AscendCADData.Resolve(null));
+        if (!rk || rk.rocket == null || d == null)
+        {
+            conRocket.text = "<b>ROCKET</b>\nNo rocket on the pad"; conPayload.text = "<b>PAYLOAD</b>\n-"; conInfo.text = "";
+            return;
+        }
+        var ps = rk.payload != null && !rk.payload.IsEmpty ? CADStats.Payload(rk.payload, d) : null;
+        var rs = CADStats.Rocket(rk.rocket, d, ps != null ? ps.wetMass : 0f, AscendMissionGuide.RequiredDeltaV(d));
+
+        // Pictures of the real 3D models
+        var bg = new Color(0.03f, 0.16f, 0.42f, 1f);
+        if (rocketTex) rocketTex.Release();
+        if (payloadTex) payloadTex.Release();
+        rocketTex = payloadTex = null;
+        try { rocketTex = AscendSnapshot.Design(rk.rocket, d, 260, 400, bg); } catch (Exception e) { Debug.LogWarning("Launch Computer: rocket picture failed: " + e.Message); }
+        try { if (rk.payload != null && !rk.payload.IsEmpty) payloadTex = AscendSnapshot.Design(rk.payload, d, 260, 400, bg); } catch (Exception e) { Debug.LogWarning("Launch Computer: payload picture failed: " + e.Message); }
+        rocketPic.texture = rocketTex; rocketPic.color = rocketTex ? Color.white : new Color(1f, 1f, 1f, 0.08f);
+        payloadPic.texture = payloadTex; payloadPic.color = payloadTex ? Color.white : new Color(1f, 1f, 1f, 0.08f);
+
+        conRocket.text = $"<b>ROCKET</b>\n<size=130%>{rk.rocket.name}</size>\n" +
+                         $"{rs.stages.Count} stage(s)   {rs.height:0.#} m tall   {rs.width:0.#} m wide\nMass at liftoff {AscendReport.Mass(rs.wetMass)}";
+        conPayload.text = rk.payload != null && !rk.payload.IsEmpty
+            ? $"<b>PAYLOAD</b>\n<size=130%>{rk.payload.name}</size>\n{AscendReport.Mass(ps.wetMass)}   {ps.instruments} instrument(s)\n{ps.powerGen:0.#} W power" + (ps.satDeltaV > 0f ? $"   own engine {ps.satDeltaV:N0} m/s" : "")
+            : "<b>PAYLOAD</b>\nNone";
+
+        var sb = new StringBuilder();
+        sb.Append($"<b>Mission:</b> {AscendMissionGuide.Title}\n");
+        var plan = AscendTrajectoryControl.ConfirmedPlan;
+        if (plan != null) sb.Append($"<b>Flight path:</b> {plan.name}  (pitch kick {plan.kickDeg:0.#}°, target {(plan.mission == AscendSimMission.SkySensor ? (plan.targetKm * 1000f).ToString("N0") + " m" : plan.targetKm.ToString("N0") + " km")})\n");
+        var pad = d.GetPad(AscendEconomy.SelectedPad);
+        if (pad != null) sb.Append($"<b>Launch pad:</b> {pad.name}\n");
+        sb.Append($"<b>Thrust at liftoff:</b> {rs.liftoffThrustkN:N0} kN   (thrust-to-weight {rs.liftoffTWR:0.00})\n");
+        sb.Append($"<b>Total push (delta-v):</b> {rs.deltaV:N0} m/s   (mission needs {AscendMissionGuide.RequiredDeltaV(d):N0} m/s)\n");
+        foreach (var st in rs.stages)
+            sb.Append($"<b>Stage {st.index + 1}:</b> {st.engines} engine(s), {st.thrustkN:N0} kN, {AscendReport.Mass(st.propMass)} propellant, burns {st.burnTime:0} s, {st.deltaV:N0} m/s\n");
+        sb.Append($"<b>Guidance:</b> {(rs.Has(CADRole.FlightComputer) && rs.Has(CADRole.IMU) ? "flight computer + IMU (steers itself)" : rs.Has(CADRole.Aero) ? "fins (flies straight up)" : "none!")}\n");
+        sb.Append($"<b>Parts:</b> {rs.partCount}   <b>Parts value:</b> {AscendReport.Money(rs.partsValue)}");
+        conInfo.text = sb.ToString();
+    }
+
+    void BuildConsole(RectTransform canvasRoot)
+    {
+        Color blue = new Color(0.04f, 0.2f, 0.52f, 0.98f), blue2 = new Color(0.08f, 0.29f, 0.66f, 1f), white = Color.white;
+
+        var dim = Gui.Img(canvasRoot, new Color(0f, 0f, 0f, 0.55f), 0f);
+        Gui.Stretch(dim.rectTransform);
+        dim.raycastTarget = true;
+        consoleRoot = dim.gameObject;
+
+        var panel = AUI.Rect("Launch Computer", dim.transform);
+        panel.anchorMin = panel.anchorMax = panel.pivot = new Vector2(0.5f, 0.5f);
+        panel.sizeDelta = new Vector2(1180, 900);
+        AUI.Img(panel, blue, true, true);
+
+        // Title bar
+        var bar = AUI.Rect("Title", panel);
+        bar.anchorMin = new Vector2(0f, 1f); bar.anchorMax = Vector2.one; bar.pivot = new Vector2(0.5f, 1f);
+        bar.sizeDelta = new Vector2(0f, 76f); bar.anchoredPosition = Vector2.zero;
+        AUI.H(bar, 30, 18, 10, 10, 10);
+        var title = AUI.Text(bar, "LAUNCH COMPUTER", 30, white, FontStyles.Bold);
+        title.fontSize = 32; AUI.LE(title, -1, 56, 1);
+        title.alignment = TextAlignmentOptions.MidlineLeft;
+        var close = AUI.Btn(bar, "X", 22, white, blue2, CloseConsole, 56, 52);
+
+        // Body (scrolls if the info is open)
+        var body = AUI.Scroll(panel, 30, 30, 30, 86);
+        AUI.V(body, 0, 0, 0, 10, 16);
+
+        // Rocket + payload cards
+        var cards = AUI.Rect("Cards", body);
+        AUI.H(cards, 0, 0, 0, 0, 16, TextAnchor.UpperLeft);
+        AUI.LE(cards, -1, 430);
+        conRocket = Card(cards, blue2, out rocketPic);
+        conPayload = Card(cards, blue2, out payloadPic);
+
+        // Info dropdown
+        var infoBtn = AUI.Btn(body, "ROCKET INFO   +", 22, white, blue2, ToggleInfo, -1, 54);
+        infoBtnText = infoBtn.GetComponentInChildren<TextMeshProUGUI>();
+        infoBtnText.alignment = TextAlignmentOptions.MidlineLeft;
+        var ib = AUI.Rect("Info", body);
+        AUI.Img(ib, new Color(0f, 0f, 0f, 0.22f), true);
+        AUI.V(ib, 22, 22, 16, 16, 0);
+        conInfo = AUI.Text(ib, "", 20, white);
+        conInfo.lineSpacing = 8f;
+        infoBox = ib.gameObject;
+
+        // T-minus
+        var row = AUI.Rect("T-minus", body);
+        AUI.H(row, 0, 0, 0, 0, 16);
+        AUI.LE(row, -1, 60);
+        var lab = AUI.Text(row, "T-MINUS (seconds)", 22, white, FontStyles.Bold);
+        lab.fontSize = 24; AUI.LE(lab, 300, 60);
+        lab.alignment = TextAlignmentOptions.MidlineLeft;
+        tMinusField = AUI.Field(row, "10", 24, new Color(0.04f, 0.2f, 0.52f), white);
+        tMinusField.contentType = TMP_InputField.ContentType.IntegerNumber;
+        tMinusField.characterLimit = 2;
+        tMinusField.pointSize = 26;
+        AUI.LE(tMinusField, 160, 58);
+        var hint = AUI.Text(row, "3 to 60. The countdown starts when you press LAUNCH.", 18, new Color(1f, 1f, 1f, 0.75f));
+        AUI.LE(hint, -1, 58, 1); hint.alignment = TextAlignmentOptions.MidlineLeft;
+
+        conMsg = AUI.Text(body, "", 20, white);
+
+        // Launch
+        var launch = AUI.Btn(body, "LAUNCH", 34, white, new Color(0.86f, 0.2f, 0.16f), ConsoleLaunch, -1, 84);
+        launch.GetComponentInChildren<TextMeshProUGUI>().fontSize = 38;
+        var cb = launch.colors; cb.highlightedColor = new Color(1f, 0.85f, 0.85f); launch.colors = cb;
+
+        consoleRoot.SetActive(false);
+    }
+
+    // A card: model picture on the left, white text on the right
+    static TextMeshProUGUI Card(Transform parent, Color bg, out RawImage pic)
+    {
+        var c = AUI.Rect("Card", parent);
+        AUI.Img(c, bg, true);
+        AUI.H(c, 16, 16, 16, 16, 16, TextAnchor.UpperLeft);
+        AUI.LE(c, -1, 430, 1);
+        var picR = AUI.Rect("Model", c);
+        pic = picR.gameObject.AddComponent<RawImage>();
+        pic.raycastTarget = false;
+        AUI.LE(picR, 250, 390);
+        var t = AUI.Text(c, "", 20, Color.white);
+        t.lineSpacing = 10f;
+        AUI.LE(t, -1, 390, 1);
+        t.alignment = TextAlignmentOptions.TopLeft;
+        return t;
     }
 
     bool LookingAtMe()
@@ -371,6 +619,7 @@ public class AscendLaunchController : MonoBehaviour
         promptText.text = "";
         TakeOverPlayer(true);
         SetupWorld();
+        PointMonitorsAt(root);
         SetupCamera();
         SetupSky();
         BuildFuelRows();
@@ -386,14 +635,20 @@ public class AscendLaunchController : MonoBehaviour
         while (t > 0f)
         {
             int s = Mathf.CeilToInt(t);
-            bigText.text = "<size=60%>LAUNCH IN</size>\n" + s;
+            bigText.text = "<size=60%>T-MINUS</size>\n" + s;
             if (KeyDown(KeyCode.Space)) break;
             t -= Time.deltaTime;
             yield return null;
         }
 
         // Ignition
+        // Liquid engines are held down 1.2 s while they reach full thrust.
+        // Solid motors can't be held: they light at release, so a solid-only rocket leaves the pad at once.
+        bool liquidFirst = false;
+        foreach (var e in engines) if (e.grp.stage == 0 && e.grp.attached && !e.dead && !e.solid) liquidFirst = true;
+        holdTime = liquidFirst ? 1.2f : 0f;
         IgniteStage(0, 0f);
+        foreach (var e in engines) if (e.grp.stage == 0 && e.solid) e.igniteTime = holdTime;
         ShowBig("IGNITION!", 1.5f);
         AddLog("Ignition! Engines start up.");
         phase = Phase.Flight;
@@ -406,6 +661,7 @@ public class AscendLaunchController : MonoBehaviour
         Bounds b = rends.Length > 0 ? rends[0].bounds : new Bounds(site.position, Vector3.one);
         foreach (var r in rends) b.Encapsulate(r.bounds);
         rocketHeight = Mathf.Max(5f, b.size.y);
+        focusMid = rocketHeight * 0.5f; focusTop = rocketHeight; focusBottom = 0f;
         basePos = new Vector3(b.center.x, b.min.y, b.center.z);
 
         root = new GameObject("Ascend Flight").transform;
@@ -417,13 +673,28 @@ public class AscendLaunchController : MonoBehaviour
         if (downDir.sqrMagnitude < 1e-4f) downDir = Vector3.right;
         downDir.Normalize();
 
+        // The real-size Philippines under the launch site (with Earth's curve)
+        if (earthMap) Destroy(earthMap);
+        if (showPhilippines)
+        {
+            try { earthMap = AscendEarthMap.Build(new Vector3(basePos.x, groundHeight, basePos.z), launchSiteLatLon.x, launchSiteLatLon.y, customMap, customMapBounds); }
+            catch (Exception e) { Debug.LogWarning("Ascend Flight: Philippines map failed: " + e.Message); }
+            if (showClouds)
+            {
+                if (cloudLayer) Destroy(cloudLayer);
+                try { cloudLayer = AscendEarthMap.BuildClouds(new Vector3(basePos.x, groundHeight, basePos.z), launchSiteLatLon.x, launchSiteLatLon.y); cloudLayer.SetActive(false); }
+                catch (Exception e) { Debug.LogWarning("Ascend Flight: clouds failed: " + e.Message); }
+            }
+        }
+
         // Physics state
         px = 0; py = EarthR; vx = 0; vy = 0;
         tFlight = 0f; tilt = 0f; throttle = 1f; tumbleRate = 0f; curStage = 0;
         liftedOff = stageBurnout = pendingIgnite = fairingGone = maxQSaid = machSaid = throttleSaid = gThrottleSaid = fallingSaid = ended = false;
-        kickStart = -1f; maxQ = maxAlt = maxSpeed = maxG = 0f; warpIndex = 0; engineCut = false;
+        kickStart = -1f; maxQ = maxAlt = maxSpeed = maxG = 0f; warpIndex = 1; engineCut = false;
         mass = TotalMass();
         liftoffTWR = 0f;
+        karmanSaid = false; topLitAt = 0f;
 
         // Exhaust effects on every engine (big clusters share effects to stay fast)
         var perStage = new Dictionary<Grp, int>();
@@ -457,6 +728,32 @@ public class AscendLaunchController : MonoBehaviour
         return Mathf.Max(1f, m);
     }
 
+    float holdTime = 1.2f;
+    bool karmanSaid;
+    float topLitAt, karmanAt;
+
+    bool OrbitSceneOk() => continueInOrbitScene && !string.IsNullOrEmpty(orbitSceneName) && Application.CanStreamedLevelBeLoaded(orbitSceneName);
+
+    // Straight on to the Solar System scene (no fade, no big text): the upper stage + satellite continue in orbit
+    void GoToOrbit()
+    {
+        if (ended) return;
+        ended = true;
+        phase = Phase.Ending;
+        var keep = new List<int>();
+        for (int i = 0; i < P.Length; i++)
+            if (P[i] != null && attached[i] && (grpOf[i] == null || !grpOf[i].side)) keep.Add(i);
+        string kid = $"Your rocket {design.name} reached space and is heading into orbit!";
+        string expert = $"Karman line crossed, upper stage burning at T+{FormatTime(tFlight)}, {speed / 1000f:0.00} km/s, max Q {maxQ / 1000f:0.0} kPa, max {maxG:0.0} g.";
+        SendReport(true, "REACHED SPACE", kid, expert);
+        onReachedSpace?.Invoke();
+        var plan = AscendTrajectoryControl.ConfirmedPlan;
+        AscendOrbitTransfer.Begin(data, design, info.payload, keep, AscendMissionGuide.Mission,
+            plan != null ? plan.targetKm : 700f, SceneManager.GetActiveScene().name, tFlight, maxQ, maxG);
+        TakeOverPlayer(false);
+        SceneManager.LoadScene(orbitSceneName);
+    }
+
     void IgniteStage(int k, float at)
     {
         foreach (var e in engines) if (e.grp.stage == k && e.grp.attached) e.igniteTime = at;
@@ -465,10 +762,17 @@ public class AscendLaunchController : MonoBehaviour
     // ═════════════════════════════════════════════════════════════════════════
     //  FLIGHT LOOP
     // ═════════════════════════════════════════════════════════════════════════
+    void SetWarp(int i) { warpIndex = Mathf.Clamp(i, 0, Warps.Length - 1); }
+
     void FlightUpdate()
     {
-        for (int i = 0; i < Warps.Length; i++) if (KeyDown(KeyCode.Alpha1 + i)) warpIndex = i;
-        if (KeyDown(KeyCode.C)) groundView = !groundView;
+        if (KeyDown(KeyCode.Minus)) SetWarp(warpIndex - 1);
+        if (KeyDown(KeyCode.Equals)) SetWarp(warpIndex + 1);
+        if (KeyDown(KeyCode.Alpha1)) SetCam(1);
+        if (KeyDown(KeyCode.Alpha2)) SetCam(2);
+        if (KeyDown(KeyCode.Alpha3)) SetCam(3);
+        if (KeyDown(KeyCode.C)) SetCam(camMode % 3 + 1);
+        if (KeyDown(KeyCode.H)) ToggleAllWindows();
 
         float sim = Mathf.Min(Time.deltaTime, 0.1f) * Warps[warpIndex];
         while (sim > 0f && phase == Phase.Flight)
@@ -505,9 +809,24 @@ public class AscendLaunchController : MonoBehaviour
 
         // Throttle: ease off for Max Q and high g (liquid engines only, like real rockets)
         float qLimit = QLimit;
-        if (guided && q > qLimit * 0.75f) { throttle = Mathf.Max(0.6f, throttle - 0.6f * dt); if (!throttleSaid && throttle < 0.95f) { throttleSaid = true; AddLog("Easing the engines for Max Q. <color=#9AA0A6>(throttle down)</color>"); } }
-        else if (guided && gNow > 4.5f) { throttle = Mathf.Max(0.4f, throttle - 1f * dt); if (!gThrottleSaid) { gThrottleSaid = true; AddLog("Engines easing off to keep the g-force safe. <color=#9AA0A6>(g-limit throttle)</color>"); } }
-        else throttle = Mathf.Min(1f, throttle + 0.3f * dt);
+        // (same autopilot as the Ascend Mission Simulator, so a GO there means a good flight here)
+        throttle = Mathf.Min(1f, throttle + 0.5f * dt);
+        if (guided)
+        {
+            float fMax = 0f;
+            foreach (var e in engines) if (!e.solid && EngineCanRun(e)) fMax += Mix(e.p.thrustVackN * 1000f, e.p.thrustSLkN * 1000f, pr);
+            if (fMax > 0f)
+            {
+                float gCap = Mathf.Min(4.5f, GLimit * 0.7f);
+                float gThr = Mathf.Clamp(gCap * G0 * TotalMass() / fMax, 0.3f, 1f);
+                if (gThr < throttle) { throttle = gThr; if (!gThrottleSaid && throttle < 0.95f) { gThrottleSaid = true; AddLog("Engines easing off to keep the g-force safe. <color=#9AA0A6>(g-limit throttle)</color>"); } }
+                if (q > qLimit * 0.55f)
+                {
+                    float qThr = Mathf.Clamp(1f - (q - qLimit * 0.55f) / (qLimit * 0.35f), 0.3f, 1f);
+                    if (qThr < throttle) { throttle = qThr; if (!throttleSaid && throttle < 0.95f) { throttleSaid = true; AddLog("Easing the engines for Max Q. <color=#9AA0A6>(throttle down)</color>"); } }
+                }
+            }
+        }
 
         // Thrust: each engine asks its tank for fuel; tanks share between engines
         need.Clear();
@@ -526,8 +845,10 @@ public class AscendLaunchController : MonoBehaviour
             if (need.TryGetValue(e.pool, out var nd) && nd > 0f) scale = Mathf.Clamp01(fuel[e.pool] / nd);
             F += e.thrustN * scale;
             fuel[e.pool] = Mathf.Max(0f, fuel[e.pool] - e.mdot * dt * scale);
+            if (fuel[e.pool] < 0.05f) fuel[e.pool] = 0f;   // a few grams left = empty (rounding can leave crumbs that never reach zero)
         }
         mass = TotalMass();
+        thrustNow = F;
 
         // Guidance: straight up, small pitch kick, then follow the flight path (gravity turn)
         float flightPathDeg = speed > 20f ? Mathf.Atan2(vE, vUp) * Mathf.Rad2Deg : 0f;
@@ -541,11 +862,15 @@ public class AscendLaunchController : MonoBehaviour
         else if (!liftedOff || speed < 60f) want = 0f;
         else
         {
+            // Gravity turn: pitch kick, then follow the airflow, leaning over only as fast as the speed allows
             if (kickStart < 0f) kickStart = tFlight;
-            float maxTilt = Mathf.Lerp(12f, 72f, altitude / 80000f);
-            want = tFlight - kickStart < 6f ? Mathf.Lerp(0f, 4f, (tFlight - kickStart) / 6f) : Mathf.Clamp(flightPathDeg, 0f, maxTilt);
+            float kick = AscendTrajectoryControl.ConfirmedPlan != null ? AscendTrajectoryControl.ConfirmedPlan.kickDeg : 3f;
+            if (tFlight - kickStart < 8f) want = kick * Mathf.Clamp01((tFlight - kickStart) / 4f);
+            else if (altitude < 45000f) want = Mathf.Max(0f, Mathf.Min(flightPathDeg, kick + 80f * Mathf.Clamp01((speed - 60f) / 1600f)));
+            else want = Mathf.Clamp(flightPathDeg, 0f, 88f);
         }
-        tilt = guided ? Mathf.MoveTowards(tilt, want, 3f * dt) : want;
+        bool kicking = guided && !cansat && kickStart >= 0f && tFlight - kickStart < 8f;
+        tilt = guided ? Mathf.MoveTowards(tilt, want, (kicking ? 4f : 15f) * dt) : want;
         float tr = tilt * Mathf.Deg2Rad;
         double tx = ux * Math.Cos(tr) + ex * Math.Sin(tr), ty = uy * Math.Cos(tr) + ey * Math.Sin(tr);
 
@@ -561,7 +886,7 @@ public class AscendLaunchController : MonoBehaviour
         if (!liftedOff)
         {
             float upAcc = F / mass - (float)g;
-            if (tFlight >= 1.2f && upAcc > 0f)
+            if (tFlight >= holdTime && upAcc > 0f)
             {
                 liftedOff = true;
                 liftoffTWR = F / (mass * G0);
@@ -594,21 +919,23 @@ public class AscendLaunchController : MonoBehaviour
 
         // Failures
         float aoa = speed > 30f ? Mathf.Abs(Mathf.DeltaAngle(tilt, flightPathDeg)) : 0f;
-        if (q > qLimit)
+        if (!guided && q > qLimit)
         { Fail("RIPPED APART!", "The air pushed too hard and the rocket broke into pieces.", $"Dynamic pressure {q / 1000f:0.0} kPa exceeded the {qLimit / 1000f:0} kPa structural limit" + (aeroNose ? "." : " (blunt nose: add a nose cone or fairing).") + " Climb more steeply or throttle down through Max Q.", true); return; }
-        if (q * Mathf.Sin(aoa * Mathf.Deg2Rad) > 6000f)
+        if (!guided && q * Mathf.Sin(aoa * Mathf.Deg2Rad) > 6000f)
         { Fail("TURNED SIDEWAYS!", "The rocket couldn't steer, turned sideways and the air ripped it apart.", $"Angle of attack {aoa:0}° at {q / 1000f:0.0} kPa. A rocket needs a flight computer AND an IMU to steer.", true); return; }
-        if (gNow > GLimit)
+        if (!guided && gNow > GLimit)
         { Fail("CRUSHED!", "The rocket sped up so hard that it was crushed by its own push.", $"Axial load {gNow:0.0} g exceeded {GLimit:0} g. Use throttleable liquid engines or a heavier upper stage.", true); return; }
 
         // Staging
         if (liftedOff) Staging();
 
         // Fairing
-        if (!fairingGone && altitude >= fairingJettisonKm * 1000f && fairingParts.Count > 0)
+        // (when the flight continues in orbit, the nose cover stays on and opens there, just before the satellite is released)
+        if (!fairingGone && !OrbitSceneOk() && altitude >= fairingJettisonKm * 1000f && fairingParts.Count > 0 && (curStage > 0 || stageCount == 1))
         {
             fairingGone = true;
             foreach (int i in fairingParts) Detach(i, 4f);
+            RecomputeFocus();
             AddLog("Fairing open! The nose cover falls away. <color=#9AA0A6>(fairing jettison)</color>");
         }
 
@@ -625,7 +952,7 @@ public class AscendLaunchController : MonoBehaviour
         if (!fallingSaid && vUp < 0f && !AnyFuelLeft())
         {
             fallingSaid = true;
-            warpIndex = Mathf.Max(warpIndex, 2);
+            warpIndex = Mathf.Max(warpIndex, 3);
             ShowBig("OUT OF FUEL", 2f);
             AddLog($"Out of fuel! Highest point {maxAlt / 1000f:0.0} km. Falling back to Earth...");
         }
@@ -640,7 +967,16 @@ public class AscendLaunchController : MonoBehaviour
         }
 
         // SPACE!
-        if (!cansat && altitude >= karmanLineKm * 1000f) ReachSpace();
+        if (!cansat && altitude >= karmanLineKm * 1000f)
+        {
+            if (!karmanSaid) { karmanSaid = true; karmanAt = tFlight; AddLog($"Crossed the Karman line ({karmanLineKm:0} km): you're in space!"); }
+            if (!OrbitSceneOk()) { ReachSpace(); return; }
+            // Keep flying until the first stage has dropped and the second stage is burning,
+            // then continue in orbit (Solar System scene) without a break
+            bool topStage = curStage >= stageCount - 1 && !pendingIgnite;
+            bool ready = topStage && tFlight - topLitAt > 5f;
+            if (ready || altitude > 600000f || tFlight - karmanAt > 120f || (!AnyFuelLeft() && vUp < 0f)) { GoToOrbit(); return; }
+        }
     }
 
     // Small rockets are much stronger for their size than big ones (Electron-size = 1x)
@@ -736,6 +1072,7 @@ public class AscendLaunchController : MonoBehaviour
         {
             pendingIgnite = false;
             IgniteStage(curStage, tFlight);
+            topLitAt = tFlight;
             if (engines.Any(e => e.grp.stage == curStage && !e.dead))
                 AddLog($"Stage {curStage + 1} engine on! <color=#9AA0A6>(second-stage ignition)</color>");
         }
@@ -766,6 +1103,26 @@ public class AscendLaunchController : MonoBehaviour
         g.attached = false;
         foreach (int i in g.parts) if (!fairingParts.Contains(i) || g.side) Detach(i, push);
         foreach (var e in g.engines) StopEffects(e);
+        RecomputeFocus();
+    }
+
+    // The cameras look at what is still flying (after a stage drops, that's the upper stage)
+    float focusMid, focusTop, focusBottom;
+    void RecomputeFocus()
+    {
+        if (!root) return;
+        float lo = float.MaxValue, hi = float.MinValue;
+        for (int i = 0; i < partGo.Length; i++)
+        {
+            if (!attached[i] || !partGo[i]) continue;
+            foreach (var r in partGo[i].GetComponentsInChildren<Renderer>())
+            {
+                float y0 = root.InverseTransformPoint(r.bounds.center).y, e = r.bounds.extents.magnitude * 0.6f;
+                lo = Mathf.Min(lo, y0 - e); hi = Mathf.Max(hi, y0 + e);
+            }
+        }
+        if (lo > hi) return;
+        focusBottom = lo; focusTop = hi; focusMid = (lo + hi) * 0.5f;
     }
 
     void Detach(int i, float push)
@@ -855,27 +1212,38 @@ public class AscendLaunchController : MonoBehaviour
             playerCam.enabled = false;
         }
         flightCam.nearClipPlane = 0.5f;
-        flightCam.farClipPlane = 400000f;
+        flightCam.farClipPlane = 3000000f;   // see the whole Philippines and the horizon from high up
         flightCam.fieldOfView = 60f;
         camDist = Mathf.Max(35f, rocketHeight * 1.8f);
         camYaw = Quaternion.LookRotation(-Vector3.Cross(downDir, Vector3.up)).eulerAngles.y;
         camPitch = 6f;
-        groundView = false;
+        camMode = 1;
     }
 
     void UpdateCamera()
     {
         if (!flightCam || !root) return;
-        Vector3 target = root.position + root.up * rocketHeight * 0.5f;
+        Vector3 target = root.position + root.up * focusMid;
 
         if (phase == Phase.Flight || phase == Phase.Countdown)
         {
-            Vector2 md = MouseDelta();
+            Vector2 md = RightMouseHeld() ? MouseDelta() : Vector2.zero;
             camYaw += md.x * 3f; camPitch = Mathf.Clamp(camPitch - md.y * 3f, -60f, 80f);
             camDist = Mathf.Clamp(camDist * (1f - Scroll() * 0.1f), rocketHeight * 0.8f, rocketHeight * 20f + 200f);
         }
 
-        if (groundView)
+        if (camMode == 2)
+        {
+            // Nose camera: on the side of the nose, looking down the rocket at the engines and the Earth
+            Vector3 side = Vector3.Cross(downDir, Vector3.up).normalized;
+            Vector3 sideR = Vector3.ProjectOnPlane(side, root.up).normalized;
+            if (sideR.sqrMagnitude < 0.01f) sideR = root.right;
+            float r = Mathf.Max(0.3f, coreDia * 0.5f);
+            flightCam.transform.position = root.position + root.up * (focusTop - 0.08f * (focusTop - focusBottom)) + sideR * (r + 0.35f);
+            flightCam.transform.rotation = Quaternion.LookRotation(-root.up + sideR * 0.12f, sideR);
+            flightCam.fieldOfView = 75f;
+        }
+        else if (camMode == 3)
         {
             Vector3 side = Vector3.Cross(downDir, Vector3.up);
             Vector3 pos = basePos - downDir * 450f + side * 150f + Vector3.up * 3f;
@@ -893,6 +1261,17 @@ public class AscendLaunchController : MonoBehaviour
             flightCam.transform.LookAt(target);
         }
 
+        float camH = Mathf.Max(0f, flightCam.transform.position.y - groundHeight);
+        flightCam.nearClipPlane = Mathf.Clamp(camDist * 0.01f + camH * 0.0005f, 0.5f, 60f);
+        if (earthMap)
+        {
+            var mp = earthMap.transform.position;
+            mp.y = groundHeight - Mathf.Max(0.4f, camH * 0.02f);
+            earthMap.transform.position = mp;
+        }
+        // Clouds show once you're off the ground (from the pad, the sky already has clouds)
+        if (cloudLayer) cloudLayer.SetActive(camH > 700f);
+
         if (shake > 0f)
         {
             flightCam.transform.position += UnityEngine.Random.insideUnitSphere * shake;
@@ -900,9 +1279,33 @@ public class AscendLaunchController : MonoBehaviour
         }
     }
 
+    void SetCam(int m)
+    {
+        camMode = Mathf.Clamp(m, 1, 3);
+        if (phase == Phase.Flight || phase == Phase.Countdown)
+            ShowBig(camMode == 1 ? "<size=45%>CAMERA 1: CHASE</size>" : camMode == 2 ? "<size=45%>CAMERA 2: NOSE</size>" : "<size=45%>CAMERA 3: GROUND TRACKING</size>", 1.2f);
+    }
+
+    // Point the Mission Control screen's camera (CameraScreen "Track Target") at the rocket
+    void PointMonitorsAt(Transform t)
+    {
+        foreach (var mb in FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None))
+        {
+            if (!mb || mb.GetType().Name != "CameraScreen") continue;
+            var ty = mb.GetType();
+            foreach (var n in new[] { "trackTarget", "TrackTarget", "target" })
+            {
+                var f = ty.GetField(n, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (f != null && f.FieldType == typeof(Transform)) { f.SetValue(mb, t); break; }
+                var pr = ty.GetProperty(n, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+                if (pr != null && pr.CanWrite && pr.PropertyType == typeof(Transform)) { pr.SetValue(mb, t); break; }
+            }
+        }
+    }
+
     void TakeOverPlayer(bool flying)
     {
-        if (flying) { savedLock = Cursor.lockState; savedVisible = Cursor.visible; Cursor.lockState = CursorLockMode.Locked; Cursor.visible = false; }
+        if (flying) { savedLock = Cursor.lockState; savedVisible = Cursor.visible; Cursor.lockState = CursorLockMode.None; Cursor.visible = true; }
         else { Cursor.lockState = savedLock; Cursor.visible = savedVisible; }
         if (disableWhileFlying != null) foreach (var b in disableWhileFlying) if (b) b.enabled = !flying;
         if (hideWhileFlying != null) foreach (var g in hideWhileFlying) if (g) g.SetActive(!flying);
@@ -967,7 +1370,24 @@ public class AscendLaunchController : MonoBehaviour
         {
             ShowBig(successBig, 2f);
             yield return Fade(0f, 1f, 1f);
-            if (root) Destroy(root.gameObject);      // the rocket flies on to the next scene (later)
+
+            // Earth missions: the rocket keeps flying in the Solar System scene
+            if (!cansat && continueInOrbitScene && !string.IsNullOrEmpty(orbitSceneName) && Application.CanStreamedLevelBeLoaded(orbitSceneName))
+            {
+                var keep = new List<int>();
+                int top = stageCount - 1;
+                for (int i = 0; i < P.Length; i++)
+                    if (P[i] != null && stageOf[i] == top && !fairingParts.Contains(i) && (grpOf[i] == null || !grpOf[i].side)) keep.Add(i);
+                var plan = AscendTrajectoryControl.ConfirmedPlan;
+                AscendOrbitTransfer.Begin(data, design, info.payload, keep, AscendMissionGuide.Mission,
+                    plan != null ? plan.targetKm : 700f, SceneManager.GetActiveScene().name, tFlight, maxQ, maxG);
+                TakeOverPlayer(false);
+                SceneManager.LoadScene(orbitSceneName);
+                yield break;
+            }
+            if (!cansat && continueInOrbitScene)
+                Debug.LogWarning($"Ascend Flight: add the '{orbitSceneName}' scene to File > Build Profiles (Scene List) so the flight can continue in orbit.");
+            if (root) Destroy(root.gameObject);
         }
         else
         {
@@ -1010,6 +1430,9 @@ public class AscendLaunchController : MonoBehaviour
         root = null;
         if (flightCam) Destroy(flightCam.gameObject);
         if (playerCam) playerCam.enabled = true;
+        if (earthMap) Destroy(earthMap);
+        if (cloudLayer) Destroy(cloudLayer);
+        earthMap = cloudLayer = null;
         RestoreSky();
         TakeOverPlayer(false);
         foreach (var row in fuelRows) if (row.fill) Destroy(row.fill.parent.parent.gameObject);
@@ -1071,18 +1494,41 @@ public class AscendLaunchController : MonoBehaviour
         int boosters = groups.Count(g => g.side && g.attached);
         stageLabel = $"Stage {curStage + 1} of {stageCount}" + (boosters > 0 ? $"  +  {boosters} booster{(boosters > 1 ? "s" : "")}" : "");
         float qLimit = QLimit;
-        telemetryText.text =
-            $"<color=#9AA0A6>TIME</color>      T+{FormatTime(tFlight)}\n" +
-            $"<color=#9AA0A6>HEIGHT</color>    <b>{altitude / 1000f:0.00} km</b>\n" +
-            $"<color=#9AA0A6>SPEED</color>     <b>{speed * 3.6f:N0} km/h</b>  <size=80%><color=#9AA0A6>Mach {mach:0.0}</color></size>\n" +
-            $"<color=#9AA0A6>G-FORCE</color>   {gNow:0.0} g\n" +
-            $"<color=#9AA0A6>MASS</color>      {AscendReport.Mass(mass)}\n" +
-            $"<color=#9AA0A6>STAGE</color>     {stageLabel}\n" +
-            $"<color=#9AA0A6>AIR PUSH</color>  {q / 1000f:0.0} kPa <size=75%><color=#9AA0A6>(Q, limit {qLimit / 1000f:0})</color></size>";
+        double theta = Math.Atan2(px, py);
+        float downKm = (float)(EarthR * theta) / 1000f;
+        float pres = 101.325f * Mathf.Exp(-altitude / 8000f);
+        float twrNow = mass > 0f ? thrustNow / (mass * G0) : 0f;
+        float pitch = 90f - tilt;
+        float temp = AirTemp(altitude) - 273.15f;
+        float maxThrust = 0f;
+        foreach (var e in engines) if (e.grp.attached && e.grp.stage == curStage && !e.dead) maxThrust += Mathf.Max(e.p.thrustVackN, e.p.thrustSLkN) * 1000f;
 
-        float qf = Mathf.Clamp01(q / qLimit);
-        qFill.anchorMax = new Vector2(qf, 1f);
-        qFillImg.color = qf < 0.6f ? new Color(0.25f, 0.8f, 0.4f) : qf < 0.85f ? new Color(1f, 0.75f, 0.2f) : new Color(1f, 0.3f, 0.25f);
+        metText.text = $"<mspace=0.6em>T+{FormatTime(tFlight)}</mspace>";
+        stageText.text = stageLabel + "   |   " + (liftedOff ? (engines.Any(e => e.lit) ? "<color=#3FB950>ENGINES ON</color>" : "<color=#FFC850>COASTING</color>") : "<color=#FFC850>ON THE PAD</color>");
+
+        string M(string s) => "<mspace=0.56em>" + s + "</mspace>";
+        string U(string s) => " <size=60%><color=#8CB4E6>" + s + "</color></size>";
+        void G(int i, string v, float frac, bool warn = false)
+        {
+            if (i >= gauges.Count) return;
+            gauges[i].value.text = v;
+            gauges[i].fill.anchorMax = new Vector2(Mathf.Clamp01(frac), 1f);
+            gauges[i].img.color = warn ? new Color(1f, 0.35f, 0.3f) : frac > 0.8f ? new Color(1f, 0.75f, 0.25f) : new Color(0.35f, 0.85f, 1f);
+        }
+        G(0, altitude < 10000f ? M($"{altitude:N0}") + U("m") : M($"{altitude / 1000f:0.00}") + U("km"), altitude / (goalKm * 1000f));
+        G(1, M($"{speed * 3.6f:N0}") + U($"km/h  ({speed:N0} m/s)"), speed / 8000f);
+        G(2, M($"{vUp:+0;-0}") + U("m/s"), Mathf.Abs(vUp) / 3000f, vUp < -5f && liftedOff);
+        G(3, M($"{downKm:0.0}") + U("km"), downKm / 500f);
+        G(4, M($"{gNow:0.0}") + U("g"), gNow / GLimit, gNow > GLimit * 0.8f);
+        G(5, M($"{mach:0.00}"), mach / 25f);
+        G(6, M($"{q / 1000f:0.0}") + U($"kPa  (limit {qLimit / 1000f:0})"), q / qLimit, q > qLimit * 0.85f);
+        G(7, M($"{pres:0.00}") + U($"kPa  ({pres / 101.325f * 100f:0.#}% of sea level)"), pres / 101.325f);
+        G(8, M($"{thrustNow / 1000f:N0}") + U("kN"), maxThrust > 0f ? thrustNow / maxThrust : 0f);
+        G(9, M($"{throttle * 100f:0}") + U("%"), throttle);
+        G(10, M(AscendReport.Mass(mass)), 1f);
+        G(11, M($"{twrNow:0.00}"), twrNow / 4f, liftedOff && twrNow > 0f && twrNow < 1f && altitude < 20000f);
+        G(12, M($"{pitch:0.0}") + U("°"), pitch / 90f);
+        G(13, M($"{temp:0}") + U("°C"), Mathf.InverseLerp(-90f, 30f, temp));
 
         foreach (var row in fuelRows)
         {
@@ -1097,7 +1543,7 @@ public class AscendLaunchController : MonoBehaviour
         altFill.anchorMax = new Vector2(af, 1f);
         altLabel.text = cansat ? $"{altitude:N0} m of {goalKm * 1000f:N0} m  <color=#9AA0A6>(CanSat release height)</color>"
                                : $"{altitude / 1000f:0.0} km of {karmanLineKm:0} km  <color=#9AA0A6>(space starts at the Karman line)</color>";
-        warpText.text = $"Time speed {Warps[warpIndex]:0}x   |   1-4 time speed   C camera   Mouse look   Scroll zoom";
+        warpLabel.text = $"TIME  {Warps[warpIndex]:0.0#}x";
     }
 
     void BuildFuelRows()
@@ -1149,55 +1595,107 @@ public class AscendLaunchController : MonoBehaviour
         prt.sizeDelta = new Vector2(1400, 44); prt.anchoredPosition = new Vector2(0, 50);
 
         // HUD
-        var hud = Gui.Rect("HUD", root); Gui.Stretch(hud);
+        var hud = Gui.Rect("HUD", canvasRoot); Gui.Stretch(hud);
         hudRoot = hud.gameObject;
+        Color panelC = new Color(0.02f, 0.07f, 0.16f, 0.9f), accent = new Color(0.35f, 0.85f, 1f), labelC = new Color(0.55f, 0.75f, 0.95f);
 
-        var tele = Gui.Img(hud, new Color(0f, 0f, 0f, 0.85f), 18f).rectTransform;
-        tele.anchorMin = tele.anchorMax = tele.pivot = new Vector2(0f, 1f);
-        tele.sizeDelta = new Vector2(470, 330); tele.anchoredPosition = new Vector2(24, -24);
-        var title = Gui.Text(tele, "FLIGHT DATA", 18, new Color(1f, 0.78f, 0.31f), font, FontStyles.Bold);
-        Gui.Stretch(title.rectTransform, 20, 0, 20, 14); title.alignment = TextAlignmentOptions.TopLeft;
-        telemetryText = Gui.Text(tele, "", 22, Color.white, font);
-        Gui.Stretch(telemetryText.rectTransform, 20, 46, 20, 44); telemetryText.alignment = TextAlignmentOptions.TopLeft;
-        telemetryText.lineSpacing = 6f;
-        var qTrack = Gui.Img(tele, new Color(1f, 1f, 1f, 0.12f), 4f).rectTransform;
-        qTrack.anchorMin = new Vector2(0f, 0f); qTrack.anchorMax = new Vector2(1f, 0f); qTrack.pivot = new Vector2(0.5f, 0f);
-        qTrack.sizeDelta = new Vector2(-40f, 12f); qTrack.anchoredPosition = new Vector2(0f, 22f);
-        qFillImg = Gui.Img(qTrack, new Color(0.25f, 0.8f, 0.4f), 4f);
-        qFill = qFillImg.rectTransform; qFill.anchorMin = Vector2.zero; qFill.anchorMax = new Vector2(0f, 1f); qFill.offsetMin = qFill.offsetMax = Vector2.zero;
+        // FLIGHT COMPUTER (right side): live telemetry from the instruments
+        var fc = Gui.Img(hud, panelC, 14f).rectTransform;
+        fc.anchorMin = new Vector2(1f, 0f); fc.anchorMax = new Vector2(1f, 1f); fc.pivot = new Vector2(1f, 0.5f);
+        fc.sizeDelta = new Vector2(560f, -48f); fc.anchoredPosition = new Vector2(-24f, 0f);
+        var edge = Gui.Img(fc, accent, 0f).rectTransform;
+        edge.anchorMin = new Vector2(0f, 0f); edge.anchorMax = new Vector2(0f, 1f); edge.pivot = new Vector2(0f, 0.5f);
+        edge.sizeDelta = new Vector2(4f, -28f); edge.anchoredPosition = new Vector2(0f, 0f);
+        var fcTitle = Gui.Text(fc, "FLIGHT COMPUTER", 20, accent, font, FontStyles.Bold);
+        Gui.Stretch(fcTitle.rectTransform, 26, 0, 20, 16); fcTitle.alignment = TextAlignmentOptions.TopLeft;
+        fcTitle.characterSpacing = 6f;
+        metText = Gui.Text(fc, "", 44, Color.white, font, FontStyles.Bold);
+        Gui.Stretch(metText.rectTransform, 26, 0, 20, 48); metText.alignment = TextAlignmentOptions.TopLeft;
+        stageText = Gui.Text(fc, "", 18, labelC, font);
+        Gui.Stretch(stageText.rectTransform, 26, 0, 20, 104); stageText.alignment = TextAlignmentOptions.TopLeft;
 
-        fuelPanel = Gui.Img(hud, new Color(0f, 0f, 0f, 0.85f), 18f).rectTransform;
+        string[] names = { "ALTITUDE", "VELOCITY", "VERTICAL SPEED", "DOWNRANGE", "ACCELERATION", "MACH", "DYNAMIC PRESSURE (Q)", "AIR PRESSURE", "THRUST", "THROTTLE", "MASS", "THRUST / WEIGHT", "PITCH (above horizon)", "AIR TEMPERATURE" };
+        gauges.Clear();
+        for (int i = 0; i < names.Length; i++)
+        {
+            int col = i % 2, rowI = i / 2;
+            var tile = Gui.Img(fc, new Color(1f, 1f, 1f, 0.05f), 8f).rectTransform;
+            tile.anchorMin = tile.anchorMax = tile.pivot = new Vector2(0f, 1f);
+            tile.sizeDelta = new Vector2(250f, 82f);
+            tile.anchoredPosition = new Vector2(24f + col * 262f, -140f - rowI * 90f);
+            var lab = Gui.Text(tile, names[i], 13, labelC, font, FontStyles.Bold);
+            Gui.Stretch(lab.rectTransform, 12, 0, 8, 8); lab.alignment = TextAlignmentOptions.TopLeft;
+            var val = Gui.Text(tile, "-", 27, Color.white, font, FontStyles.Bold);
+            Gui.Stretch(val.rectTransform, 12, 14, 8, 26); val.alignment = TextAlignmentOptions.Left;
+            var track = Gui.Img(tile, new Color(1f, 1f, 1f, 0.1f), 2f).rectTransform;
+            track.anchorMin = new Vector2(0f, 0f); track.anchorMax = new Vector2(1f, 0f); track.pivot = new Vector2(0.5f, 0f);
+            track.sizeDelta = new Vector2(-24f, 5f); track.anchoredPosition = new Vector2(0f, 9f);
+            var fillImg = Gui.Img(track, accent, 2f);
+            var fr = fillImg.rectTransform; fr.anchorMin = Vector2.zero; fr.anchorMax = new Vector2(0f, 1f); fr.offsetMin = fr.offsetMax = Vector2.zero;
+            gauges.Add((val, fr, fillImg));
+        }
+
+        // Fuel (inside the flight computer, under the gauges)
+        fuelPanel = Gui.Rect("Fuel", fc);
         fuelPanel.anchorMin = fuelPanel.anchorMax = fuelPanel.pivot = new Vector2(0f, 1f);
-        fuelPanel.sizeDelta = new Vector2(470, 100); fuelPanel.anchoredPosition = new Vector2(24, -370);
-        var ft = Gui.Text(fuelPanel, "FUEL", 18, new Color(1f, 0.78f, 0.31f), font, FontStyles.Bold);
+        fuelPanel.sizeDelta = new Vector2(524f, 100f); fuelPanel.anchoredPosition = new Vector2(16f, -140f - 7 * 90f - 4f);
+        var ft = Gui.Text(fuelPanel, "PROPELLANT", 13, labelC, font, FontStyles.Bold);
         Gui.Stretch(ft.rectTransform, 20, 0, 20, 14); ft.alignment = TextAlignmentOptions.TopLeft;
 
-        var logBox = Gui.Img(hud, new Color(0f, 0f, 0f, 0.85f), 18f).rectTransform;
-        logBox.anchorMin = logBox.anchorMax = logBox.pivot = new Vector2(1f, 1f);
-        logBox.sizeDelta = new Vector2(620, 300); logBox.anchoredPosition = new Vector2(-24, -24);
-        var lt = Gui.Text(logBox, "MISSION LOG", 18, new Color(1f, 0.78f, 0.31f), font, FontStyles.Bold);
+        // Mission log (top left)
+        var logBox = Gui.Img(hud, panelC, 14f).rectTransform;
+        logBox.anchorMin = logBox.anchorMax = logBox.pivot = new Vector2(0f, 1f);
+        logBox.sizeDelta = new Vector2(600, 300); logBox.anchoredPosition = new Vector2(24, -24);
+        var lt = Gui.Text(logBox, "MISSION LOG", 18, accent, font, FontStyles.Bold);
         Gui.Stretch(lt.rectTransform, 20, 0, 20, 14); lt.alignment = TextAlignmentOptions.TopLeft;
         logText = Gui.Text(logBox, "", 19, Color.white, font);
         Gui.Stretch(logText.rectTransform, 20, 14, 20, 46); logText.alignment = TextAlignmentOptions.TopLeft;
         logText.lineSpacing = 4f;
 
-        // Height bar to space
-        var altBox = Gui.Img(hud, new Color(0f, 0f, 0f, 0.85f), 18f).rectTransform;
-        altBox.anchorMin = altBox.anchorMax = altBox.pivot = new Vector2(0.5f, 0f);
-        altBox.sizeDelta = new Vector2(1000, 96); altBox.anchoredPosition = new Vector2(0, 24);
+        // Height bar to the goal (bottom, left of the flight computer)
+        var altBox = Gui.Img(hud, panelC, 14f).rectTransform;
+        altBox.anchorMin = altBox.anchorMax = altBox.pivot = new Vector2(0f, 0f);
+        altBox.sizeDelta = new Vector2(1000, 96); altBox.anchoredPosition = new Vector2(24, 24);
         altLabel = Gui.Text(altBox, "", 20, Color.white, font, FontStyles.Bold);
         Gui.Stretch(altLabel.rectTransform, 24, 40, 24, 12); altLabel.alignment = TextAlignmentOptions.MidlineLeft;
         var altTrack = Gui.Img(altBox, new Color(1f, 1f, 1f, 0.12f), 6f).rectTransform;
         altTrack.anchorMin = new Vector2(0f, 0f); altTrack.anchorMax = new Vector2(1f, 0f); altTrack.pivot = new Vector2(0.5f, 0f);
         altTrack.sizeDelta = new Vector2(-48f, 14f); altTrack.anchoredPosition = new Vector2(0f, 20f);
-        altFill = Gui.Img(altTrack, new Color(0.55f, 0.75f, 1f), 6f).rectTransform;
+        altFill = Gui.Img(altTrack, accent, 6f).rectTransform;
         altFill.anchorMin = Vector2.zero; altFill.anchorMax = new Vector2(0f, 1f); altFill.offsetMin = altFill.offsetMax = Vector2.zero;
 
-        warpText = Gui.Text(hud, "", 16, new Color(1f, 1f, 1f, 0.7f), font);
-        var wrt = warpText.rectTransform;
-        wrt.anchorMin = wrt.anchorMax = wrt.pivot = new Vector2(0.5f, 0f);
-        wrt.sizeDelta = new Vector2(1000, 24); wrt.anchoredPosition = new Vector2(0, 124);
-        warpText.alignment = TextAlignmentOptions.Center;
+        // Time speed: - / + (up to 2x)
+        var warpBox = Gui.Img(hud, panelC, 14f).rectTransform;
+        warpBox.anchorMin = warpBox.anchorMax = warpBox.pivot = new Vector2(0f, 0f);
+        warpBox.sizeDelta = new Vector2(1000, 64); warpBox.anchoredPosition = new Vector2(24, 132);
+        if (font && !AUI.Font) AUI.Font = font;
+        var minus = AUI.Btn(warpBox, "-", 30, Color.white, new Color(0.1f, 0.3f, 0.6f), () => SetWarp(warpIndex - 1), 56, 46);
+        var mrt = (RectTransform)minus.transform; mrt.anchorMin = mrt.anchorMax = mrt.pivot = new Vector2(0f, 0.5f); mrt.sizeDelta = new Vector2(56, 46); mrt.anchoredPosition = new Vector2(12, 0);
+        warpLabel = Gui.Text(warpBox, "", 22, Color.white, font, FontStyles.Bold);
+        var wl = warpLabel.rectTransform; wl.anchorMin = wl.anchorMax = wl.pivot = new Vector2(0f, 0.5f); wl.sizeDelta = new Vector2(190, 46); wl.anchoredPosition = new Vector2(74, 0);
+        warpLabel.alignment = TextAlignmentOptions.Center;
+        var plus = AUI.Btn(warpBox, "+", 30, Color.white, new Color(0.1f, 0.3f, 0.6f), () => SetWarp(warpIndex + 1), 56, 46);
+        var prt2 = (RectTransform)plus.transform; prt2.anchorMin = prt2.anchorMax = prt2.pivot = new Vector2(0f, 0.5f); prt2.sizeDelta = new Vector2(56, 46); prt2.anchoredPosition = new Vector2(270, 0);
+        warpText = Gui.Text(warpBox, "1 chase   2 nose   3 ground camera   |   Hold right mouse: look   Scroll: zoom   - / +: time   H: hide windows", 15, labelC, font);
+        var wrt = warpText.rectTransform; wrt.anchorMin = new Vector2(0f, 0f); wrt.anchorMax = new Vector2(1f, 1f); wrt.offsetMin = new Vector2(344, 0); wrt.offsetMax = new Vector2(-16, 0);
+        warpText.alignment = TextAlignmentOptions.MidlineLeft;
+
+        // Window bar (top middle): show / hide each window
+        windows.Clear();
+        windows.Add(("COMPUTER", fc.gameObject)); windows.Add(("LOG", logBox.gameObject)); windows.Add(("HEIGHT", altBox.gameObject)); windows.Add(("CONTROLS", warpBox.gameObject));
+        var bar = Gui.Img(hud, panelC, 12f).rectTransform;
+        bar.anchorMin = bar.anchorMax = bar.pivot = new Vector2(0.5f, 1f);
+        bar.sizeDelta = new Vector2(134f * (windows.Count + 1) + 16f, 50f); bar.anchoredPosition = new Vector2(20f, -16f);
+        windowBtns.Clear();
+        for (int i = 0; i <= windows.Count; i++)
+        {
+            int k = i;
+            string label = i < windows.Count ? windows[i].name : "HIDE ALL (H)";
+            var b = AUI.Btn(bar, label, 15, Color.white, new Color(0.1f, 0.3f, 0.6f), () => { if (k < windows.Count) ToggleWindow(k); else ToggleAllWindows(); }, 128, 38);
+            var brt = (RectTransform)b.transform; brt.anchorMin = brt.anchorMax = brt.pivot = new Vector2(0f, 0.5f);
+            brt.sizeDelta = new Vector2(128f, 38f); brt.anchoredPosition = new Vector2(8f + i * 134f, 0f);
+            windowBtns.Add(b.GetComponent<Image>());
+        }
 
         // Big center messages
         bigText = Gui.Text(canvasRoot, "", 110, Color.white, font, FontStyles.Bold);
@@ -1220,6 +1718,11 @@ public class AscendLaunchController : MonoBehaviour
         Gui.Stretch(endTitle.rectTransform, 40, 740, 40, 30); endTitle.alignment = TextAlignmentOptions.Center;
         endBody = Gui.Text(card, "", 25, Color.white, font);
         Gui.Stretch(endBody.rectTransform, 60, 30, 60, 140); endBody.alignment = TextAlignmentOptions.Top;
+
+        // Launch Computer screen (above the HUD, below the fade)
+        if (font && !AUI.Font) AUI.Font = font;
+        BuildConsole(canvasRoot);
+        consoleRoot.transform.SetSiblingIndex(f.transform.GetSiblingIndex());
 
     }
 
@@ -1250,6 +1753,15 @@ public class AscendLaunchController : MonoBehaviour
         return Mouse.current != null ? Mouse.current.delta.ReadValue() * 0.05f : Vector2.zero;
 #else
         return new Vector2(Input.GetAxis("Mouse X"), Input.GetAxis("Mouse Y")) * 0.5f;
+#endif
+    }
+
+    static bool RightMouseHeld()
+    {
+#if ENABLE_INPUT_SYSTEM
+        return Mouse.current != null && Mouse.current.rightButton.isPressed;
+#else
+        return Input.GetMouseButton(1);
 #endif
     }
 
@@ -1507,4 +2019,371 @@ public class AscendFlashFade : MonoBehaviour
 {
     public Light flash;
     void Update() { if (flash) flash.intensity = Mathf.MoveTowards(flash.intensity, 0f, Time.deltaTime * 6f); }
+}
+
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  The Philippines seen from the rocket: a real-size map (1 unit = 1 m) bent to Earth's curve,
+//  plus a layer of clouds. Islands come from simplified coastlines (latitude / longitude); mountains,
+//  forests, farmland, cities and the sea depth are painted in code (made in the background, no files needed).
+//  For a photo-real look, put a satellite image of the area in "Custom Map" (e.g. NASA Blue Marble, free).
+// ═════════════════════════════════════════════════════════════════════════════
+public static class AscendEarthMap
+{
+    public const float Lon0 = 110f, Lon1 = 138f, Lat0 = -2f, Lat1 = 26f;   // area covered (wider than the view from 100 km)
+    const double EarthR = 6371000.0;
+    const int W = 2048, H = 2048, CW = 1024;
+    const float CloudHalfKm = 260f;
+    static Texture2D tex, cloudTex;
+    static Material mat, cloudMat;
+    static System.Threading.Tasks.Task<Color32[]> mapJob, cloudJob;
+
+    static readonly float[][] Islands =
+    {
+        // Luzon
+        new float[] { 120.58f,18.5f, 120.8f,18.62f, 121.1f,18.62f, 121.6f,18.36f, 122.05f,18.52f, 122.25f,18.45f, 122.15f,17.9f, 122.2f,17.3f, 122.45f,17.1f, 122.5f,16.6f,
+                      122.2f,16.25f, 121.9f,16.2f, 121.6f,15.9f, 121.55f,15.6f, 121.4f,15.3f, 121.6f,14.9f, 121.65f,14.55f, 121.62f,14.2f, 121.85f,14.0f, 122.2f,13.95f,
+                      122.3f,14.15f, 122.65f,14.2f, 122.9f,14.05f, 123.05f,13.85f, 123.3f,13.95f, 123.55f,13.75f, 123.75f,13.85f, 123.95f,13.75f, 124.15f,13.55f, 124.15f,13.1f,
+                      124.05f,12.75f, 123.95f,12.55f, 123.75f,12.65f, 123.5f,12.9f, 123.25f,13.0f, 123.0f,13.15f, 122.95f,13.45f, 122.7f,13.3f, 122.6f,13.5f, 122.45f,13.75f,
+                      122.25f,13.85f, 122.05f,13.75f, 121.85f,13.7f, 121.6f,13.6f, 121.3f,13.6f, 121.05f,13.7f, 120.95f,13.75f, 120.75f,13.9f, 120.65f,14.15f, 120.6f,14.35f,
+                      120.9f,14.5f, 121.0f,14.55f, 120.85f,14.75f, 120.6f,14.6f, 120.45f,14.45f, 120.3f,14.6f, 120.25f,14.85f, 120.05f,14.95f, 119.95f,15.4f, 119.85f,15.85f,
+                      119.9f,16.2f, 119.95f,16.4f, 120.2f,16.05f, 120.35f,16.1f, 120.3f,16.5f, 120.4f,16.9f, 120.45f,17.4f, 120.4f,17.8f, 120.55f,18.2f },
+        new float[] { 120.3f,13.5f, 120.9f,13.5f, 121.5f,13.1f, 121.4f,12.4f, 121.0f,12.2f, 120.6f,12.6f, 120.4f,13.0f },                              // Mindoro
+        new float[] { 119.5f,11.4f, 119.9f,10.9f, 119.7f,10.4f, 119.0f,10.0f, 118.4f,9.3f, 117.6f,8.6f, 117.2f,8.4f, 117.4f,8.7f, 118.3f,9.7f, 118.8f,10.4f, 119.3f,11.2f }, // Palawan
+        new float[] { 121.9f,11.9f, 122.6f,11.6f, 122.6f,10.7f, 122.0f,10.5f, 121.9f,10.8f, 121.9f,11.4f },                                         // Panay
+        new float[] { 123.0f,10.9f, 123.5f,10.8f, 123.2f,9.9f, 123.2f,9.1f, 122.9f,9.0f, 122.4f,9.6f, 122.4f,10.5f, 122.9f,10.9f },                 // Negros
+        new float[] { 124.0f,11.3f, 124.0f,10.6f, 123.6f,9.6f, 123.3f,9.4f, 123.4f,10.0f, 123.7f,10.6f, 123.9f,11.0f },                             // Cebu
+        new float[] { 123.8f,10.1f, 124.3f,10.2f, 124.6f,9.8f, 124.1f,9.6f, 123.8f,9.6f },                                                          // Bohol
+        new float[] { 124.3f,11.6f, 125.0f,11.3f, 125.1f,10.6f, 125.2f,10.0f, 124.8f,10.0f, 124.7f,10.7f, 124.4f,10.9f, 124.3f,11.3f },             // Leyte
+        new float[] { 124.2f,12.5f, 125.3f,12.5f, 125.7f,11.4f, 125.5f,11.0f, 125.0f,11.3f, 124.6f,11.7f, 124.3f,12.0f },                           // Samar
+        new float[] { 123.2f,12.5f, 123.8f,12.2f, 124.0f,11.9f, 123.6f,11.9f, 123.3f,12.2f },                                                       // Masbate
+        new float[] { 124.0f,14.0f, 124.4f,14.0f, 124.4f,13.6f, 124.1f,13.6f },                                                                     // Catanduanes
+        new float[] { 121.8f,15.0f, 122.2f,14.9f, 122.1f,14.6f, 121.8f,14.7f },                                                                     // Polillo
+        // Mindanao
+        new float[] { 121.9f,6.95f, 122.1f,7.45f, 122.25f,7.8f, 122.6f,8.0f, 123.0f,8.15f, 123.35f,8.6f, 123.75f,8.6f, 123.85f,8.25f, 124.25f,8.2f, 124.55f,8.5f,
+                      124.8f,9.0f, 125.15f,9.0f, 125.45f,9.8f, 125.6f,9.5f, 126.0f,9.3f, 126.2f,9.0f, 126.35f,8.5f, 126.55f,7.8f, 126.6f,7.3f, 126.2f,6.3f,
+                      125.85f,6.95f, 125.65f,7.25f, 125.4f,6.95f, 125.5f,6.4f, 125.4f,5.6f, 125.15f,5.9f, 124.75f,5.9f, 124.2f,6.15f, 124.0f,6.6f, 124.1f,7.15f,
+                      124.3f,7.4f, 123.95f,7.55f, 123.6f,7.75f, 123.4f,7.6f, 123.1f,7.45f, 122.85f,7.45f, 122.5f,7.25f, 122.2f,6.95f },
+        new float[] { 120.8f,6.1f, 121.3f,6.1f, 121.2f,5.8f, 120.9f,5.9f },                                                                         // Jolo
+        new float[] { 121.8f,6.7f, 122.3f,6.7f, 122.2f,6.4f, 121.8f,6.4f },                                                                         // Basilan
+        // Neighbours: Borneo, Taiwan, Sulawesi tip, Halmahera
+        new float[] { 110f,-2f, 110f,1.5f, 111.5f,2.5f, 113.0f,3.2f, 114.0f,4.6f, 115.5f,5.4f, 116.7f,7.0f, 117.5f,6.5f, 118.5f,5.8f, 119.3f,5.2f, 118.3f,4.4f, 117.7f,4.0f, 117.6f,2.5f, 118.9f,1.0f, 117.9f,0.0f, 117.4f,-2f },
+        new float[] { 120.1f,23.0f, 120.7f,22.0f, 120.9f,21.9f, 121.4f,23.0f, 121.9f,24.6f, 121.9f,25.2f, 121.5f,25.3f, 120.7f,24.6f, 120.2f,23.8f },
+        new float[] { 120.4f,1.2f, 122.0f,1.0f, 123.5f,0.9f, 124.5f,1.4f, 125.2f,1.6f, 124.9f,0.6f, 123.5f,0.4f, 121.5f,0.5f, 120.3f,0.3f, 119.7f,-1f, 120.4f,-2f, 121.5f,-2f, 120.9f,-0.6f },
+        new float[] { 127.5f,2.2f, 128.0f,1.6f, 128.7f,1.3f, 128.0f,0.8f, 127.9f,0.0f, 127.4f,0.6f, 127.6f,1.2f },
+    };
+
+    // Big cities (longitude, latitude, size)
+    static readonly float[] Cities = { 121.0f,14.6f,1.6f, 123.9f,10.3f,0.8f, 125.6f,7.1f,0.8f, 122.55f,10.7f,0.45f, 122.95f,10.67f,0.4f,
+                                       124.65f,8.48f,0.45f, 122.07f,6.92f,0.4f, 120.6f,16.4f,0.35f, 120.6f,15.15f,0.45f, 121.17f,13.95f,0.35f };
+
+    // Start painting in the background (call early, e.g. when the scene starts)
+    public static void Prepare()
+    {
+        if (mapJob == null && !tex) mapJob = System.Threading.Tasks.Task.Run(() => PaintMap());
+        if (cloudJob == null && !cloudTex) cloudJob = System.Threading.Tasks.Task.Run(() => PaintClouds());
+    }
+
+    public static GameObject Build(Vector3 site, float lat, float lon, Texture2D custom, Vector4 customBounds)
+    {
+        var go = new GameObject("Philippines (real size)");
+        go.transform.position = site;
+        var mf = go.AddComponent<MeshFilter>();
+        var mr = go.AddComponent<MeshRenderer>();
+        mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        mr.receiveShadows = false;
+        bool useCustom = custom && customBounds.z > customBounds.x && customBounds.w > customBounds.y;
+        mf.sharedMesh = useCustom ? MakeMesh(lat, lon, customBounds.x, customBounds.z, customBounds.y, customBounds.w, 0.0)
+                                  : MakeMesh(lat, lon, Lon0, Lon1, Lat0, Lat1, 0.0);
+        mr.sharedMaterial = useCustom ? Opaque(custom, "Custom Map") : GetMaterial();
+        return go;
+    }
+
+    // Cloud layer about 2.5 km up, around the launch site
+    public static GameObject BuildClouds(Vector3 site, float lat, float lon)
+    {
+        var go = new GameObject("Clouds");
+        go.transform.position = site + Vector3.up * 2500f;
+        var mf = go.AddComponent<MeshFilter>();
+        var mr = go.AddComponent<MeshRenderer>();
+        mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        mr.receiveShadows = false;
+        float dLat = CloudHalfKm / 111.2f, dLon = dLat / Mathf.Cos(lat * Mathf.Deg2Rad);
+        mf.sharedMesh = MakeMesh(lat, lon, lon - dLon, lon + dLon, lat - dLat, lat + dLat, 2500.0);
+        mr.sharedMaterial = GetCloudMaterial();
+        return go;
+    }
+
+    // A grid over the area; each point placed at its real distance from the launch site and dropped for Earth's curve
+    static Mesh MakeMesh(float lat0, float lon0, float lonA, float lonB, float latA, float latB, double height)
+    {
+        const int N = 160;
+        var v = new Vector3[(N + 1) * (N + 1)];
+        var uv = new Vector2[v.Length];
+        double kLat = Math.PI * EarthR / 180.0, R = EarthR + height;
+        for (int j = 0; j <= N; j++)
+        for (int i = 0; i <= N; i++)
+        {
+            float lon = Mathf.Lerp(lonA, lonB, i / (float)N), lat = Mathf.Lerp(latA, latB, j / (float)N);
+            double north = (lat - lat0) * kLat;
+            double east = (lon - lon0) * kLat * Math.Cos(lat * Math.PI / 180.0);
+            double drop = (north * north + east * east) / (2.0 * R);
+            v[j * (N + 1) + i] = new Vector3((float)east, (float)-drop, (float)north);
+            uv[j * (N + 1) + i] = new Vector2(i / (float)N, j / (float)N);
+        }
+        var tri = new int[N * N * 6];
+        int t = 0;
+        for (int j = 0; j < N; j++)
+        for (int i = 0; i < N; i++)
+        {
+            int a = j * (N + 1) + i, b = a + 1, c = a + N + 1, d = c + 1;
+            tri[t++] = a; tri[t++] = c; tri[t++] = b;
+            tri[t++] = b; tri[t++] = c; tri[t++] = d;
+        }
+        var m = new Mesh { name = "Earth patch" };
+        m.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
+        m.vertices = v; m.uv = uv; m.triangles = tri;
+        m.RecalculateNormals();
+        m.bounds = new Bounds(Vector3.zero, Vector3.one * 8000000f);
+        return m;
+    }
+
+    static Shader FindShader(params string[] names)
+    {
+        foreach (var n in names) { var sh = Shader.Find(n); if (sh) return sh; }
+        return null;
+    }
+
+    static Material Opaque(Texture t, string name)
+    {
+        var m = new Material(FindShader("Universal Render Pipeline/Unlit", "Unlit/Texture", "Universal Render Pipeline/Lit", "Standard")) { name = name };
+        if (m.HasProperty("_BaseMap")) m.SetTexture("_BaseMap", t);
+        if (m.HasProperty("_MainTex")) m.SetTexture("_MainTex", t);
+        if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", Color.white);
+        if (m.HasProperty("_Color")) m.SetColor("_Color", Color.white);
+        return m;
+    }
+
+    static Material GetMaterial()
+    {
+        if (mat) return mat;
+        if (!tex)
+        {
+            Prepare();
+            var px = mapJob.Result;   // waits only if the background painting isn't finished yet
+            tex = new Texture2D(W, H, TextureFormat.RGBA32, true) { name = "Philippines", wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Trilinear, anisoLevel = 8 };
+            tex.SetPixels32(px); tex.Apply(true, true);
+            mapJob = null;
+        }
+        mat = Opaque(tex, "Philippines Map");
+        return mat;
+    }
+
+    static Material GetCloudMaterial()
+    {
+        if (cloudMat) return cloudMat;
+        if (!cloudTex)
+        {
+            Prepare();
+            var px = cloudJob.Result;
+            cloudTex = new Texture2D(CW, CW, TextureFormat.RGBA32, true) { name = "Clouds", wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Trilinear, anisoLevel = 4 };
+            cloudTex.SetPixels32(px); cloudTex.Apply(true, true);
+            cloudJob = null;
+        }
+        var sh = FindShader("Universal Render Pipeline/Unlit", "Unlit/Transparent", "Sprites/Default");
+        var m = new Material(sh) { name = "Clouds" };
+        if (m.HasProperty("_BaseMap")) m.SetTexture("_BaseMap", cloudTex);
+        if (m.HasProperty("_MainTex")) m.SetTexture("_MainTex", cloudTex);
+        if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", Color.white);
+        // URP transparent setup
+        if (m.HasProperty("_Surface")) m.SetFloat("_Surface", 1f);
+        if (m.HasProperty("_Blend")) m.SetFloat("_Blend", 0f);
+        if (m.HasProperty("_Cull")) m.SetFloat("_Cull", 0f);
+        if (m.HasProperty("_SrcBlend")) m.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
+        if (m.HasProperty("_DstBlend")) m.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+        if (m.HasProperty("_ZWrite")) m.SetFloat("_ZWrite", 0f);
+        m.SetOverrideTag("RenderType", "Transparent");
+        m.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+        m.renderQueue = 3000;
+        cloudMat = m;
+        return m;
+    }
+
+    // ───────────── painting (runs on a background thread: plain C# only) ─────────────
+    static Color32[] PaintMap()
+    {
+        var land = new float[W * H];
+        foreach (var poly in Islands) Fill(poly, land, W, H);
+        var soft = Blur(land, W, H, 3);
+        var mid = Blur(land, W, H, 14);
+        var wide = Blur(land, W, H, 40);
+
+        // Height: mountains run along the middle of the islands
+        var height = new float[W * H];
+        for (int y = 0; y < H; y++)
+        for (int x = 0; x < W; x++)
+        {
+            int k = y * W + x;
+            if (soft[k] < 0.5f) continue;
+            float fx = x / (float)W * 90f, fy = y / (float)H * 90f;
+            float ridge = 1f - Math.Abs(Noise(fx * 0.9f, fy * 0.9f) * 2f - 1f);
+            float n = Fbm(fx, fy, 5);
+            float inland = Clamp01((mid[k] - 0.45f) * 2.2f) * 0.6f + Clamp01((wide[k] - 0.35f) * 2f) * 0.4f;
+            height[k] = inland * (0.25f + 0.45f * n + 0.3f * ridge * ridge);
+        }
+
+        Color deep = C(3, 18, 52), sea = C(8, 42, 92), shallow = C(28, 120, 140), reef = C(60, 165, 170);
+        Color farm = C(96, 122, 58), farm2 = C(120, 128, 70), forest = C(28, 70, 30), jungle = C(18, 52, 22), rock = C(98, 88, 66), peak = C(130, 120, 104), sand = C(205, 190, 150), city = C(120, 118, 112);
+        var px = new Color32[W * H];
+        for (int y = 0; y < H; y++)
+        for (int x = 0; x < W; x++)
+        {
+            int k = y * W + x;
+            float fx = x / (float)W * 90f, fy = y / (float)H * 90f;
+            Color c;
+            if (soft[k] >= 0.5f)
+            {
+                float h = height[k];
+                float n2 = Noise(fx * 7f + 3f, fy * 7f + 9f);
+                c = Lerp(Lerp(farm, farm2, n2), forest, Smooth(0.18f, 0.35f, h));
+                c = Lerp(c, jungle, Smooth(0.35f, 0.5f, h) * 0.8f);
+                c = Lerp(c, rock, Smooth(0.55f, 0.7f, h));
+                c = Lerp(c, peak, Smooth(0.72f, 0.85f, h));
+                c = Lerp(sand, c, Clamp01((soft[k] - 0.5f) * 8f));
+                // light from the north-west gives the mountains shape
+                int xa = Math.Max(0, x - 1), xb = Math.Min(W - 1, x + 1), ya = Math.Min(H - 1, y + 1), yb = Math.Max(0, y - 1);
+                float shade = 1f + (height[ya * W + xa] - height[yb * W + xb]) * 26f;
+                c *= Math.Max(0.55f, Math.Min(1.35f, shade));
+                // cities
+                float lon = Lon0 + (x + 0.5f) / W * (Lon1 - Lon0), lat = Lat0 + (y + 0.5f) / H * (Lat1 - Lat0);
+                for (int i = 0; i < Cities.Length; i += 3)
+                {
+                    float dx = (lon - Cities[i]) / (Cities[i + 2] * 0.12f), dy = (lat - Cities[i + 1]) / (Cities[i + 2] * 0.12f);
+                    float d2 = dx * dx + dy * dy;
+                    if (d2 < 4f) c = Lerp(c, city, (float)Math.Exp(-d2 * 1.4f) * (0.55f + 0.45f * Noise(fx * 40f, fy * 40f)));
+                }
+            }
+            else
+            {
+                float near = Clamp01(wide[k] * 2.5f);
+                c = Lerp(deep, sea, Smooth(0f, 0.6f, near));
+                c = Lerp(c, shallow, Smooth(0.12f, 0.45f, mid[k]));
+                c = Lerp(c, reef, Smooth(0.3f, 0.5f, soft[k]) * 0.8f);
+                c *= 0.94f + Noise(fx * 3f, fy * 3f) * 0.12f;
+            }
+            // thin far-away clouds (the real cloud layer is drawn separately near the launch site)
+            float cl = Fbm(fx * 0.5f + 40f, fy * 0.5f + 7f, 5);
+            c = Lerp(c, new Color(0.93f, 0.94f, 0.96f), Smooth(0.58f, 0.78f, cl) * 0.55f);
+            px[k] = new Color32((byte)(Clamp01(c.r) * 255), (byte)(Clamp01(c.g) * 255), (byte)(Clamp01(c.b) * 255), 255);
+        }
+        return px;
+    }
+
+    static Color32[] PaintClouds()
+    {
+        var px = new Color32[CW * CW];
+        for (int y = 0; y < CW; y++)
+        for (int x = 0; x < CW; x++)
+        {
+            float fx = x / (float)CW * 40f, fy = y / (float)CW * 40f;
+            float big = Fbm(fx * 0.25f + 11f, fy * 0.25f + 3f, 3);                  // where the cloud fields are
+            float puff = Fbm(fx + 5f, fy + 17f, 6);                                  // the puffy cumulus
+            float d = puff * 0.75f + big * 0.45f - 0.55f;
+            float a = Smooth(0.0f, 0.22f, d);
+            // fade out at the edge of the layer
+            float ex = Math.Abs(x / (float)CW * 2f - 1f), ey = Math.Abs(y / (float)CW * 2f - 1f);
+            a *= 1f - Smooth(0.75f, 1f, Math.Max(ex, ey));
+            float shade = 0.78f + 0.22f * Smooth(0.05f, 0.35f, d);                  // thick middles are brighter on top
+            byte g = (byte)(Clamp01(shade) * 255);
+            px[y * CW + x] = new Color32(g, g, (byte)Math.Min(255, g + 6), (byte)(Clamp01(a * 0.92f) * 255));
+        }
+        return px;
+    }
+
+    static Color C(int r, int g, int b) => new Color(r / 255f, g / 255f, b / 255f);
+    static Color Lerp(Color a, Color b, float t) { t = Clamp01(t); return new Color(a.r + (b.r - a.r) * t, a.g + (b.g - a.g) * t, a.b + (b.b - a.b) * t, 1f); }
+    static float Clamp01(float v) => v < 0f ? 0f : v > 1f ? 1f : v;
+    static float Smooth(float a, float b, float v) { float t = Clamp01((v - a) / (b - a)); return t * t * (3f - 2f * t); }
+
+    // Value noise (plain C#, safe on any thread)
+    static float Hash(int x, int y)
+    {
+        unchecked
+        {
+            uint h = (uint)(x * 374761393 + y * 668265263);
+            h = (h ^ (h >> 13)) * 1274126177u;
+            return ((h ^ (h >> 16)) & 0xFFFFFF) / 16777215f;
+        }
+    }
+
+    static float Noise(float x, float y)
+    {
+        int xi = (int)Math.Floor(x), yi = (int)Math.Floor(y);
+        float tx = x - xi, ty = y - yi;
+        tx = tx * tx * (3f - 2f * tx); ty = ty * ty * (3f - 2f * ty);
+        float a = Hash(xi, yi), b = Hash(xi + 1, yi), c = Hash(xi, yi + 1), d = Hash(xi + 1, yi + 1);
+        return (a + (b - a) * tx) + ((c + (d - c) * tx) - (a + (b - a) * tx)) * ty;
+    }
+
+    static float Fbm(float x, float y, int oct)
+    {
+        float sum = 0f, amp = 0.5f, norm = 0f;
+        for (int i = 0; i < oct; i++) { sum += Noise(x, y) * amp; norm += amp; x = x * 2.03f + 17.1f; y = y * 2.03f + 5.3f; amp *= 0.5f; }
+        return sum / norm;
+    }
+
+    // Fill one coastline polygon (scanline: find where each row crosses the coast, fill between pairs)
+    static void Fill(float[] poly, float[] land, int W, int H)
+    {
+        int n = poly.Length / 2;
+        var xs = new List<float>();
+        float minY = float.MaxValue, maxY = float.MinValue;
+        for (int i = 0; i < n; i++) { float y = Row(poly[i * 2 + 1], H); minY = Math.Min(minY, y); maxY = Math.Max(maxY, y); }
+        for (int row = Math.Max(0, (int)Math.Floor(minY)); row <= Math.Min(H - 1, (int)Math.Ceiling(maxY)); row++)
+        {
+            float yc = row + 0.5f;
+            xs.Clear();
+            for (int i = 0; i < n; i++)
+            {
+                int j = (i + 1) % n;
+                float x1 = Col(poly[i * 2], W), y1 = Row(poly[i * 2 + 1], H), x2 = Col(poly[j * 2], W), y2 = Row(poly[j * 2 + 1], H);
+                if ((y1 <= yc && y2 > yc) || (y2 <= yc && y1 > yc)) xs.Add(x1 + (yc - y1) / (y2 - y1) * (x2 - x1));
+            }
+            xs.Sort();
+            for (int k = 0; k + 1 < xs.Count; k += 2)
+                for (int x = Math.Max(0, (int)Math.Ceiling(xs[k])); x <= Math.Min(W - 1, (int)Math.Floor(xs[k + 1])); x++)
+                    land[row * W + x] = 1f;
+        }
+    }
+
+    static float Col(float lon, int W) => (lon - Lon0) / (Lon1 - Lon0) * W;
+    static float Row(float lat, int H) => (lat - Lat0) / (Lat1 - Lat0) * H;
+
+    // Fast box blur (two passes, running sums)
+    static float[] Blur(float[] src, int W, int H, int r)
+    {
+        var tmp = new float[W * H]; var dst = new float[W * H];
+        float inv = 1f / (2 * r + 1);
+        for (int y = 0; y < H; y++)
+        {
+            float sum = 0f;
+            for (int x = -r; x <= r; x++) sum += src[y * W + Math.Max(0, Math.Min(W - 1, x))];
+            for (int x = 0; x < W; x++)
+            {
+                tmp[y * W + x] = sum * inv;
+                sum += src[y * W + Math.Min(W - 1, x + r + 1)] - src[y * W + Math.Max(0, x - r)];
+            }
+        }
+        for (int x = 0; x < W; x++)
+        {
+            float sum = 0f;
+            for (int y = -r; y <= r; y++) sum += tmp[Math.Max(0, Math.Min(H - 1, y)) * W + x];
+            for (int y = 0; y < H; y++)
+            {
+                dst[y * W + x] = sum * inv;
+                sum += tmp[Math.Min(H - 1, y + r + 1) * W + x] - tmp[Math.Max(0, y - r) * W + x];
+            }
+        }
+        return dst;
+    }
 }

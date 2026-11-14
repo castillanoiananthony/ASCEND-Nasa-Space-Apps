@@ -25,7 +25,7 @@ MonoBehaviour:
   sunlitFraction: 0.62
   powerMargin: 1.2
   maxDiameterStepRatio: 1.25
-  launchSitePosition: {x: 0, y: 1, z: 0}
+  launchSitePosition: {x: -15, y: 0, z: 300}
   replacePreviousRocket: 1
   uiFontScale: 1.3
   sandboxMode: 0
@@ -143,7 +143,7 @@ MonoBehaviour:
     source: 'Thrust/Isp: Rocket Lab; vac Isp, mass & cost est.'
     modelPrefab: {fileID: 0}
     tintPrefab: 0
-    defaultColor: {r: 0.32, g: 0.32, b: 0.34, a: 1}
+    defaultColor: {r: 0.47, g: 0.44, b: 0.41, a: 1}
     diameter: 0.32
     topDiameter: -1
     length: 0.9
@@ -182,7 +182,7 @@ MonoBehaviour:
     source: SpaceX public figures; cost est. ~$1M
     modelPrefab: {fileID: 0}
     tintPrefab: 0
-    defaultColor: {r: 0.32, g: 0.32, b: 0.34, a: 1}
+    defaultColor: {r: 0.47, g: 0.44, b: 0.41, a: 1}
     diameter: 0.92
     topDiameter: -1
     length: 2.9
@@ -221,7 +221,7 @@ MonoBehaviour:
     source: CALT public figures; mass, dims & cost est.
     modelPrefab: {fileID: 0}
     tintPrefab: 0
-    defaultColor: {r: 0.32, g: 0.32, b: 0.34, a: 1}
+    defaultColor: {r: 0.47, g: 0.44, b: 0.41, a: 1}
     diameter: 1.25
     topDiameter: -1
     length: 3
@@ -260,7 +260,7 @@ MonoBehaviour:
     source: 'Thrust: Blue Origin; Isp, mass & cost est.'
     modelPrefab: {fileID: 0}
     tintPrefab: 0
-    defaultColor: {r: 0.32, g: 0.32, b: 0.34, a: 1}
+    defaultColor: {r: 0.47, g: 0.44, b: 0.41, a: 1}
     diameter: 1.8
     topDiameter: -1
     length: 5
@@ -299,7 +299,7 @@ MonoBehaviour:
     source: SpaceX public figures; vac thrust & cost est.
     modelPrefab: {fileID: 0}
     tintPrefab: 0
-    defaultColor: {r: 0.32, g: 0.32, b: 0.34, a: 1}
+    defaultColor: {r: 0.47, g: 0.44, b: 0.41, a: 1}
     diameter: 1.3
     topDiameter: -1
     length: 3.1
@@ -338,7 +338,7 @@ MonoBehaviour:
     source: ArianeGroup public figures; SL values & cost est.
     modelPrefab: {fileID: 0}
     tintPrefab: 0
-    defaultColor: {r: 0.32, g: 0.32, b: 0.34, a: 1}
+    defaultColor: {r: 0.47, g: 0.44, b: 0.41, a: 1}
     diameter: 2.1
     topDiameter: -1
     length: 3.4
@@ -377,7 +377,7 @@ MonoBehaviour:
     source: NASA / L3Harris; ~$100M per new engine reported
     modelPrefab: {fileID: 0}
     tintPrefab: 0
-    defaultColor: {r: 0.32, g: 0.32, b: 0.34, a: 1}
+    defaultColor: {r: 0.47, g: 0.44, b: 0.41, a: 1}
     diameter: 2.3
     topDiameter: -1
     length: 4.3
@@ -416,7 +416,7 @@ MonoBehaviour:
     source: NASA historical; modern cost est.
     modelPrefab: {fileID: 0}
     tintPrefab: 0
-    defaultColor: {r: 0.32, g: 0.32, b: 0.34, a: 1}
+    defaultColor: {r: 0.47, g: 0.44, b: 0.41, a: 1}
     diameter: 3.7
     topDiameter: -1
     length: 5.8
@@ -455,7 +455,7 @@ MonoBehaviour:
     source: Rocket Lab; mass & cost est.
     modelPrefab: {fileID: 0}
     tintPrefab: 0
-    defaultColor: {r: 0.32, g: 0.32, b: 0.34, a: 1}
+    defaultColor: {r: 0.47, g: 0.44, b: 0.41, a: 1}
     diameter: 0.65
     topDiameter: -1
     length: 1.3
@@ -494,7 +494,7 @@ MonoBehaviour:
     source: Aerojet public figures; dims & cost est.
     modelPrefab: {fileID: 0}
     tintPrefab: 0
-    defaultColor: {r: 0.32, g: 0.32, b: 0.34, a: 1}
+    defaultColor: {r: 0.47, g: 0.44, b: 0.41, a: 1}
     diameter: 1.5
     topDiameter: -1
     length: 2.7
@@ -533,7 +533,7 @@ MonoBehaviour:
     source: L3Harris public figures; cost est.
     modelPrefab: {fileID: 0}
     tintPrefab: 0
-    defaultColor: {r: 0.32, g: 0.32, b: 0.34, a: 1}
+    defaultColor: {r: 0.47, g: 0.44, b: 0.41, a: 1}
     diameter: 1.45
     topDiameter: -1
     length: 2.2
@@ -572,7 +572,7 @@ MonoBehaviour:
     source: SpaceX public figures; mass, dims & cost est.
     modelPrefab: {fileID: 0}
     tintPrefab: 0
-    defaultColor: {r: 0.32, g: 0.32, b: 0.34, a: 1}
+    defaultColor: {r: 0.47, g: 0.44, b: 0.41, a: 1}
     diameter: 3.3
     topDiameter: -1
     length: 4.4
@@ -611,7 +611,7 @@ MonoBehaviour:
     source: SpaceX; mass, dims & cost est.
     modelPrefab: {fileID: 0}
     tintPrefab: 0
-    defaultColor: {r: 0.32, g: 0.32, b: 0.34, a: 1}
+    defaultColor: {r: 0.47, g: 0.44, b: 0.41, a: 1}
     diameter: 2.3
     topDiameter: -1
     length: 4.6
@@ -5861,7 +5861,7 @@ MonoBehaviour:
     volumeL: 0
     internalVolumeL: 0
     crossfeed: 0
-    maxPayloadKg: 500
+    maxPayloadKg: 300
     innerDiameter: 1.056
     innerHeight: 1.9499999
   - id: fair.1.8
@@ -5900,7 +5900,7 @@ MonoBehaviour:
     volumeL: 0
     internalVolumeL: 0
     crossfeed: 0
-    maxPayloadKg: 1500
+    maxPayloadKg: 1000
     innerDiameter: 1.584
     innerHeight: 2.8079998
   - id: fair.2.5
@@ -5939,7 +5939,7 @@ MonoBehaviour:
     volumeL: 0
     internalVolumeL: 0
     crossfeed: 0
-    maxPayloadKg: 3600
+    maxPayloadKg: 4000
     innerDiameter: 2.2
     innerHeight: 4.68
   - id: fair.3.7
@@ -5978,7 +5978,7 @@ MonoBehaviour:
     volumeL: 0
     internalVolumeL: 0
     crossfeed: 0
-    maxPayloadKg: 9900
+    maxPayloadKg: 10000
     innerDiameter: 3.256
     innerHeight: 7.41
   - id: fair.5.2
@@ -6017,7 +6017,7 @@ MonoBehaviour:
     volumeL: 0
     internalVolumeL: 0
     crossfeed: 0
-    maxPayloadKg: 24000
+    maxPayloadKg: 22000
     innerDiameter: 4.5759997
     innerHeight: 10.217999
   - id: paf.small
@@ -7163,7 +7163,7 @@ MonoBehaviour:
     source: NASA historical; modern cost est.
     modelPrefab: {fileID: 0}
     tintPrefab: 0
-    defaultColor: {r: 0.32, g: 0.32, b: 0.34, a: 1}
+    defaultColor: {r: 0.47, g: 0.44, b: 0.41, a: 1}
     diameter: 2
     topDiameter: -1
     length: 3.4
@@ -12260,4 +12260,4 @@ MonoBehaviour:
     maxPayloadKg: 8000
     innerDiameter: 0
     innerHeight: 0
-  catalogVersion: 5
+  catalogVersion: 7

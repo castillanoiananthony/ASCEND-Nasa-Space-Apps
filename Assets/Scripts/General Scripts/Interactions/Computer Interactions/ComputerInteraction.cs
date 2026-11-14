@@ -80,6 +80,9 @@ public class ComputerInteraction : MonoBehaviour
     public string promptText = "Press E to interact";
     public TMP_FontAsset promptFont;    // None = TextMeshPro default font (used for all computer text)
     public float fontSize = 28f;
+    [Tooltip("Size of all text on the computer: desktop, taskbar, window titles, Googel, AscendCAD, PhMail and the Mission Simulator.")]
+    [Range(12f, 32f)] public float uiTextSize = 20f;
+    public static float UiText = 20f;
     public Color textColor = Color.white;
     [Range(-1f, 1f)] public float faceThickness = 0f; // negative = thinner text
     public Vector2 screenOffset = new Vector2(0f, 120f); // pixels up from bottom center
@@ -222,6 +225,7 @@ public class ComputerInteraction : MonoBehaviour
         cam = Camera.main;
         Debug.Log("ComputerInteraction: desktop double-click fix v3 is running.");
         if (computerCanvas) computerCanvas.SetActive(false);
+        UiText = uiTextSize; AUI.FixedFontSize = uiTextSize;
         EnsureMailApp();
         EnsureSimulatorApp();
         CreatePrompt();
@@ -591,7 +595,8 @@ public class ComputerInteraction : MonoBehaviour
             icon.pivot = new Vector2(0.5f, 1f);
             icon.anchoredPosition = new Vector2(0f, -8f);
 
-            var label = CreateText("Label", cell, app.name, 15f);
+            var label = CreateText("Label", cell, app.name, UiText);
+            label.enableAutoSizing = true; label.fontSizeMax = UiText; label.fontSizeMin = 11f;
             label.alignment = TextAlignmentOptions.Top;
             label.overflowMode = TextOverflowModes.Truncate;
             var lrt = label.rectTransform;
@@ -663,7 +668,7 @@ public class ComputerInteraction : MonoBehaviour
 
         var battery = CreateRow("Battery", tray, TextAnchor.MiddleLeft, 4f);
         AddTrayIcon(battery, batteryIcon ? batteryIcon : BatterySprite, 26f, 26f);
-        var pct = CreateText("Percent", battery, "100%", 15f);
+        var pct = CreateText("Percent", battery, "100%", UiText);
         pct.textWrappingMode = TextWrappingModes.NoWrap;
 
         var clock = CreateRect("Clock", tray);
@@ -672,8 +677,8 @@ public class ComputerInteraction : MonoBehaviour
         vl.childControlWidth = vl.childControlHeight = true;
         vl.childForceExpandWidth = vl.childForceExpandHeight = false;
 
-        timeLabel = CreateText("Time", clock, "", 15f);
-        dateLabel = CreateText("Date", clock, "", 13f);
+        timeLabel = CreateText("Time", clock, "", UiText);
+        dateLabel = CreateText("Date", clock, "", UiText);
         foreach (var t in new[] { timeLabel, dateLabel })
         {
             t.alignment = TextAlignmentOptions.Right;
@@ -705,7 +710,7 @@ public class ComputerInteraction : MonoBehaviour
         var fitter = pill.gameObject.AddComponent<ContentSizeFitter>();
         fitter.horizontalFit = fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
-        toastLabel = CreateText("Text", pill, "", 16f);
+        toastLabel = CreateText("Text", pill, "", UiText);
         toastLabel.textWrappingMode = TextWrappingModes.NoWrap;
         toastRoot = pill.gameObject;
         toastRoot.SetActive(false);
@@ -756,7 +761,7 @@ public class ComputerInteraction : MonoBehaviour
         icon.anchorMin = icon.anchorMax = new Vector2(0f, 0.5f);
         icon.anchoredPosition = new Vector2(20f, 0f);
 
-        var title = CreateText("Title", bar, app.name, 15f);
+        var title = CreateText("Title", bar, app.name, UiText);
         title.alignment = TextAlignmentOptions.MidlineLeft;
         title.textWrappingMode = TextWrappingModes.NoWrap;
         title.overflowMode = TextOverflowModes.Truncate;
@@ -768,7 +773,7 @@ public class ComputerInteraction : MonoBehaviour
         // Close button (far right)
         var close = CreateTitleBarButton(bar, "Close", 0f,
             new Color(0.9f, 0.15f, 0.15f, 1f), new Color(0.7f, 0.1f, 0.1f, 1f), () => CloseApp(index));
-        var x = CreateText("X", close, "X", 16f);
+        var x = CreateText("X", close, "X", UiText);
         Stretch(x.rectTransform);
         x.alignment = TextAlignmentOptions.Center;
 
@@ -1482,7 +1487,7 @@ public class ComputerInteraction : MonoBehaviour
             field.textComponent = txt;
             field.placeholder = ph;
             if (font) field.fontAsset = font;
-            field.pointSize = 18f;
+            field.pointSize = UiText;
             field.lineType = TMP_InputField.LineType.SingleLine;
             field.customCaretColor = true;
             field.caretColor = textColor;
@@ -1677,6 +1682,7 @@ public class ComputerInteraction : MonoBehaviour
 
             t.label = Text(rt, title, 13f, textColor);
             t.label.textWrappingMode = TextWrappingModes.NoWrap;
+            t.label.enableAutoSizing = true; t.label.fontSizeMax = UiText; t.label.fontSizeMin = 11f;
             t.label.overflowMode = TextOverflowModes.Truncate;
             var lle = t.label.gameObject.AddComponent<LayoutElement>();
             lle.flexibleWidth = 1f;
@@ -1905,6 +1911,7 @@ public class ComputerInteraction : MonoBehaviour
             Stretch(t.rectTransform);
             t.alignment = TextAlignmentOptions.Center;
             t.textWrappingMode = TextWrappingModes.NoWrap;
+            t.enableAutoSizing = true; t.fontSizeMax = UiText; t.fontSizeMin = 11f;
         }
 
         TextMeshProUGUI Text(Transform parent, string s, float size, Color c, FontStyles style = FontStyles.Normal)
@@ -1914,7 +1921,7 @@ public class ComputerInteraction : MonoBehaviour
             var t = go.AddComponent<TextMeshProUGUI>();
             if (font) t.font = font;
             t.text = s;
-            t.fontSize = size;
+            t.fontSize = size >= 60f ? size : UiText;   // the big Googel logo keeps its size
             t.color = c;
             t.fontStyle = style;
             t.richText = true;

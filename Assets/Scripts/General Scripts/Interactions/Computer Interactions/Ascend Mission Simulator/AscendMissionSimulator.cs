@@ -191,6 +191,7 @@ public static class AscendMissionSim
         bool aeroNose = TopIsAero(d, P);
         float sizeK = Mathf.Clamp(1.2f / Mathf.Max(0.05f, coreDia), 1f, 20f);   // small rockets are stronger for their size
         float qLimit = (aeroNose ? 45f : 25f) * 1000f * sizeK, gLimit = 10f * Mathf.Clamp(sizeK, 1f, 4f);
+        float gCap = Mathf.Min(4.5f, gLimit * 0.7f);   // the flight computer keeps the g-force below this
 
         float Mass()
         {
@@ -211,13 +212,51 @@ public static class AscendMissionSim
         bool lifted = false, burnout = false, pendingIgnite = false, fairingGone = false, machSaid = false, maxQSaid = false, dryTold = false;
         float maxQ = 0f, maxG = 0f, gNow = 0f, maxAlt = 0f;
         Mode mode = Mode.Ascent;
-        foreach (var e in engines) if (e.g.stage == 0) e.ignite = 0f;
+        // Liquid engines start 1.2 s early and are held down until they reach full thrust.
+        // Solid motors can't be held: they light at release (a solid-only rocket leaves the pad at once).
+        bool liquidFirst = engines.Any(e => !e.dead && !e.solid && e.g.stage == 0);
+        float hold = liquidFirst ? 1.2f : 0f;
+        foreach (var e in engines) if (e.g.stage == 0) e.ignite = e.solid ? hold : 0f;
         var need = new Dictionary<string, float>();
         float nextSample = 1f;
         res.ts.Add(0f); res.xs.Add(px); res.ys.Add(py); res.alts.Add(0f); res.speeds.Add(0f);
 
         void Event(string kid, string expert, Color c) => res.events.Add(new AscendSimEvent { t = t, x = px, y = py, kid = kid, expert = expert, color = c });
         Color cGood = new Color(0.25f, 0.85f, 0.45f), cInfo = new Color(0.55f, 0.75f, 1f), cWarn = new Color(1f, 0.75f, 0.2f), cBad = new Color(1f, 0.33f, 0.3f);
+
+        // Quick burn (treated as instant): uses the rocket equation, stages when a stage runs dry.
+        // Used for the circularization and Moon burns so a rocket with enough push always makes it.
+        bool ImpulseBurn(float dvNeed)
+        {
+            float left = dvNeed;
+            int guardB = 0;
+            while (left > 0.5f && guardB++ < 20)
+            {
+                var stEng = engines.Where(e => !e.dead && e.g.attached && e.g.stage == cur).ToList();
+                var pools = stEng.Select(e => e.pool).Distinct().Where(pl => fuel[pl] > 0f).ToList();
+                float f = pools.Sum(pl => fuel[pl]);
+                float isp = stEng.Count > 0 ? stEng.Average(e => e.p.ispVac) : 0f;
+                float m0 = Mass();
+                if (f > 0f && isp > 0f && m0 > f)
+                {
+                    float dvSt = isp * G0 * Mathf.Log(m0 / (m0 - f));
+                    if (dvSt >= left)
+                    {
+                        float use = m0 - m0 / Mathf.Exp(left / (isp * G0));
+                        float k = Mathf.Clamp01(use / f);
+                        foreach (var pl in pools) fuel[pl] *= 1f - k;
+                        return true;
+                    }
+                    foreach (var pl in pools) fuel[pl] = 0f;
+                    left -= dvSt;
+                }
+                if (cur >= S - 1) return false;
+                foreach (var gg in groups) if (gg.attached && gg.stage == cur) { gg.attached = false; foreach (int i in gg.parts) if (!fairing.Contains(i)) attached[i] = false; }
+                cur++;
+                Event("Stage separation", $"Stage {cur} drops away", cInfo);
+            }
+            return left <= 0.5f;
+        }
 
         bool AnyFuel() => engines.Any(e => !e.dead && e.g.attached && e.g.stage >= cur && fuel[e.pool] > 0f);
 
@@ -242,9 +281,21 @@ public static class AscendMissionSim
             Orbit(px, py, vx, vy, out double oa, out double oe, out double oApo, out double oPeri, out _);
 
             // Throttle (liquid engines ease off for Max Q and high g)
-            if (guided && q > qLimit * 0.75f) throttle = Mathf.Max(0.6f, throttle - 0.6f * dt);
-            else if (guided && gNow > 4.5f) throttle = Mathf.Max(0.4f, throttle - dt);
-            else throttle = Mathf.Min(1f, throttle + 0.3f * dt);
+            throttle = Mathf.Min(1f, throttle + 0.5f * dt);
+            if (guided)
+            {
+                float fMax = 0f, mNow = Mass();
+                foreach (var e in engines)
+                    if (burning && !e.dead && !e.solid && e.g.attached && e.g.stage == cur && t >= e.ignite && fuel[e.pool] > 0f)
+                        fMax += Thrust(e.p, false, pr, 1f, 1f, out _);
+                if (fMax > 0f)
+                {
+                    throttle = Mathf.Min(throttle, Mathf.Clamp(gCap * G0 * mNow / fMax, 0.3f, 1f));
+                    if (q > qLimit * 0.55f) throttle = Mathf.Min(throttle, Mathf.Clamp(1f - (q - qLimit * 0.55f) / (qLimit * 0.35f), 0.3f, 1f));
+                }
+                // Apoapsis already high enough while still in the air: coast up, then finish above the air
+                if (orbitMission && mode == Mode.Ascent && lifted && h < 60000 && !double.IsNaN(oApo) && oApo >= target) throttle = 0f;
+            }
 
             // Thrust
             float F = 0f; need.Clear();
@@ -266,24 +317,41 @@ public static class AscendMissionSim
                 float sc = need[e.pool] > 0f ? Mathf.Clamp01(fuel[e.pool] / need[e.pool]) : 1f;
                 F += e.thrust * sc;
                 fuel[e.pool] = Mathf.Max(0f, fuel[e.pool] - e.mdot * dt * sc);
+                if (fuel[e.pool] < 0.05f) fuel[e.pool] = 0f;   // a few grams left = empty (rounding can leave crumbs that never reach zero)
             }
             float m = Mass();
 
             // Guidance
             float fpaRel = vRel > 20 ? Mathf.Atan2((float)(ax0 * ex + ay0 * ey), (float)(ax0 * ux + ay0 * uy)) * Mathf.Rad2Deg : 0f;
             float fpaIn = vIn > 20 ? Mathf.Atan2((float)(vx * ex + vy * ey), (float)(vx * ux + vy * uy)) * Mathf.Rad2Deg : 0f;
+            float HoldTilt(float extraUp)
+            {
+                double gg = Mu / (r * r), vh = vx * ex + vy * ey;
+                float aT = F / m;
+                if (aT <= 0f) return fpaIn;
+                float needUp = (float)(gg - vh * vh / r) + extraUp;
+                return 90f - Mathf.Asin(Mathf.Clamp(needUp / aT, -0.5f, 0.97f)) * Mathf.Rad2Deg;
+            }
             float want = tilt;
             if (!guided) { if (passive) want = vRel > 20 ? Mathf.Clamp(fpaRel, 0f, 90f) : plan2.kickDeg; else if (lifted && alt > 50f) { tumble = Mathf.Min(25f, tumble + 3f * dt); want = tilt + tumble * dt; } }
-            else if (mode == Mode.Circularize || mode == Mode.TLI) want = fpaIn;      // burn along the direction of travel
+            else if (mode == Mode.Circularize) want = HoldTilt(-0.05f * (float)vUpIn);   // burn sideways while holding the height
+            else if (mode == Mode.TLI) want = fpaIn;      // burn along the direction of travel
             else if (plan2.mission == AscendSimMission.SkySensor) want = vRel > 20 ? Mathf.Clamp(fpaRel, 0f, 90f) : plan2.kickDeg;   // launch rail tilt, then nose follows the airflow
             else if (!lifted || vRel < 60) want = 0f;
             else
             {
+                // Gravity turn: pitch kick, then follow the airflow (no sideways push), leaning over only as fast as the speed allows
                 if (kickStart < 0f) kickStart = t;
-                float maxTilt = alt < 80000f ? Mathf.Lerp(12f, 72f, alt / 80000f) : 92f;
-                want = t - kickStart < 6f ? Mathf.Lerp(0f, plan2.kickDeg, (t - kickStart) / 6f) : Mathf.Clamp(alt < 50000f ? fpaRel : fpaIn, 0f, maxTilt);
+                if (t - kickStart < 8f) want = plan2.kickDeg * Mathf.Clamp01((t - kickStart) / 4f);
+                else if (alt < 45000f) want = Mathf.Max(0f, Mathf.Min(fpaRel, plan2.kickDeg + 80f * Mathf.Clamp01(((float)vRel - 60f) / 1600f)));
+                else
+                {
+                    want = Mathf.Min(88f, fpaIn);
+                    if (vUpIn < 250 && F > 0f) want = Mathf.Min(want, HoldTilt(0.02f * (250f - (float)vUpIn)));   // weak upper stage: don't fall back
+                }
             }
-            tilt = guided ? Mathf.MoveTowards(tilt, want, (mode == Mode.Ascent ? 3f : 30f) * dt) : want;
+            bool kicking = mode == Mode.Ascent && kickStart >= 0f && t - kickStart < 8f;
+            tilt = guided ? Mathf.MoveTowards(tilt, want, (kicking ? 4f : 15f) * dt) : want;
             float tr = tilt * Mathf.Deg2Rad;
             double tx = ux * Math.Cos(tr) + ex * Math.Sin(tr), ty = uy * Math.Cos(tr) + ey * Math.Sin(tr);
 
@@ -297,7 +365,7 @@ public static class AscendMissionSim
             // Hold-down clamps
             if (!lifted)
             {
-                if (t >= 1.2f && F / m > g)
+                if (t >= hold && F / m > g)
                 {
                     lifted = true; res.liftoffTWR = F / (m * G0);
                     Event("Liftoff!", $"Thrust-to-weight {res.liftoffTWR:0.00}", cGood);
@@ -321,11 +389,13 @@ public static class AscendMissionSim
             if (!machSaid && mach >= 1f && alt < 60000f) { machSaid = true; Event("Faster than sound!", "Mach 1", cInfo); }
             if (!maxQSaid && maxQ > 3000f && q < maxQ * 0.97f) { maxQSaid = true; Event("Max Q: the biggest air push", $"{maxQ / 1000f:0.0} kPa at {alt / 1000f:0.0} km", cWarn); }
 
-            // Failures
+            // Failures (a rocket with a flight computer + IMU protects itself: it throttles and steers so the air and g-force never break it)
             float aoa = vRel > 30 ? Mathf.Abs(Mathf.DeltaAngle(tilt, fpaRel)) : 0f;
-            if (q > qLimit) { Fail(res, "RIPPED APART", "The air pushes too hard and the rocket breaks apart.", $"Dynamic pressure {q / 1000f:0.0} kPa > {qLimit / 1000f:0} kPa limit" + (aeroNose ? "." : " (blunt nose, add a nose cone or fairing).") + " Use a smaller pitch kick or a lighter, slower climb."); Event("Broke apart", "", cBad); break; }
-            if (q * Mathf.Sin(aoa * Mathf.Deg2Rad) > 6000f) { Fail(res, "TURNED SIDEWAYS", "The rocket can't steer, turns sideways and the air rips it apart.", "No flight computer + IMU, so it can't hold its angle of attack."); Event("Tumbled", "", cBad); break; }
-            if (gNow > gLimit) { Fail(res, "CRUSHED", "The rocket speeds up so hard it's crushed by its own push.", $"Axial load {gNow:0.0} g > {gLimit:0} g."); Event("Crushed", "", cBad); break; }
+            if (!guided && q > qLimit) { Fail(res, "RIPPED APART", "The air pushes too hard and the rocket breaks apart.", $"Dynamic pressure {q / 1000f:0.0} kPa > {qLimit / 1000f:0} kPa limit" + (aeroNose ? "." : " (blunt nose, add a nose cone or fairing).") + " Use a smaller pitch kick or a lighter, slower climb."); Event("Broke apart", "", cBad); break; }
+            if (q * Mathf.Sin(aoa * Mathf.Deg2Rad) > 6000f && lifted && vx * ux + vy * uy < 0 && maxAlt > 20000f)
+            { res.crashed = true; Fail(res, "FELL BACK", $"The rocket ran out of push at {maxAlt / 1000f:0} km and fell back to Earth.", "Upper stage too weak: thrust-to-weight too low or not enough delta-v. Use a stronger upper-stage engine or more propellant."); Event("Fell back", "", cBad); break; }
+            if (!guided && q * Mathf.Sin(aoa * Mathf.Deg2Rad) > 6000f) { Fail(res, "TURNED SIDEWAYS", "The rocket can't steer, turns sideways and the air rips it apart.", "No flight computer + IMU, so it can't hold its angle of attack."); Event("Tumbled", "", cBad); break; }
+            if (!guided && gNow > gLimit) { Fail(res, "CRUSHED", "The rocket speeds up so hard it's crushed by its own push.", $"Axial load {gNow:0.0} g > {gLimit:0} g."); Event("Crushed", "", cBad); break; }
             if (lifted && h <= 0 && vx * ux + vy * uy < 0)
             {
                 res.crashed = true;
@@ -368,14 +438,43 @@ public static class AscendMissionSim
                         double ballistic = h + Math.Max(0, vUp) * Math.Max(0, vUp) / (2 * g);
                         if (lifted && ballistic >= target) { mode = Mode.Coast; Event("Engine cut-off", $"Coasting up to {target / 1000:0.##} km", cInfo); }
                     }
-                    else if (lifted && (oApo >= target || double.IsNaN(oApo)) && h > 60000)
+                    else if (lifted && (oApo >= target || double.IsNaN(oApo)) && h >= 60000)
                     { mode = Mode.CoastToApo; Event("Engines off: coasting up", $"SECO-1, highest point will be {oApo / 1000:0} km", cInfo); }
                     break;
                 case Mode.CoastToApo:
-                    if (vUp <= 0) { mode = Mode.Circularize; foreach (var e in engines) if (e.g.stage == cur && e.g.attached) e.ignite = t; Event("Circularization burn", "Burn at the highest point to round out the orbit", cInfo); }
+                    if (vUp <= 0)
+                    {
+                        // At the highest point: one burn sideways to make the orbit round
+                        double rr = Math.Sqrt(px * px + py * py), hx = px / rr, hy = py / rr, hex = hy, hey = -hx;
+                        double vh = vx * hex + vy * hey, sgn = vh >= 0 ? 1.0 : -1.0, vc = Math.Sqrt(Mu / rr);
+                        double vUpNow = vx * hx + vy * hy;
+                        float dvCirc = (float)Math.Sqrt((vc * sgn - vh) * (vc * sgn - vh) + vUpNow * vUpNow);
+                        Event("Circularization burn", $"Burn at the highest point to round out the orbit ({dvCirc:N0} m/s)", cInfo);
+                        if (rr - EarthR > 140000 && ImpulseBurn(dvCirc))
+                        {
+                            vx = hex * vc * sgn; vy = hey * vc * sgn;
+                            res.orbit = true;
+                            Event("ORBIT!", $"{(rr - EarthR) / 1000:0} km circular orbit", cGood);
+                            if (plan2.mission == AscendSimMission.MoonMapper)
+                            {
+                                double vT = Math.Sqrt(Mu * (2 / rr - 2 / (rr + MoonDist)));
+                                Event("Burn toward the Moon", $"Trans-lunar injection (TLI), {vT - vc:N0} m/s", cInfo);
+                                if (ImpulseBurn((float)(vT - vc)))
+                                {
+                                    vx = hex * vT * sgn; vy = hey * vT * sgn;
+                                    res.tliDone = true;
+                                    Event("On the way to the Moon!", "TLI complete, satellite released", cGood);
+                                }
+                                else Event("Out of fuel", "Not enough push left for the trip to the Moon", cWarn);
+                            }
+                            else Event("Satellite released!", "Payload separation", cGood);
+                        }
+                        else Event("Out of fuel", "Not enough push left to round out the orbit", cWarn);
+                        mode = Mode.Done;
+                    }
                     break;
                 case Mode.Circularize:
-                    if (oPeri >= Math.Min(Math.Min(target - 25000, oApo - 30000), alt - 5000) && oPeri > 140000)
+                    if (!double.IsNaN(oApo) && oPeri >= Math.Min(Math.Min(target - 25000, oApo - 30000), alt - 5000) && oPeri > 140000)
                     {
                         res.orbit = true;
                         Event("ORBIT!", $"{oApo / 1000:0} x {oPeri / 1000:0} km", cGood);
@@ -627,8 +726,8 @@ public static class AscendMissionSim
             case "CRUSHED": return "• Use fewer or smaller engines / motors\n• Use liquid engines: they throttle down when the push gets too strong\n• Carry more fuel in the upper stages";
             case "FELL BACK": case "CRASHED": case "NO ORBIT": case "NO PARKING ORBIT":
                 return "• Bigger tanks (more propellant)\n• An upper stage with a vacuum engine (higher Isp)\n• A lighter payload\n• Try the Shallow trajectory (less push lost to gravity)\n• Use the Mission Guide suggestions in AscendCAD";
-            case "TOO LOW": return "• Use the bigger K motor\n• Make the rocket and the CanSat lighter\n• Use less tilt (Straight Up)";
-            case "TOO HIGH": return "• Use the smaller J motor\n• Or a liquid engine the computer can switch off\n• Or raise the target height";
+            case "TOO LOW": return "• Use the bigger L850 motor\n• Make the rocket and the CanSat lighter\n• Choose the Straight Up flight path";
+            case "TOO HIGH": return "• Use the smaller K700 motor\n• Or choose a flight path with more tilt";
             case "CAN'T REACH THE MOON": return "• A bigger upper stage (more propellant)\n• A more efficient upper engine (vacuum / hydrogen)\n• A lighter spacecraft\n• Try the Shallow trajectory";
             case "CAN'T STOP AT THE MOON": return "• Add hydrazine modules to the satellite (its own engine)\n• Make the satellite lighter\n• Keep more fuel in the upper stage";
             case "NO PAYLOAD": case "NO ROCKET": return "• Build it in AscendCAD and get it APPROVED";
@@ -728,7 +827,18 @@ public class AscendMissionSimulatorApp : MonoBehaviour
     [NonSerialized] CADDesign seenDesign;
 
     // UI refs
-    TextMeshProUGUI kickLabel;
+    TextMeshProUGUI kickLabel, details;
+    RectTransform advBox, detBox;
+    Button advBtn, detBtn;
+    [NonSerialized] AscendSimResult[] choiceRes;
+    [NonSerialized] CADDesign choiceFor;
+    int choiceSel = 1;
+    readonly List<Image> choiceImgs = new List<Image>();
+    RectTransform picRow;
+    RawImage rocketPic, payloadPic;
+    [NonSerialized] CADDesign picDesign;
+    RenderTexture rocketTex, payloadTex;
+    Transform clouds, glow;
     AscendSimMission sugMission = (AscendSimMission)(-1);
     TextMeshProUGUI rocketInfo, goalText, suggestText, kickVal, targetVal, targetLabel, status, verdictTitle, verdictBody, numbers, timeline, emptyMsg;
     Image verdictBox;
@@ -784,6 +894,8 @@ public class AscendMissionSimulatorApp : MonoBehaviour
         if (world) Destroy(world);
         if (rt) { rt.Release(); Destroy(rt); }
         if (lineMat) Destroy(lineMat);
+        if (rocketTex) { rocketTex.Release(); Destroy(rocketTex); }
+        if (payloadTex) { payloadTex.Release(); Destroy(payloadTex); }
     }
 
     void OnAnswered(bool ok)
@@ -797,7 +909,7 @@ public class AscendMissionSimulatorApp : MonoBehaviour
     {
         // The approved design changed (new approval or used up): refresh
         var d = AscendMissionControl.ApprovedRocket;
-        if (d != seenDesign) { seenDesign = d; RefreshAll(); }
+        if (d != seenDesign) { seenDesign = d; RefreshAll(); if (d != null) AutoPlan(); }
         if (AscendMissionGuide.Mission != mission) SetMission(AscendMissionGuide.Mission);   // follows the briefing / Mission Guide
         if (sendBtn) sendBtn.interactable = result != null && result.go && AscendMissionControl.HasApproved && !AscendTrajectoryControl.Pending;
 
@@ -812,7 +924,63 @@ public class AscendMissionSimulatorApp : MonoBehaviour
     void SetMission(AscendSimMission m)
     {
         mission = m; plan = AscendSimPlan.Suggested(m); result = null; ClearCompare(); viewMode = m == AscendSimMission.SkySensor ? 1 : 0;
+        choiceFor = null; choiceSel = 1;
         ClearDrawing(); RefreshAll(); SetView(viewMode);
+        if (AscendMissionControl.HasApproved) AutoPlan();
+    }
+
+    // Flies all three suggested paths with the approved rocket and picks the best one that works
+    void EvaluateChoices()
+    {
+        var list = AscendSimPlan.Suggestions(mission);
+        choiceFor = AscendMissionControl.ApprovedRocket;
+        choiceRes = new AscendSimResult[list.Length];
+        if (choiceFor == null) return;
+        for (int i = 0; i < list.Length; i++)
+        {
+            try { choiceRes[i] = AscendMissionSim.Run(AscendMissionControl.ApprovedRocket, AscendMissionControl.ApprovedPayload, data, list[i]); }
+            catch (Exception e) { Debug.LogWarning("Mission Simulator: " + e.Message); }
+        }
+    }
+
+    void AutoPlan()
+    {
+        EvaluateChoices();
+        int pick = 1;
+        if (choiceRes == null || choiceRes.Length < 2 || choiceRes[1] == null || !choiceRes[1].go)
+            for (int i = 0; choiceRes != null && i < choiceRes.Length; i++) if (choiceRes[i] != null && choiceRes[i].go) { pick = i; break; }
+        ChoosePlan(pick);
+    }
+
+    void ChoosePlan(int i)
+    {
+        var list = AscendSimPlan.Suggestions(mission);
+        if (i < 0 || i >= list.Length) return;
+        if (!AscendMissionControl.HasApproved) { SetStatus("No approved design yet. Get your rocket APPROVED in AscendCAD first.", Bad); return; }
+        if (choiceFor != AscendMissionControl.ApprovedRocket || choiceRes == null) EvaluateChoices();
+        choiceSel = i;
+        plan = list[i].Clone();
+        RefreshPlan();
+        result = choiceRes != null && i < choiceRes.Length && choiceRes[i] != null ? choiceRes[i]
+               : AscendMissionSim.Run(AscendMissionControl.ApprovedRocket, AscendMissionControl.ApprovedPayload, data, plan);
+        ShowResult();
+        DrawResult();
+        BuildSuggestions();
+        SetStatus(result.go ? "It works! Press SEND TO MISSION CONTROL." : "This path doesn't work with your rocket. Try another one, or see HOW TO FIX IT.", result.go ? Good : Bad);
+    }
+
+    void ToggleAdvanced()
+    {
+        bool on = !advBox.gameObject.activeSelf;
+        advBox.gameObject.SetActive(on);
+        advBtn.GetComponentInChildren<TextMeshProUGUI>().text = on ? "Advanced settings  -" : "Advanced settings  +";
+    }
+
+    void ToggleDetails()
+    {
+        bool on = !detBox.gameObject.activeSelf;
+        detBox.gameObject.SetActive(on);
+        detBtn.GetComponentInChildren<TextMeshProUGUI>().text = on ? "Hide details  -" : "Show details  +";
     }
 
     void Calculate()
@@ -820,9 +988,11 @@ public class AscendMissionSimulatorApp : MonoBehaviour
         if (!AscendMissionControl.HasApproved) { SetStatus("No approved design yet. Get your rocket APPROVED in AscendCAD first.", Bad); return; }
         plan.mission = mission;
         result = AscendMissionSim.Run(AscendMissionControl.ApprovedRocket, AscendMissionControl.ApprovedPayload, data, plan);
+        choiceSel = -1;
+        BuildSuggestions();
         ShowResult();
         DrawResult();
-        SetStatus(result.go ? "Looks good! Send it to Mission Control for confirmation." : "This trajectory won't work yet. Read the result and try again.", result.go ? Good : Bad);
+        SetStatus(result.go ? "It works! Press SEND TO MISSION CONTROL." : "These settings don't work. Pick one of the flight paths above.", result.go ? Good : Bad);
     }
 
     void Send()
@@ -832,7 +1002,7 @@ public class AscendMissionSimulatorApp : MonoBehaviour
         SetStatus("Sent to Mission Control. The answer will arrive in PhMail shortly...", AUI.Hex("#8AB4F8"));
     }
 
-    void Step(ref float v, float d, float min, float max) { v = Mathf.Clamp(Mathf.Round((v + d) * 100f) / 100f, min, max); RefreshPlan(); }
+    void Step(ref float v, float d, float min, float max) { v = Mathf.Clamp(Mathf.Round((v + d) * 100f) / 100f, min, max); choiceSel = -1; RefreshPlan(); BuildSuggestions(); }
 
     void Kick(int s) { Step(ref plan.kickDeg, s * (mission == AscendSimMission.SkySensor ? 1f : 0.5f), 0f, 15f); }
 
@@ -886,21 +1056,31 @@ public class AscendMissionSimulatorApp : MonoBehaviour
         var lc = AUI.Scroll(left, 0, 0, 0, 0);
         AUI.V(lc, 18, 18, 16, 18, 10);
 
-        Header(lc, "MISSION");
+        Header(lc, "1. MISSION");
         goalText = AUI.Text(lc, "", 14, Txt);
-        Header(lc, "YOUR APPROVED ROCKET");
+        Header(lc, "2. YOUR ROCKET");
         rocketInfo = AUI.Text(lc, "", 13, Txt); rocketInfo.lineSpacing = 4f;
-        Header(lc, "SUGGESTED TRAJECTORIES");
-        suggestText = AUI.Text(lc, "", 13, Txt); suggestText.lineSpacing = 4f;
-        sugBox = AUI.Rect("Suggestions", lc);
+        picRow = AUI.Rect("Pictures", lc);
+        AUI.H(picRow, 0, 0, 0, 0, 10, TextAnchor.MiddleCenter);
+        AUI.LE(picRow, -1, AUI.S(200));
+        rocketPic = PictureBox(picRow, "ROCKET");
+        payloadPic = PictureBox(picRow, "PAYLOAD");
+        picRow.gameObject.SetActive(false);
+        Header(lc, "3. PICK A FLIGHT PATH");
+        sugBox = AUI.Rect("Choices", lc);
         AUI.V(sugBox, 0, 0, 0, 0, 8);
-        AUI.Btn(lc, "COMPARE ALL 3 IN 3D", 13, Color.white, AUI.Hex("#2E7D5B"), Compare, -1, 36);
-        Header(lc, "YOUR TRAJECTORY");
-        kickVal = StepperRow(lc, "Pitch kick (tilt after liftoff)", () => Kick(-1), () => Kick(1), out kickLabel);
-        targetVal = StepperRow(lc, "Target height", () => Target(-1), () => Target(1), out targetLabel);
-        calcBtn = AUI.Btn(lc, "CALCULATE", 15, Color.white, Accent, Calculate, -1, 42);
-        sendBtn = AUI.Btn(lc, "SEND TO MISSION CONTROL", 14, Color.white, Blue, Send, -1, 40);
+        Header(lc, "4. SEND IT");
+        sendBtn = AUI.Btn(lc, "SEND TO MISSION CONTROL", 14, Color.white, Blue, Send, -1, 48);
         status = AUI.Text(lc, "", 13, Sub);
+        advBtn = AUI.Btn(lc, "Advanced settings  +", 12, Sub, Panel2, ToggleAdvanced, -1, 34);
+        advBox = AUI.Rect("Advanced", lc);
+        AUI.V(advBox, 0, 0, 0, 0, 10);
+        suggestText = AUI.Text(advBox, "", 13, Txt); suggestText.lineSpacing = 4f;
+        kickVal = StepperRow(advBox, "Pitch kick (tilt after liftoff)", () => Kick(-1), () => Kick(1), out kickLabel);
+        targetVal = StepperRow(advBox, "Target height", () => Target(-1), () => Target(1), out targetLabel);
+        calcBtn = AUI.Btn(advBox, "CALCULATE MY SETTINGS", 14, Color.white, Accent, Calculate, -1, 42);
+        AUI.Btn(advBox, "COMPARE ALL 3 IN 3D", 13, Color.white, AUI.Hex("#2E7D5B"), Compare, -1, 36);
+        advBox.gameObject.SetActive(false);
 
         // Right: result + timeline
         var right = AUI.Rect("Right", root);
@@ -914,7 +1094,7 @@ public class AscendMissionSimulatorApp : MonoBehaviour
         verdictBox = AUI.Img(vb, Panel2, true);
         AUI.V(vb, 14, 14, 12, 12, 6);
         verdictTitle = AUI.Text(vb, "Not calculated yet", 22, Txt, FontStyles.Bold);
-        verdictBody = AUI.Text(vb, "Press CALCULATE to simulate the whole mission with your rocket's real numbers.", 13, Txt);
+        verdictBody = AUI.Text(vb, "Get a design APPROVED in AscendCAD. The flight is planned for you as soon as it's approved.", 13, Txt);
         adviceHeader = AUI.Text(rc, "HOW TO IMPROVE IT", 13, AUI.Hex("#8AB4F8"), FontStyles.Bold); MinHeight(adviceHeader, AUI.S(22));
         adviceText = AUI.Text(rc, "", 13, Txt); adviceText.lineSpacing = 4f;
         adviceHeader.gameObject.SetActive(false); adviceText.gameObject.SetActive(false);
@@ -922,11 +1102,16 @@ public class AscendMissionSimulatorApp : MonoBehaviour
         fixText = AUI.Text(rc, "", 13, Txt); fixText.lineSpacing = 4f;
         fixHeader.gameObject.SetActive(false); fixText.gameObject.SetActive(false);
         numbers = AUI.Text(rc, "", 13, Txt); numbers.lineSpacing = 4f;
-        Header(rc, "COMPARE TRAJECTORIES");
-        compareText = AUI.Text(rc, "<color=#9AA0A6>Press COMPARE ALL 3 IN 3D to fly all suggested trajectories and see their lines.</color>", 12, Txt);
+        detBtn = AUI.Btn(rc, "Show details  +", 12, Sub, Panel2, ToggleDetails, -1, 34);
+        detBox = AUI.Rect("Details", rc);
+        AUI.V(detBox, 0, 0, 0, 0, 10);
+        details = AUI.Text(detBox, "", 12, Txt); details.lineSpacing = 4f;
+        Header(detBox, "COMPARE FLIGHT PATHS");
+        compareText = AUI.Text(detBox, "<color=#9AA0A6>Press COMPARE ALL 3 IN 3D (Advanced settings) to see all three lines.</color>", 12, Txt);
         compareText.lineSpacing = 4f;
-        Header(rc, "TIMELINE");
-        timeline = AUI.Text(rc, "", 12, Txt); timeline.lineSpacing = 4f;
+        Header(detBox, "TIMELINE");
+        timeline = AUI.Text(detBox, "", 12, Txt); timeline.lineSpacing = 4f;
+        detBox.gameObject.SetActive(false);
 
         // Center: 3D view
         var center = AUI.Rect("View", root);
@@ -991,9 +1176,42 @@ public class AscendMissionSimulatorApp : MonoBehaviour
             var p = AscendMissionControl.ApprovedPayload;
             rocketInfo.text = $"<b>{d.name}</b>" + (p != null ? $" carrying <b>{p.name}</b>" : " <color=#D29922>(no payload)</color>") + "\n" +
                 (rs != null ? $"Liftoff mass {AscendReport.Mass(rs.wetMass + rs.payloadMass)}\nStages {rs.stages.Count}   Delta-v {rs.deltaV:N0} m/s\nThrust-to-weight {rs.liftoffTWR:0.00}" : "");
-            emptyMsg.text = result == null ? "Press CALCULATE to simulate the mission." : "";
+            emptyMsg.text = result == null ? "Pick a flight path on the left." : "";
         }
+        RefreshPictures(d, AscendMissionControl.ApprovedPayload);
         RefreshPlan();
+    }
+
+    RawImage PictureBox(RectTransform parent, string caption)
+    {
+        var box = AUI.Rect(caption, parent);
+        AUI.Img(box, AUI.Hex("#1B1C20"), true);
+        AUI.LE(box, -1, AUI.S(200), 1);
+        var img = AUI.Rect("Picture", box).gameObject.AddComponent<RawImage>();
+        AUI.Fill(img.rectTransform, 4, AUI.S(20), 4, 4);
+        img.raycastTarget = false;
+        var t = AUI.Text(box, caption, 10, Sub, FontStyles.Bold);
+        t.alignment = TextAlignmentOptions.Bottom;
+        AUI.Fill(t.rectTransform, 4, 3, 4, 4);
+        return img;
+    }
+
+    // Draws the approved rocket and payload once (only again when the design changes)
+    void RefreshPictures(CADDesign rocketD, CADDesign payloadD)
+    {
+        if (!picRow) return;
+        if (rocketD == picDesign) return;
+        picDesign = rocketD;
+        if (rocketTex) { rocketTex.Release(); Destroy(rocketTex); rocketTex = null; }
+        if (payloadTex) { payloadTex.Release(); Destroy(payloadTex); payloadTex = null; }
+        if (rocketD == null) { picRow.gameObject.SetActive(false); return; }
+        var bg = AUI.Hex("#1B1C20");
+        try { rocketTex = AscendSnapshot.Design(rocketD, data, 240, 360, bg); } catch (Exception e) { Debug.LogWarning("Mission Simulator: rocket picture failed: " + e.Message); }
+        try { payloadTex = payloadD != null ? AscendSnapshot.Design(payloadD, data, 240, 360, bg) : null; } catch (Exception e) { Debug.LogWarning("Mission Simulator: payload picture failed: " + e.Message); }
+        rocketPic.texture = rocketTex; rocketPic.color = rocketTex ? Color.white : Color.clear;
+        payloadPic.texture = payloadTex; payloadPic.color = payloadTex ? Color.white : Color.clear;
+        payloadPic.transform.parent.gameObject.SetActive(payloadTex != null);
+        picRow.gameObject.SetActive(rocketTex != null);
     }
 
     void RefreshPlan()
@@ -1031,17 +1249,27 @@ public class AscendMissionSimulatorApp : MonoBehaviour
     void BuildSuggestionsInner()
     {
         sugMission = mission;
+        choiceImgs.Clear();
         for (int i = sugBox.childCount - 1; i >= 0; i--) { var c = sugBox.GetChild(i).gameObject; c.SetActive(false); Destroy(c); }
         var list = AscendSimPlan.Suggestions(mission);
+        bool fresh = choiceRes != null && choiceFor == AscendMissionControl.ApprovedRocket;
         for (int i = 0; i < list.Length; i++)
         {
             var sp = list[i];
-            string targ = mission == AscendSimMission.SkySensor ? $"{sp.targetKm:0.##} km" : $"{sp.targetKm:0} km";
-            string kickName = mission == AscendSimMission.SkySensor ? "Launch rail tilt" : "Pitch kick";
-            string targName = mission == AscendSimMission.SkySensor ? "Highest point" : mission == AscendSimMission.EarthWatcher ? "Orbit height" : "Parking orbit height";
-            AUI.Text(sugBox, $"<color={CompareHex[i]}><b>{sp.name}</b></color>{(i == 1 ? "  <color=#3FB950>(recommended)</color>" : "")}\n" +
-                             $"<size=90%><color=#9AA0A6>{sp.about}</color>\n" +
-                             $"To try it: set <b>{kickName}</b> to <b>{sp.kickDeg:0.#}°</b> and <b>{targName}</b> to <b>{targ}</b> with the - and + buttons below, then press CALCULATE.</size>", 13, Txt);
+            int idx = i;
+            bool sel = i == choiceSel;
+            var r = fresh && i < choiceRes.Length ? choiceRes[i] : null;
+            var card = AUI.Rect("Choice " + sp.name, sugBox);
+            var img = AUI.Img(card, sel ? new Color(0.94f, 0.48f, 0.15f, 0.35f) : Panel2, true, true);
+            var btn = card.gameObject.AddComponent<Button>();
+            btn.targetGraphic = img;
+            btn.navigation = new Navigation { mode = Navigation.Mode.None };
+            btn.onClick.AddListener(() => ChoosePlan(idx));
+            AUI.V(card, 14, 14, 10, 10, 3);
+            string state = r == null ? "" : r.go ? "   <color=#3FB950>WORKS</color>" : $"   <color=#F85149>{r.verdict}</color>";
+            AUI.Text(card, $"{(sel ? "> " : "")}<b>{sp.name}</b>{(i == 1 ? "  <color=#9AA0A6>(recommended)</color>" : "")}{state}", 15, Txt);
+            AUI.Text(card, $"<color=#9AA0A6>{sp.about}</color>", 12, Txt);
+            choiceImgs.Add(img);
         }
     }
 
@@ -1095,21 +1323,22 @@ public class AscendMissionSimulatorApp : MonoBehaviour
         verdictTitle.text = result.verdict;
         verdictTitle.color = result.go ? Good : Bad;
         verdictBox.color = result.go ? new Color(0.25f, 0.85f, 0.45f, 0.15f) : new Color(1f, 0.33f, 0.3f, 0.15f);
-        verdictBody.text = result.kid + "\n<size=90%><color=#9AA0A6>Engineer: " + result.expert + "</color></size>";
+        verdictTitle.text = result.go ? "IT WORKS!" + (result.verdict != "GO" ? "  <size=70%>(" + result.verdict.Replace("GO ", "").Trim('(', ')') + ")</size>" : "") : result.verdict;
+        verdictBody.text = result.kid;
+        details.text = "<b>Engineer's note</b>\n<color=#9AA0A6>" + result.expert + "</color>\n" +
+                       $"Liftoff thrust-to-weight {result.liftoffTWR:0.00}\nMax Q {result.maxQ / 1000f:0.0} kPa   Max {result.maxG:0.0} g" +
+                       (mission != AscendSimMission.SkySensor ? $"\nPush (delta-v) left in the rocket {result.dvLeft:N0} m/s" : "");
         bool showFix = !result.go && !string.IsNullOrEmpty(result.fix);
         fixHeader.gameObject.SetActive(showFix); fixText.gameObject.SetActive(showFix);
         fixText.text = showFix ? result.fix : "";
-        bool showAdvice = !string.IsNullOrEmpty(result.advice);
+        bool showAdvice = !result.go && !string.IsNullOrEmpty(result.advice);
         adviceHeader.gameObject.SetActive(showAdvice); adviceText.gameObject.SetActive(showAdvice);
         adviceText.text = result.advice ?? "";
         var sb = new StringBuilder();
-        sb.Append($"Liftoff thrust-to-weight  <b>{result.liftoffTWR:0.00}</b>\n");
-        sb.Append($"Highest point  <b>{result.apogeeKm:N1} km</b>\n");
-        sb.Append($"Max Q  <b>{result.maxQ / 1000f:0.0} kPa</b>   Max  <b>{result.maxG:0.0} g</b>\n");
+        sb.Append(mission == AscendSimMission.SkySensor ? $"Highest point  <b>{result.apogeeKm * 1000f:N0} m</b>\n" : $"Highest point  <b>{result.apogeeKm:N0} km</b>\n");
         if (result.orbit) sb.Append($"Orbit  <b>{result.apoKm:N0} x {result.periKm:N0} km</b>\n");
-        if (mission != AscendSimMission.SkySensor) sb.Append($"Delta-v left in rocket  <b>{result.dvLeft:N0} m/s</b>\n");
-        if (mission == AscendSimMission.MoonMapper && result.tliDone)
-            sb.Append($"Trip to the Moon  <b>{result.transferDays:0.0} days</b>\nBraking needed  <b>{result.loiNeed:N0} m/s</b>, have <b>{result.loiHave:N0} m/s</b>\n");
+        if (mission == AscendSimMission.MoonMapper && result.tliDone) sb.Append($"Trip to the Moon  <b>{result.transferDays:0.0} days</b>\n");
+        sb.Append($"Flight time  <b>{(int)result.flightTime / 60:00}:{(int)result.flightTime % 60:00}</b>");
         numbers.text = sb.ToString();
         var tl = new StringBuilder();
         foreach (var e in result.events)
@@ -1133,8 +1362,20 @@ public class AscendMissionSimulatorApp : MonoBehaviour
 
         globe = new GameObject("Globe"); globe.transform.SetParent(world.transform, false);
         earth = Sphere("Earth", globe.transform, Vector3.zero, EarthUnits * 2f, EarthTexture(), Color.white).transform;
-        var atm = Sphere("Atmosphere", globe.transform, Vector3.zero, EarthUnits * 2f * 1.025f, null, new Color(0.45f, 0.7f, 1f, 0.18f), true);
-        atm.GetComponent<Renderer>().sharedMaterial.renderQueue = 3001;
+        var em = earth.GetComponent<Renderer>().sharedMaterial;
+        if (em.HasProperty("_Smoothness")) em.SetFloat("_Smoothness", 0.35f);
+        // Clouds: a slightly bigger see-through sphere that turns slowly
+        clouds = Sphere("Clouds", globe.transform, Vector3.zero, EarthUnits * 2f * 1.012f, CloudTexture(), Color.white).transform;
+        MakeTransparent(clouds.GetComponent<Renderer>().sharedMaterial);
+        // Atmosphere: a soft blue glow around the edge that always faces the camera
+        var g = GameObject.CreatePrimitive(PrimitiveType.Quad);
+        g.name = "Atmosphere Glow";
+        var gc = g.GetComponent<Collider>(); if (gc) Destroy(gc);
+        g.transform.SetParent(globe.transform, false);
+        g.transform.localScale = Vector3.one * EarthUnits * 2f * GlowScale;
+        var gm = new Material(Shader.Find("Sprites/Default")) { mainTexture = GlowTexture(), color = new Color(0.5f, 0.75f, 1f, 1f) };
+        g.GetComponent<Renderer>().sharedMaterial = gm;
+        glow = g.transform;
         moon = Sphere("Moon", globe.transform, new Vector3(-(float)AscendMissionSim.MoonDist * S, 0f, 0f), (float)AscendMissionSim.MoonR * 2f * S, MoonTexture(), Color.white).transform;
         Stars(globe.transform);
 
@@ -1218,44 +1459,175 @@ public class AscendMissionSimulatorApp : MonoBehaviour
         return lr;
     }
 
+    const float GlowScale = 1.2f;
+    static Texture2D earthTex, cloudTex, moonTex, glowTex;
+
+    // Smooth 3D-looking noise from Unity's 2D Perlin noise (no seam around the globe)
+    static float N3(float x, float y, float z) =>
+        (Mathf.PerlinNoise(x, y) + Mathf.PerlinNoise(y, z) + Mathf.PerlinNoise(z, x) + Mathf.PerlinNoise(y + 31.7f, x) + Mathf.PerlinNoise(z + 17.3f, y) + Mathf.PerlinNoise(x + 9.1f, z)) / 6f;
+
+    static float Fbm(Vector3 p, int octaves)
+    {
+        float sum = 0f, amp = 0.5f, norm = 0f;
+        for (int i = 0; i < octaves; i++) { sum += N3(p.x, p.y, p.z) * amp; norm += amp; amp *= 0.5f; p = p * 2.03f + new Vector3(5.2f, 1.3f, 7.7f); }
+        // Averaged Perlin values bunch around 0.5: stretch them back to 0..1
+        return Mathf.Clamp01((sum / norm - 0.5f) * 2.4f + 0.5f);
+    }
+
+    static Vector3 SpherePoint(int x, int y, int w, int h)
+    {
+        float lon = (x + 0.5f) / w * Mathf.PI * 2f, lat = ((y + 0.5f) / h - 0.5f) * Mathf.PI;
+        return new Vector3(Mathf.Cos(lat) * Mathf.Cos(lon), Mathf.Sin(lat), Mathf.Cos(lat) * Mathf.Sin(lon));
+    }
+
+    static Color C(float r, float g, float b) => new Color(r, g, b);
+
     static Texture2D EarthTexture()
     {
-        const int w = 512, h = 256;
-        var tex = new Texture2D(w, h, TextureFormat.RGB24, true) { wrapMode = TextureWrapMode.Repeat };
+        if (earthTex) return earthTex;
+        const int w = 640, h = 320;   // made once per session (about half a second)
+        var tex = new Texture2D(w, h, TextureFormat.RGB24, true) { wrapMode = TextureWrapMode.Repeat, anisoLevel = 4, name = "Sim Earth" };
         var px = new Color32[w * h];
+        Color deep = C(0.01f, 0.05f, 0.17f), sea = C(0.03f, 0.16f, 0.38f), shore = C(0.07f, 0.33f, 0.50f), ice = C(0.93f, 0.95f, 0.98f);
+        Color jungle = C(0.09f, 0.27f, 0.09f), savanna = C(0.47f, 0.47f, 0.24f), desert = C(0.78f, 0.66f, 0.45f), forest = C(0.16f, 0.33f, 0.14f);
+        Color grass = C(0.34f, 0.42f, 0.21f), taiga = C(0.12f, 0.24f, 0.14f), tundra = C(0.47f, 0.45f, 0.38f), rock = C(0.40f, 0.34f, 0.28f);
         for (int y = 0; y < h; y++)
         {
-            float lat = (y / (float)h - 0.5f) * 180f;
+            float lat = Mathf.Abs(((y + 0.5f) / h - 0.5f) * 180f);
             for (int x = 0; x < w; x++)
             {
-                float u = x / (float)w * Mathf.PI * 2f, v = y / (float)h * Mathf.PI;
-                float nx = Mathf.Cos(u) * Mathf.Sin(v), ny = Mathf.Sin(u) * Mathf.Sin(v), nz = Mathf.Cos(v);
-                float n = Mathf.PerlinNoise(nx * 2.2f + 10f + nz, ny * 2.2f + 20f + nz) * 0.65f + Mathf.PerlinNoise(nx * 6f + 5f, ny * 6f + nz * 3f) * 0.35f;
+                var p = SpherePoint(x, y, w, h);
+                float land = Fbm(p * 1.7f + new Vector3(3f, 7f, 1f), 5);
+                float wet = Fbm(p * 2.6f + new Vector3(40f, 2f, 9f), 3);
+                float iceLine = 70f + (wet - 0.5f) * 10f;
                 Color c;
-                if (Mathf.Abs(lat) > 72f) c = new Color(0.93f, 0.95f, 0.98f);
-                else if (n > 0.55f) c = Color.Lerp(new Color(0.25f, 0.5f, 0.22f), new Color(0.62f, 0.55f, 0.35f), Mathf.InverseLerp(0.55f, 0.75f, n));
-                else c = Color.Lerp(new Color(0.03f, 0.12f, 0.38f), new Color(0.08f, 0.3f, 0.6f), n / 0.55f);
+                if (land < 0.55f)
+                {
+                    float depth = Mathf.InverseLerp(0.55f, 0.25f, land);
+                    c = depth < 0.08f ? Color.Lerp(shore, sea, depth / 0.08f) : Color.Lerp(sea, deep, (depth - 0.08f) / 0.92f);
+                    if (lat > iceLine + 6f) c = Color.Lerp(c, ice, 0.85f);                      // sea ice
+                }
+                else
+                {
+                    float hi = Mathf.InverseLerp(0.55f, 0.85f, land);                          // height above the coast
+                    if (lat < 14f) c = Color.Lerp(jungle, savanna, Mathf.Clamp01((0.5f - wet) * 2f));
+                    else if (lat < 34f) c = wet < 0.5f ? Color.Lerp(desert, savanna, wet * 1.6f) : Color.Lerp(savanna, forest, (wet - 0.5f) * 2f);
+                    else if (lat < 56f) c = Color.Lerp(grass, forest, wet);
+                    else c = Color.Lerp(taiga, tundra, Mathf.InverseLerp(56f, iceLine, lat));
+                    c = Color.Lerp(c, rock, Mathf.Clamp01((hi - 0.45f) * 2.2f));                // mountains
+                    if (hi > 0.8f || lat > iceLine) c = ice;                                       // snow peaks and ice caps
+                }
                 px[y * w + x] = c;
             }
         }
+        tex.SetPixels32(px); tex.Apply(true);
+        return earthTex = tex;
+    }
+
+    static Texture2D CloudTexture()
+    {
+        if (cloudTex) return cloudTex;
+        const int w = 384, h = 192;
+        var tex = new Texture2D(w, h, TextureFormat.RGBA32, true) { wrapMode = TextureWrapMode.Repeat, name = "Sim Clouds" };
+        var px = new Color32[w * h];
+        for (int y = 0; y < h; y++)
+        {
+            float lat = ((y + 0.5f) / h - 0.5f) * 180f;
+            float belt = 0.6f + 0.4f * Mathf.Abs(Mathf.Cos(lat * 3f * Mathf.Deg2Rad));      // cloud belts like the real ones
+            for (int x = 0; x < w; x++)
+            {
+                var p = SpherePoint(x, y, w, h);
+                float n = Fbm(p * 3.2f + new Vector3(60f, 11f, 4f), 4);
+                float a = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.52f, 0.78f, n * belt + 0.1f)) * 0.85f;
+                px[y * w + x] = new Color(1f, 1f, 1f, a);
+            }
+        }
+        tex.SetPixels32(px); tex.Apply(true);
+        return cloudTex = tex;
+    }
+
+    // Soft ring that shows as a glowing atmosphere around the planet's edge
+    static Texture2D GlowTexture()
+    {
+        if (glowTex) return glowTex;
+        const int n = 256;
+        var tex = new Texture2D(n, n, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, name = "Sim Glow" };
+        var px = new Color32[n * n];
+        float edge = 1f / GlowScale;
+        for (int y = 0; y < n; y++)
+            for (int x = 0; x < n; x++)
+            {
+                float r = new Vector2((x + 0.5f) / n * 2f - 1f, (y + 0.5f) / n * 2f - 1f).magnitude;
+                float a = r < edge ? Mathf.Pow(r / edge, 10f) * 0.6f : Mathf.Pow(Mathf.Clamp01(1f - (r - edge) / (1f - edge)), 2.2f) * 0.75f;
+                px[y * n + x] = new Color(1f, 1f, 1f, a);
+            }
         tex.SetPixels32(px); tex.Apply();
-        return tex;
+        return glowTex = tex;
     }
 
     static Texture2D MoonTexture()
     {
-        const int w = 256, h = 128;
-        var tex = new Texture2D(w, h, TextureFormat.RGB24, true);
-        var px = new Color32[w * h];
+        if (moonTex) return moonTex;
+        const int w = 512, h = 256;
+        var tex = new Texture2D(w, h, TextureFormat.RGB24, true) { wrapMode = TextureWrapMode.Repeat, name = "Sim Moon" };
+        var shade = new float[w * h];
         for (int y = 0; y < h; y++)
             for (int x = 0; x < w; x++)
             {
-                float n = Mathf.PerlinNoise(x * 0.05f, y * 0.05f) * 0.6f + Mathf.PerlinNoise(x * 0.2f + 7f, y * 0.2f) * 0.4f;
-                float g = Mathf.Lerp(0.45f, 0.78f, n);
-                px[y * w + x] = new Color(g, g, g * 0.98f);
+                var p = SpherePoint(x, y, w, h);
+                float maria = Fbm(p * 1.4f + new Vector3(8f, 3f, 5f), 3);
+                float grain = Fbm(p * 9f + new Vector3(2f, 9f, 4f), 3);
+                float g = Mathf.Lerp(0.5f, 0.72f, grain);
+                if (maria < 0.42f) g *= Mathf.Lerp(0.62f, 1f, maria / 0.42f);                 // dark "seas" of old lava
+                shade[y * w + x] = g;
             }
-        tex.SetPixels32(px); tex.Apply();
-        return tex;
+        var rnd = new System.Random(3);
+        for (int k = 0; k < 140; k++)                                                           // craters: dark floor, bright rim
+        {
+            int cx = rnd.Next(w), cy = rnd.Next(h / 8, h - h / 8);
+            float rad = (float)(1.5 + Math.Pow(rnd.NextDouble(), 3) * 16);
+            int ri = Mathf.CeilToInt(rad * 1.3f);
+            for (int dy = -ri; dy <= ri; dy++)
+                for (int dx = -ri; dx <= ri; dx++)
+                {
+                    int yy = cy + dy; if (yy < 0 || yy >= h) continue;
+                    int xx = (cx + dx + w) % w;
+                    float d = Mathf.Sqrt(dx * dx + dy * dy) / rad;
+                    if (d > 1.3f) continue;
+                    float f = d < 0.85f ? 0.8f + 0.1f * d : d < 1.05f ? 1.25f : Mathf.Lerp(1.12f, 1f, (d - 1.05f) / 0.25f);
+                    shade[yy * w + xx] *= f;
+                }
+        }
+        var px = new Color32[w * h];
+        for (int i = 0; i < px.Length; i++) { float g = Mathf.Clamp01(shade[i]); px[i] = new Color(g, g * 0.99f, g * 0.97f); }
+        tex.SetPixels32(px); tex.Apply(true);
+        return moonTex = tex;
+    }
+
+    // Lit material that shows its texture's alpha (URP Lit or Built-in Standard)
+    static void MakeTransparent(Material m)
+    {
+        if (m.HasProperty("_Surface"))
+        {
+            m.SetFloat("_Surface", 1f);
+            if (m.HasProperty("_Blend")) m.SetFloat("_Blend", 0f);
+            m.SetOverrideTag("RenderType", "Transparent");
+            m.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            m.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            if (m.HasProperty("_SrcBlendAlpha")) { m.SetFloat("_SrcBlendAlpha", (float)UnityEngine.Rendering.BlendMode.One); m.SetFloat("_DstBlendAlpha", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha); }
+            if (m.HasProperty("_ZWrite")) m.SetFloat("_ZWrite", 0f);
+            m.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+            m.DisableKeyword("_ALPHATEST_ON");
+        }
+        else
+        {
+            if (m.HasProperty("_Mode")) m.SetFloat("_Mode", 2f);
+            m.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            m.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            m.SetInt("_ZWrite", 0);
+            m.EnableKeyword("_ALPHABLEND_ON");
+        }
+        m.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
     }
 
     static void Stars(Transform parent)
@@ -1443,6 +1815,8 @@ public class AscendMissionSimulatorApp : MonoBehaviour
         if (viewMode == 1 && mission == AscendSimMission.MoonMapper) camTarget = moon.position;
         cam.transform.position = camTarget + Quaternion.Euler(camPitch, camYaw, 0f) * new Vector3(0f, 0f, -camDist);
         cam.transform.LookAt(camTarget);
+        if (glow) glow.rotation = cam.transform.rotation;
+        if (clouds) clouds.Rotate(0f, Time.unscaledDeltaTime * 1.5f, 0f, Space.Self);
         float w = camDist * 0.004f;
         foreach (var lr in new[] { ascent, orbitLine, transfer, moonOrbit, chute }) if (lr) lr.widthMultiplier = w;
         foreach (var lr in compareLines) if (lr) lr.widthMultiplier = w * 0.7f;
