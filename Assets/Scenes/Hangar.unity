@@ -241,36 +241,28 @@ MonoBehaviour:
   m_GameObject: {fileID: 5954565}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 84728205318bf220d8a4dc9b9fee8e91, type: 3}
+  m_Script: {fileID: 11500000, guid: ebbaac5244ba859db8086e622a4cec6b, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::RocketLaunchConsole
-  useBuiltInInteraction: 1
-  interactDistance: 4
-  promptMessage: Press <b>E</b> to start launch
-  promptPosition: {x: 0, y: -80}
-  promptFontSize: 28
-  playerCamera: {fileID: 0}
-  rocketTag: Rocket
-  boosterName: Booster
-  countdownSeconds: 30
-  ignitionToLiftoff: 3
-  flightSeconds: 60
-  ascentA: 8
-  ascentK: 0.13
-  effectScale: 1
-  smokeMaxParticles: 300
-  fireMaterialOverride: {fileID: 0}
-  smokeMaterialOverride: {fileID: 0}
-  uiCanvas: {fileID: 0}
+  m_EditorClassIdentifier: Assembly-CSharp::AscendLaunchController
+  launchKey: 101
+  interactDistance: 5
+  ascendCADData: {fileID: 0}
+  countdownSeconds: 10
+  downrangeDirection: {x: 1, y: 0, z: 0}
+  karmanLineKm: 100
+  fairingJettisonKm: 85
+  structuralLimitKPa: 45
+  bluntNoseLimitKPa: 25
+  maxGForce: 10
+  disableWhileFlying: []
+  hideWhileFlying: []
   font: {fileID: 0}
-  countdownPosition: {x: 50, y: -50}
-  countdownFontSize: 42
-  viewHintPosition: {x: -40, y: 0}
-  viewHintFontSize: 26
-  activeViewColor: {r: 0.4, g: 0.8, b: 1, a: 1}
-  thirdPersonOffset: {x: 0.9, y: -0.15, z: -1.1}
-  noseCamSideOffset: 1.2
-  disableWhileInRocketView: []
+  onReachedSpace:
+    m_PersistentCalls:
+      m_Calls: []
+  onFlightFailed:
+    m_PersistentCalls:
+      m_Calls: []
 --- !u!1 &59328535 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: ba2bb9489229c894bb12c353229ef801, type: 3}
@@ -1270,7 +1262,7 @@ MonoBehaviour:
     icon: {fileID: 2624922792029920654, guid: f9c42b002e0feb429bfdd0e580a7f999, type: 3}
     windowContent: {fileID: 0}
     fallbackColor: {r: 0.95, g: 0.45, b: 0.15, a: 1}
-  - name: Ascend Rocket Trajectory Calculator
+  - name: Ascend Mission Simulator
     icon: {fileID: 7581615588688319285, guid: e3d67721ae1cb5f928787037dc855701, type: 3}
     windowContent: {fileID: 0}
     fallbackColor: {r: 0.2, g: 0.5, b: 0.95, a: 1}
@@ -1305,6 +1297,8 @@ MonoBehaviour:
   ascendCADAppName: AscendCAD
   mailAppName: PhMail
   maximizeAscendCAD: 1
+  simulatorAppName: Ascend Mission Simulator
+  maximizeSimulator: 1
   taskbarHeight: 48
   taskbarColor: {r: 0, g: 0, b: 0, a: 0.6}
   powerIcon: {fileID: 0}

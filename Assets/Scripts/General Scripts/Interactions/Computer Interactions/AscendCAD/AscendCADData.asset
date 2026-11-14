@@ -39,6 +39,7 @@ MonoBehaviour:
     name: Basic Launch Mount
     description: Government-provided concrete pad with a hold-down clamp and a small umbilical mast. Fine for small launchers like Electron.
     source: 'Electron: 18 m tall, 1.2 m wide, ~13 t (Rocket Lab). Limits est.'
+    useBuiltInModel: 1
     modelPrefab: {fileID: 0}
     image: {fileID: -6941893666776508460, guid: 975e18d1435cc8724a8bedb32515d1a1, type: 3}
     sceneObjectName: 
@@ -53,10 +54,30 @@ MonoBehaviour:
     ownMassT: 0
     carryCapacityT: 0
     rocketOffset: {x: 0, y: 0, z: 0}
+  - id: pad.rail
+    name: CanSat Launch Rail
+    description: 6 m steel launch rail on a tripod, with a blast plate and a wired launch controller. Small sounding rockets slide up the rail until they are fast enough for their fins to keep them straight. Only for hobby / CanSat rockets.
+    source: Typical high-power rocketry 1515 rail (~6 m), as used at CanSat competitions. Limits and cost est.
+    useBuiltInModel: 1
+    modelPrefab: {fileID: 0}
+    image: {fileID: 0}
+    sceneObjectName: 
+    costUSD: 6000
+    costEstimated: 1
+    ownedFromStart: 0
+    isTransporter: 0
+    maxHeightM: 5
+    maxWidthM: 0.3
+    maxLiftoffMassT: 0.05
+    requiresId: 
+    ownMassT: 0
+    carryCapacityT: 0
+    rocketOffset: {x: 0, y: 0, z: 0}
   - id: pad.gantry
     name: Gantry Launch Pad
     description: Fixed pad with a service gantry tower, flame trench and propellant farm. The rocket is erected and serviced right at the pad. Medium rockets up to Falcon 9 class.
     source: 'Falcon 9: ~70 m tall, 3.7 m wide, ~550 t. Limits and cost est.'
+    useBuiltInModel: 1
     modelPrefab: {fileID: 1580604851651097618, guid: 83a46f9236f254194b94cea9c51c8519, type: 3}
     image: {fileID: -4919171722757787144, guid: 3856d1d91a3a38ee29789496f9bcb958, type: 3}
     sceneObjectName: 
@@ -75,6 +96,7 @@ MonoBehaviour:
     name: Mobile Launcher
     description: Two-story launch platform with a ~116 m umbilical tower. The rocket is stacked on it indoors, then the Crawler carries both to the pad. Built for super-heavy rockets.
     source: 'NASA: SLS Mobile Launcher tower ~116 m. Mass, limits and cost est.'
+    useBuiltInModel: 1
     modelPrefab: {fileID: 8771091787928289351, guid: f38d3667358fc4d6b998fa0f4e127dcf, type: 3}
     image: {fileID: -852393517329727934, guid: 2d79cd3f3acb1b000bad5e520aa297e7, type: 3}
     sceneObjectName: 
@@ -93,6 +115,7 @@ MonoBehaviour:
     name: Crawler-Transporter
     description: Tracked giant that carries the Mobile Launcher and its rocket to the pad at about 1.6 km/h. Required to use the Mobile Launcher.
     source: 'NASA: Crawler-Transporter 2 upgraded to ~8,165 t capacity. Cost est.'
+    useBuiltInModel: 1
     modelPrefab: {fileID: -3822608229032858835, guid: 2ed86bb0e0beea58bb2edbbb4725cba0, type: 3}
     image: {fileID: 7666178372080435337, guid: ec6cf5a89b0f864379ccd29ebd7a009e, type: 3}
     sceneObjectName: 
@@ -6738,6 +6761,396 @@ MonoBehaviour:
     maxPayloadKg: 0
     innerDiameter: 0
     innerHeight: 0
+  - id: snd.motor.j
+    name: "K700 Motor Section \xD815.6 cm"
+    builder: 0
+    category: Sounding Rockets (CanSat)
+    subcategory: Hobby Motors
+    role: 3
+    shape: 6
+    attach: 0
+    description: "High-power rocket motor in its mount tube (K class, about 1,700 N\xB7s). Lifts a full-size CanSat rocket to about 1.2 km. Once lit it can't be switched off. It goes at the very bottom."
+    source: "Typical K-class reload: ~1,700 N\xB7s total impulse, Isp ~195 s (Tripoli/NAR class); price est. incl. reusable case"
+    modelPrefab: {fileID: 0}
+    tintPrefab: 0
+    defaultColor: {r: 0.94, g: 0.94, b: 0.95, a: 1}
+    diameter: 0.156
+    topDiameter: -1
+    length: 0.9
+    boxSize: {x: 1, y: 1, z: 1}
+    stowedSize: {x: 0, y: 0, z: 0}
+    dryMassKg: 1.6
+    propellantKg: 0.9
+    costUSD: 900
+    costEstimated: 1
+    propellant: 5
+    thrustSLkN: 0.69
+    thrustVackN: 0.73
+    ispSL: 195
+    ispVac: 205
+    burnTimeS: 2.5
+    powerGenW: 0
+    powerUseW: 0
+    dutyCycle: 1
+    batteryWh: 0
+    dataRateKbps: 0
+    volumeL: 0
+    internalVolumeL: 0
+    crossfeed: 0
+    maxPayloadKg: 0
+    innerDiameter: 0
+    innerHeight: 0
+  - id: snd.motor.k
+    name: "L850 Motor Section \xD815.6 cm"
+    builder: 0
+    category: Sounding Rockets (CanSat)
+    subcategory: Hobby Motors
+    role: 3
+    shape: 6
+    attach: 0
+    description: "Bigger motor (L class, about 2,300 N\xB7s). Flies higher, so the CanSat falls for longer. Needs a Level 2 certified flyer."
+    source: "Typical L-class reload: ~2,300 N\xB7s, Isp ~195 s; price est. incl. reusable case"
+    modelPrefab: {fileID: 0}
+    tintPrefab: 0
+    defaultColor: {r: 0.94, g: 0.94, b: 0.95, a: 1}
+    diameter: 0.156
+    topDiameter: -1
+    length: 1.1
+    boxSize: {x: 1, y: 1, z: 1}
+    stowedSize: {x: 0, y: 0, z: 0}
+    dryMassKg: 1.8999999
+    propellantKg: 1.2
+    costUSD: 1400
+    costEstimated: 1
+    propellant: 5
+    thrustSLkN: 0.82
+    thrustVackN: 0.86
+    ispSL: 195
+    ispVac: 205
+    burnTimeS: 2.8
+    powerGenW: 0
+    powerUseW: 0
+    dutyCycle: 1
+    batteryWh: 0
+    dataRateKbps: 0
+    volumeL: 0
+    internalVolumeL: 0
+    crossfeed: 0
+    maxPayloadKg: 0
+    innerDiameter: 0
+    innerHeight: 0
+  - id: snd.tube
+    name: "Fiberglass Body Tube \xD815.6 cm x 1.2 m"
+    builder: 0
+    category: Sounding Rockets (CanSat)
+    subcategory: Airframe
+    role: 0
+    shape: 0
+    attach: 0
+    description: Strong fiberglass tube that forms the rocket's body. The flight electronics go inside it.
+    source: est.
+    modelPrefab: {fileID: 0}
+    tintPrefab: 0
+    defaultColor: {r: 0.94, g: 0.94, b: 0.95, a: 1}
+    diameter: 0.156
+    topDiameter: -1
+    length: 1.2
+    boxSize: {x: 1, y: 1, z: 1}
+    stowedSize: {x: 0, y: 0, z: 0}
+    dryMassKg: 2.2
+    propellantKg: 0
+    costUSD: 650
+    costEstimated: 1
+    propellant: 0
+    thrustSLkN: 0
+    thrustVackN: 0
+    ispSL: 0
+    ispVac: 0
+    burnTimeS: 0
+    powerGenW: 0
+    powerUseW: 0
+    dutyCycle: 1
+    batteryWh: 0
+    dataRateKbps: 0
+    volumeL: 0
+    internalVolumeL: 15
+    crossfeed: 0
+    maxPayloadKg: 0
+    innerDiameter: 0
+    innerHeight: 0
+  - id: snd.bay
+    name: "CanSat Payload Bay \xD815.6 cm x 0.6 m"
+    builder: 0
+    category: Sounding Rockets (CanSat)
+    subcategory: Airframe
+    role: 5
+    shape: 0
+    attach: 0
+    description: Tube section that holds the CanSat. At the top of the flight the nose pops off and the CanSat is pushed out.
+    source: est.
+    modelPrefab: {fileID: 0}
+    tintPrefab: 0
+    defaultColor: {r: 0.94, g: 0.94, b: 0.95, a: 1}
+    diameter: 0.156
+    topDiameter: -1
+    length: 0.6
+    boxSize: {x: 1, y: 1, z: 1}
+    stowedSize: {x: 0, y: 0, z: 0}
+    dryMassKg: 1
+    propellantKg: 0
+    costUSD: 450
+    costEstimated: 1
+    propellant: 0
+    thrustSLkN: 0
+    thrustVackN: 0
+    ispSL: 0
+    ispVac: 0
+    burnTimeS: 0
+    powerGenW: 0
+    powerUseW: 0
+    dutyCycle: 1
+    batteryWh: 0
+    dataRateKbps: 0
+    volumeL: 0
+    internalVolumeL: 0
+    crossfeed: 0
+    maxPayloadKg: 4
+    innerDiameter: 0.14
+    innerHeight: 0.5
+  - id: snd.nose
+    name: "Ogive Nose Cone \xD815.6 cm"
+    builder: 0
+    category: Sounding Rockets (CanSat)
+    subcategory: Airframe
+    role: 7
+    shape: 2
+    attach: 0
+    description: Pointy fiberglass nose so the air flows smoothly around the rocket.
+    source: est.
+    modelPrefab: {fileID: 0}
+    tintPrefab: 0
+    defaultColor: {r: 0.94, g: 0.94, b: 0.95, a: 1}
+    diameter: 0.156
+    topDiameter: -1
+    length: 0.6
+    boxSize: {x: 1, y: 1, z: 1}
+    stowedSize: {x: 0, y: 0, z: 0}
+    dryMassKg: 0.8
+    propellantKg: 0
+    costUSD: 300
+    costEstimated: 1
+    propellant: 0
+    thrustSLkN: 0
+    thrustVackN: 0
+    ispSL: 0
+    ispVac: 0
+    burnTimeS: 0
+    powerGenW: 0
+    powerUseW: 0
+    dutyCycle: 1
+    batteryWh: 0
+    dataRateKbps: 0
+    volumeL: 0
+    internalVolumeL: 0
+    crossfeed: 0
+    maxPayloadKg: 0
+    innerDiameter: 0
+    innerHeight: 0
+  - id: snd.fin
+    name: G10 Fiberglass Fin
+    builder: 0
+    category: Sounding Rockets (CanSat)
+    subcategory: Airframe
+    role: 9
+    shape: 12
+    attach: 1
+    description: Keeps the rocket flying straight, like the feathers on an arrow. Use 3 or 4 near the bottom.
+    source: est.
+    modelPrefab: {fileID: 0}
+    tintPrefab: 0
+    defaultColor: {r: 0.94, g: 0.94, b: 0.95, a: 1}
+    diameter: 1
+    topDiameter: -1
+    length: 0.2
+    boxSize: {x: 0.006, y: 0.3, z: 0.2}
+    stowedSize: {x: 0, y: 0, z: 0}
+    dryMassKg: 0.25
+    propellantKg: 0
+    costUSD: 120
+    costEstimated: 1
+    propellant: 0
+    thrustSLkN: 0
+    thrustVackN: 0
+    ispSL: 0
+    ispVac: 0
+    burnTimeS: 0
+    powerGenW: 0
+    powerUseW: 0
+    dutyCycle: 1
+    batteryWh: 0
+    dataRateKbps: 0
+    volumeL: 0
+    internalVolumeL: 0
+    crossfeed: 0
+    maxPayloadKg: 0
+    innerDiameter: 0
+    innerHeight: 0
+  - id: snd.alt
+    name: Altimeter Flight Computer
+    builder: 0
+    category: Sounding Rockets (CanSat)
+    subcategory: Flight Electronics
+    role: 10
+    shape: 21
+    attach: 3
+    description: Senses height from air pressure and pops the nose to release the CanSat at the top of the flight.
+    source: est.
+    modelPrefab: {fileID: 0}
+    tintPrefab: 0
+    defaultColor: {r: 0.93, g: 0.93, b: 0.95, a: 1}
+    diameter: 1
+    topDiameter: -1
+    length: 1
+    boxSize: {x: 1, y: 1, z: 1}
+    stowedSize: {x: 0, y: 0, z: 0}
+    dryMassKg: 0.05
+    propellantKg: 0
+    costUSD: 350
+    costEstimated: 1
+    propellant: 0
+    thrustSLkN: 0
+    thrustVackN: 0
+    ispSL: 0
+    ispVac: 0
+    burnTimeS: 0
+    powerGenW: 0
+    powerUseW: 0.3
+    dutyCycle: 1
+    batteryWh: 0
+    dataRateKbps: 0
+    volumeL: 0.05
+    internalVolumeL: 0
+    crossfeed: 0
+    maxPayloadKg: 0
+    innerDiameter: 0
+    innerHeight: 0
+  - id: snd.imu
+    name: 6-Axis IMU Board
+    builder: 0
+    category: Sounding Rockets (CanSat)
+    subcategory: Flight Electronics
+    role: 11
+    shape: 21
+    attach: 3
+    description: Gyro and accelerometer that sense tilt and speed.
+    source: est.
+    modelPrefab: {fileID: 0}
+    tintPrefab: 0
+    defaultColor: {r: 0.93, g: 0.93, b: 0.95, a: 1}
+    diameter: 1
+    topDiameter: -1
+    length: 1
+    boxSize: {x: 1, y: 1, z: 1}
+    stowedSize: {x: 0, y: 0, z: 0}
+    dryMassKg: 0.02
+    propellantKg: 0
+    costUSD: 120
+    costEstimated: 1
+    propellant: 0
+    thrustSLkN: 0
+    thrustVackN: 0
+    ispSL: 0
+    ispVac: 0
+    burnTimeS: 0
+    powerGenW: 0
+    powerUseW: 0.1
+    dutyCycle: 1
+    batteryWh: 0
+    dataRateKbps: 0
+    volumeL: 0.02
+    internalVolumeL: 0
+    crossfeed: 0
+    maxPayloadKg: 0
+    innerDiameter: 0
+    innerHeight: 0
+  - id: snd.gps
+    name: GPS Radio Tracker
+    builder: 0
+    category: Sounding Rockets (CanSat)
+    subcategory: Flight Electronics
+    role: 14
+    shape: 21
+    attach: 3
+    description: Sends the rocket's position so the recovery team can find it.
+    source: est.
+    modelPrefab: {fileID: 0}
+    tintPrefab: 0
+    defaultColor: {r: 0.93, g: 0.93, b: 0.95, a: 1}
+    diameter: 1
+    topDiameter: -1
+    length: 1
+    boxSize: {x: 1, y: 1, z: 1}
+    stowedSize: {x: 0, y: 0, z: 0}
+    dryMassKg: 0.1
+    propellantKg: 0
+    costUSD: 600
+    costEstimated: 1
+    propellant: 0
+    thrustSLkN: 0
+    thrustVackN: 0
+    ispSL: 0
+    ispVac: 0
+    burnTimeS: 0
+    powerGenW: 0
+    powerUseW: 0.5
+    dutyCycle: 1
+    batteryWh: 0
+    dataRateKbps: 0
+    volumeL: 0.1
+    internalVolumeL: 0
+    crossfeed: 0
+    maxPayloadKg: 0
+    innerDiameter: 0
+    innerHeight: 0
+  - id: snd.batt
+    name: Li-Po Flight Battery
+    builder: 0
+    category: Sounding Rockets (CanSat)
+    subcategory: Flight Electronics
+    role: 16
+    shape: 21
+    attach: 3
+    description: Powers the altimeter and the tracker.
+    source: est.
+    modelPrefab: {fileID: 0}
+    tintPrefab: 0
+    defaultColor: {r: 0.93, g: 0.93, b: 0.95, a: 1}
+    diameter: 1
+    topDiameter: -1
+    length: 1
+    boxSize: {x: 1, y: 1, z: 1}
+    stowedSize: {x: 0, y: 0, z: 0}
+    dryMassKg: 0.1
+    propellantKg: 0
+    costUSD: 40
+    costEstimated: 1
+    propellant: 0
+    thrustSLkN: 0
+    thrustVackN: 0
+    ispSL: 0
+    ispVac: 0
+    burnTimeS: 0
+    powerGenW: 0
+    powerUseW: 0
+    dutyCycle: 1
+    batteryWh: 10
+    dataRateKbps: 0
+    volumeL: 0.05
+    internalVolumeL: 0
+    crossfeed: 0
+    maxPayloadKg: 0
+    innerDiameter: 0
+    innerHeight: 0
   - id: eng.j2
     name: J-2
     builder: 0
@@ -10326,6 +10739,357 @@ MonoBehaviour:
     maxPayloadKg: 0
     innerDiameter: 0
     innerHeight: 0
+  - id: can.shell
+    name: CanSat Shell (soda-can size)
+    builder: 1
+    category: CanSat (Sky Sensor)
+    subcategory: CanSat Parts
+    role: 19
+    shape: 0
+    attach: 0
+    description: 66 x 115 mm can, the size of a soda can, just like real CanSat competitions. Everything else goes inside.
+    source: est.
+    modelPrefab: {fileID: 0}
+    tintPrefab: 0
+    defaultColor: {r: 0.86, g: 0.69, b: 0.27, a: 1}
+    diameter: 0.066
+    topDiameter: -1
+    length: 0.115
+    boxSize: {x: 1, y: 1, z: 1}
+    stowedSize: {x: 0, y: 0, z: 0}
+    dryMassKg: 0.06
+    propellantKg: 0
+    costUSD: 150
+    costEstimated: 1
+    propellant: 0
+    thrustSLkN: 0
+    thrustVackN: 0
+    ispSL: 0
+    ispVac: 0
+    burnTimeS: 0
+    powerGenW: 0
+    powerUseW: 0
+    dutyCycle: 1
+    batteryWh: 0
+    dataRateKbps: 0
+    volumeL: 0
+    internalVolumeL: 0.3
+    crossfeed: 0
+    maxPayloadKg: 0
+    innerDiameter: 0
+    innerHeight: 0
+  - id: can.eject
+    name: CanSat Ejection Spring Plate
+    builder: 1
+    category: CanSat (Sky Sensor)
+    subcategory: CanSat Parts
+    role: 20
+    shape: 0
+    attach: 0
+    description: Pushes the CanSat out of the rocket at the top of the flight.
+    source: est.
+    modelPrefab: {fileID: 0}
+    tintPrefab: 0
+    defaultColor: {r: 0.12, g: 0.12, b: 0.13, a: 1}
+    diameter: 0.066
+    topDiameter: -1
+    length: 0.01
+    boxSize: {x: 0.066, y: 0.01, z: 0.066}
+    stowedSize: {x: 0, y: 0, z: 0}
+    dryMassKg: 0.01
+    propellantKg: 0
+    costUSD: 80
+    costEstimated: 1
+    propellant: 0
+    thrustSLkN: 0
+    thrustVackN: 0
+    ispSL: 0
+    ispVac: 0
+    burnTimeS: 0
+    powerGenW: 0
+    powerUseW: 0
+    dutyCycle: 1
+    batteryWh: 0
+    dataRateKbps: 0
+    volumeL: 0
+    internalVolumeL: 0
+    crossfeed: 0
+    maxPayloadKg: 1
+    innerDiameter: 0
+    innerHeight: 0
+  - id: can.chute
+    name: CanSat Parachute (packed)
+    builder: 1
+    category: CanSat (Sky Sensor)
+    subcategory: CanSat Parts
+    role: 8
+    shape: 8
+    attach: 1
+    description: Opens after release so the CanSat floats down slowly (about 8 m/s).
+    source: est.
+    modelPrefab: {fileID: 0}
+    tintPrefab: 0
+    defaultColor: {r: 1, g: 0.45, b: 0.1, a: 1}
+    diameter: 1
+    topDiameter: -1
+    length: 0.03
+    boxSize: {x: 0.05, y: 0.03, z: 0.03}
+    stowedSize: {x: 0, y: 0, z: 0}
+    dryMassKg: 0.04
+    propellantKg: 0
+    costUSD: 120
+    costEstimated: 1
+    propellant: 0
+    thrustSLkN: 0
+    thrustVackN: 0
+    ispSL: 0
+    ispVac: 0
+    burnTimeS: 0
+    powerGenW: 0
+    powerUseW: 0
+    dutyCycle: 1
+    batteryWh: 0
+    dataRateKbps: 0
+    volumeL: 0
+    internalVolumeL: 0
+    crossfeed: 0
+    maxPayloadKg: 0
+    innerDiameter: 0
+    innerHeight: 0
+  - id: can.obc
+    name: Microcontroller Board (Arduino class)
+    builder: 1
+    category: CanSat (Sky Sensor)
+    subcategory: CanSat Parts
+    role: 24
+    shape: 21
+    attach: 3
+    description: 'The CanSat''s little brain: reads the sensors and sends the data.'
+    source: est.
+    modelPrefab: {fileID: 0}
+    tintPrefab: 0
+    defaultColor: {r: 0.93, g: 0.93, b: 0.95, a: 1}
+    diameter: 1
+    topDiameter: -1
+    length: 1
+    boxSize: {x: 1, y: 1, z: 1}
+    stowedSize: {x: 0, y: 0, z: 0}
+    dryMassKg: 0.01
+    propellantKg: 0
+    costUSD: 60
+    costEstimated: 1
+    propellant: 0
+    thrustSLkN: 0
+    thrustVackN: 0
+    ispSL: 0
+    ispVac: 0
+    burnTimeS: 0
+    powerGenW: 0
+    powerUseW: 0.3
+    dutyCycle: 1
+    batteryWh: 0
+    dataRateKbps: 0
+    volumeL: 0.02
+    internalVolumeL: 0
+    crossfeed: 0
+    maxPayloadKg: 0
+    innerDiameter: 0
+    innerHeight: 0
+  - id: can.sensor
+    name: Temperature + Air Pressure Sensor
+    builder: 1
+    category: CanSat (Sky Sensor)
+    subcategory: CanSat Parts
+    role: 32
+    shape: 21
+    attach: 3
+    description: Measures how warm the air is and how hard it pushes (air pressure). The main science of a CanSat!
+    source: est.
+    modelPrefab: {fileID: 0}
+    tintPrefab: 0
+    defaultColor: {r: 0.93, g: 0.93, b: 0.95, a: 1}
+    diameter: 1
+    topDiameter: -1
+    length: 1
+    boxSize: {x: 1, y: 1, z: 1}
+    stowedSize: {x: 0, y: 0, z: 0}
+    dryMassKg: 0.005
+    propellantKg: 0
+    costUSD: 40
+    costEstimated: 1
+    propellant: 0
+    thrustSLkN: 0
+    thrustVackN: 0
+    ispSL: 0
+    ispVac: 0
+    burnTimeS: 0
+    powerGenW: 0
+    powerUseW: 0.01
+    dutyCycle: 1
+    batteryWh: 0
+    dataRateKbps: 1
+    volumeL: 0.005
+    internalVolumeL: 0
+    crossfeed: 0
+    maxPayloadKg: 0
+    innerDiameter: 0
+    innerHeight: 0
+  - id: can.humid
+    name: Humidity Sensor
+    builder: 1
+    category: CanSat (Sky Sensor)
+    subcategory: CanSat Parts
+    role: 32
+    shape: 21
+    attach: 3
+    description: Measures how much water vapor is in the air.
+    source: est.
+    modelPrefab: {fileID: 0}
+    tintPrefab: 0
+    defaultColor: {r: 0.93, g: 0.93, b: 0.95, a: 1}
+    diameter: 1
+    topDiameter: -1
+    length: 1
+    boxSize: {x: 1, y: 1, z: 1}
+    stowedSize: {x: 0, y: 0, z: 0}
+    dryMassKg: 0.004
+    propellantKg: 0
+    costUSD: 30
+    costEstimated: 1
+    propellant: 0
+    thrustSLkN: 0
+    thrustVackN: 0
+    ispSL: 0
+    ispVac: 0
+    burnTimeS: 0
+    powerGenW: 0
+    powerUseW: 0.01
+    dutyCycle: 1
+    batteryWh: 0
+    dataRateKbps: 1
+    volumeL: 0.004
+    internalVolumeL: 0
+    crossfeed: 0
+    maxPayloadKg: 0
+    innerDiameter: 0
+    innerHeight: 0
+  - id: can.radio
+    name: LoRa Radio 433 MHz
+    builder: 1
+    category: CanSat (Sky Sensor)
+    subcategory: CanSat Parts
+    role: 25
+    shape: 21
+    attach: 3
+    description: Sends the measurements to the ground station while the CanSat falls.
+    source: est.
+    modelPrefab: {fileID: 0}
+    tintPrefab: 0
+    defaultColor: {r: 0.93, g: 0.93, b: 0.95, a: 1}
+    diameter: 1
+    topDiameter: -1
+    length: 1
+    boxSize: {x: 1, y: 1, z: 1}
+    stowedSize: {x: 0, y: 0, z: 0}
+    dryMassKg: 0.01
+    propellantKg: 0
+    costUSD: 90
+    costEstimated: 1
+    propellant: 0
+    thrustSLkN: 0
+    thrustVackN: 0
+    ispSL: 0
+    ispVac: 0
+    burnTimeS: 0
+    powerGenW: 0
+    powerUseW: 0.5
+    dutyCycle: 0.3
+    batteryWh: 0
+    dataRateKbps: 5
+    volumeL: 0.01
+    internalVolumeL: 0
+    crossfeed: 0
+    maxPayloadKg: 0
+    innerDiameter: 0
+    innerHeight: 0
+  - id: can.ant
+    name: Wire Antenna
+    builder: 1
+    category: CanSat (Sky Sensor)
+    subcategory: CanSat Parts
+    role: 26
+    shape: 15
+    attach: 1
+    description: Simple quarter-wave wire antenna for the radio. Wrapped around the can until release.
+    source: est.
+    modelPrefab: {fileID: 0}
+    tintPrefab: 0
+    defaultColor: {r: 0.7, g: 0.7, b: 0.72, a: 1}
+    diameter: 1
+    topDiameter: -1
+    length: 0.17
+    boxSize: {x: 0.005, y: 0.005, z: 0.17}
+    stowedSize: {x: 0.005, y: 0.005, z: 0.005}
+    dryMassKg: 0.005
+    propellantKg: 0
+    costUSD: 20
+    costEstimated: 1
+    propellant: 0
+    thrustSLkN: 0
+    thrustVackN: 0
+    ispSL: 0
+    ispVac: 0
+    burnTimeS: 0
+    powerGenW: 0
+    powerUseW: 0
+    dutyCycle: 1
+    batteryWh: 0
+    dataRateKbps: 0
+    volumeL: 0
+    internalVolumeL: 0
+    crossfeed: 0
+    maxPayloadKg: 0
+    innerDiameter: 0
+    innerHeight: 0
+  - id: can.batt
+    name: CanSat Battery 2 Wh
+    builder: 1
+    category: CanSat (Sky Sensor)
+    subcategory: CanSat Parts
+    role: 22
+    shape: 21
+    attach: 3
+    description: 'Small Li-ion cell: plenty for a few minutes of flight.'
+    source: est.
+    modelPrefab: {fileID: 0}
+    tintPrefab: 0
+    defaultColor: {r: 0.93, g: 0.93, b: 0.95, a: 1}
+    diameter: 1
+    topDiameter: -1
+    length: 1
+    boxSize: {x: 1, y: 1, z: 1}
+    stowedSize: {x: 0, y: 0, z: 0}
+    dryMassKg: 0.05
+    propellantKg: 0
+    costUSD: 40
+    costEstimated: 1
+    propellant: 0
+    thrustSLkN: 0
+    thrustVackN: 0
+    ispSL: 0
+    ispVac: 0
+    burnTimeS: 0
+    powerGenW: 0
+    powerUseW: 0
+    dutyCycle: 1
+    batteryWh: 2
+    dataRateKbps: 0
+    volumeL: 0.03
+    internalVolumeL: 0
+    crossfeed: 0
+    maxPayloadKg: 0
+    innerDiameter: 0
+    innerHeight: 0
   - id: ph.bus.d1
     name: Diwata-1 Bus (55 x 35 x 55 cm)
     builder: 1
@@ -11162,7 +11926,7 @@ MonoBehaviour:
     topDiameter: -1
     length: 0.25
     boxSize: {x: 21.2, y: 14.2, z: 0.25}
-    stowedSize: {x: 4.2, y: 4.2, z: 1}
+    stowedSize: {x: 4, y: 2.4, z: 1.2}
     dryMassKg: 1000
     propellantKg: 0
     costUSD: 1000000000
@@ -11496,4 +12260,4 @@ MonoBehaviour:
     maxPayloadKg: 8000
     innerDiameter: 0
     innerHeight: 0
-  catalogVersion: 3
+  catalogVersion: 5
