@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 using TMPro;
 using UnityEngine.UI;
@@ -12,6 +13,12 @@ public class DoorInteraction : MonoBehaviour
     [SerializeField] private Vector3 teleportTarget = Vector3.zero;
     [SerializeField] private float teleportCooldown = 0.5f;
 
+    [Header("Fade Settings")]
+    [Tooltip("Seconds to fade to black (and the same to fade back in).")]
+    [SerializeField] private float fadeDuration = 0.25f;
+    [Tooltip("Seconds to stay black after the teleport, before fading back in.")]
+    [SerializeField] private float blackHold = 0.1f;
+
     [Header("Text Settings")]
     [SerializeField] private TMP_FontAsset fontAsset;
     [SerializeField] private int fontSize = 32;
@@ -22,9 +29,11 @@ public class DoorInteraction : MonoBehaviour
     // Shared between ALL doors
     private static TextMeshProUGUI interactionText;
     private static Canvas promptCanvas;
+    private static CanvasGroup fadeGroup;
     private static DoorInteraction selectedDoor;
     private static int lastTeleportFrame = -1;
     private static float lastTeleportTime = -999f;
+    private static bool isTeleporting;
 
     // Resets static values when entering Play Mode
     // (needed if "Enter Play Mode Options" / no domain reload is on)
@@ -33,9 +42,11 @@ public class DoorInteraction : MonoBehaviour
     {
         interactionText = null;
         promptCanvas = null;
+        fadeGroup = null;
         selectedDoor = null;
         lastTeleportFrame = -1;
         lastTeleportTime = -999f;
+        isTeleporting = false;
     }
 
     void Start()
@@ -66,6 +77,7 @@ public class DoorInteraction : MonoBehaviour
 
         promptCanvas = canvasObject.AddComponent<Canvas>();
         promptCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        promptCanvas.sortingOrder = 1000; // fade covers everything
 
         CanvasScaler scaler = canvasObject.AddComponent<CanvasScaler>();
         scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
@@ -73,6 +85,7 @@ public class DoorInteraction : MonoBehaviour
 
         canvasObject.AddComponent<GraphicRaycaster>();
 
+        // Prompt text
         GameObject textObject = new GameObject("InteractionPromptText");
         textObject.transform.SetParent(canvasObject.transform, false);
 
@@ -81,6 +94,7 @@ public class DoorInteraction : MonoBehaviour
         interactionText.fontSize = fontSize;
         interactionText.color = textColor;
         interactionText.alignment = TextAlignmentOptions.Center;
+        interactionText.raycastTarget = false;
 
         if (fontAsset != null)
             interactionText.font = fontAsset;
@@ -95,6 +109,25 @@ public class DoorInteraction : MonoBehaviour
         rect.sizeDelta = new Vector2(600f, 80f);
 
         textObject.SetActive(false);
+
+        // Black fade screen (on top of the prompt)
+        GameObject fadeObject = new GameObject("DoorFade");
+        fadeObject.transform.SetParent(canvasObject.transform, false);
+
+        Image fadeImage = fadeObject.AddComponent<Image>();
+        fadeImage.color = Color.black;
+        fadeImage.raycastTarget = false;
+
+        RectTransform fadeRect = fadeImage.rectTransform;
+        fadeRect.anchorMin = Vector2.zero;
+        fadeRect.anchorMax = Vector2.one;
+        fadeRect.offsetMin = Vector2.zero;
+        fadeRect.offsetMax = Vector2.zero;
+
+        fadeGroup = fadeObject.AddComponent<CanvasGroup>();
+        fadeGroup.alpha = 0f;
+        fadeGroup.blocksRaycasts = false;
+        fadeGroup.interactable = false;
     }
 
     void Update()
@@ -102,8 +135,11 @@ public class DoorInteraction : MonoBehaviour
         if (cameraTransform == null || interactionText == null)
             return;
 
-        // If ANY door already teleported the player this frame,
-        // do nothing. This is the main fix.
+        // While a fade/teleport is running, no door reacts
+        if (isTeleporting)
+            return;
+
+        // If ANY door already teleported the player this frame, do nothing
         if (Time.frameCount == lastTeleportFrame)
             return;
 
@@ -130,7 +166,7 @@ public class DoorInteraction : MonoBehaviour
 
             if (Input.GetKeyDown(KeyCode.E) && cooldownOver)
             {
-                ExecuteTeleport();
+                StartCoroutine(FadeTeleport());
             }
         }
         else if (selectedDoor == this)
@@ -141,7 +177,7 @@ public class DoorInteraction : MonoBehaviour
         }
     }
 
-    private void ExecuteTeleport()
+    private IEnumerator FadeTeleport()
     {
         CharacterController player =
             FindAnyObjectByType<CharacterController>();
@@ -149,20 +185,61 @@ public class DoorInteraction : MonoBehaviour
         if (player == null)
         {
             Debug.LogError("No CharacterController found!");
-            return;
+            yield break;
         }
 
-        // Mark the teleport FIRST so no other door can react this frame
+        // Mark the teleport FIRST so no other door can react
+        isTeleporting = true;
         lastTeleportFrame = Time.frameCount;
-        lastTeleportTime = Time.time;
-
-        player.enabled = false;
-        player.transform.position = teleportTarget;
-        player.enabled = true;
 
         interactionText.gameObject.SetActive(false);
         selectedDoor = null;
 
+        // Fade out
+        yield return Fade(0f, 1f);
+
+        // Teleport while the screen is black
+        player.enabled = false;
+        player.transform.position = teleportTarget;
+        Physics.SyncTransforms();
+        player.enabled = true;
         Debug.Log("Teleported through " + gameObject.name + " to " + teleportTarget);
+
+        yield return new WaitForSecondsRealtime(blackHold);
+
+        // Fade in
+        yield return Fade(1f, 0f);
+
+        lastTeleportTime = Time.time;
+        isTeleporting = false;
+    }
+
+    private IEnumerator Fade(float from, float to)
+    {
+        if (fadeGroup == null)
+            yield break;
+
+        float t = 0f;
+        fadeGroup.alpha = from;
+
+        while (t < fadeDuration)
+        {
+            t += Time.unscaledDeltaTime;
+            fadeGroup.alpha = Mathf.Lerp(from, to, t / fadeDuration);
+            yield return null;
+        }
+
+        fadeGroup.alpha = to;
+    }
+
+    // If this door gets turned off mid-fade, don't leave the screen black
+    void OnDisable()
+    {
+        if (isTeleporting)
+        {
+            isTeleporting = false;
+            if (fadeGroup != null)
+                fadeGroup.alpha = 0f;
+        }
     }
 }

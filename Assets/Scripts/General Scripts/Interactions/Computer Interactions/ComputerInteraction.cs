@@ -36,13 +36,15 @@ public class ComputerInteraction : MonoBehaviour
     public DesktopApp[] apps =
     {
         new DesktopApp("AscendCAD", new Color(0.95f, 0.45f, 0.15f)),
-        new DesktopApp("Ascend Rocket Trajectory Calculator", new Color(0.2f, 0.5f, 0.95f)),
+        new DesktopApp("Ascend Mission Simulator", new Color(0.2f, 0.5f, 0.95f)),
         new DesktopApp("Googel", new Color(0.25f, 0.7f, 0.35f)),
         new DesktopApp("PhMail", new Color(0.05f, 0.34f, 0.82f)),
     };
     public Vector2 appWindowSize = new Vector2(1100f, 650f);
     public Color windowColor = new Color(0.13f, 0.13f, 0.15f, 1f);
     public Color titleBarColor = new Color(0.2f, 0.2f, 0.23f, 1f);
+    [Tooltip("Max seconds between the two clicks of a double-click (desktop icons and title bars).")]
+    [Range(0.2f, 1f)] public float doubleClickTime = 0.4f;
 
     [Header("Googel (drag your Googel Data asset into Googel > Data)")]
     public GoogelSettings googel = new GoogelSettings();
@@ -56,6 +58,10 @@ public class ComputerInteraction : MonoBehaviour
     public string mailAppName = "PhMail";
     [Tooltip("Open AscendCAD full screen the first time (it needs the room).")]
     public bool maximizeAscendCAD = true;
+    [Tooltip("Must match the app name in Apps. The old 'Ascend Rocket Trajectory Calculator' app is renamed to this automatically.")]
+    public string simulatorAppName = "Ascend Mission Simulator";
+    [Tooltip("Open the Mission Simulator full screen the first time (it needs the room).")]
+    public bool maximizeSimulator = true;
 
     [Header("Taskbar")]
     public float taskbarHeight = 48f;
@@ -116,6 +122,7 @@ public class ComputerInteraction : MonoBehaviour
     RectTransform windowLayer;
     RectTransform[] windows;
     GameObject[] taskbarIndicators;
+    RectTransform[] iconCells;
     int cascade;
 
     // Maximize / restore state per window
@@ -138,13 +145,85 @@ public class ComputerInteraction : MonoBehaviour
     TextMeshProUGUI timeLabel, dateLabel;
     float clockTimer;
 
+    // Our own double-click timer. The Input System's UI module doesn't reliably report
+    // clickCount, so we time the two clicks ourselves.
+    int lastClickId = -1, iconLastId = -1;
+    float lastClickTime, iconLastTime;
+
+    bool IsDoubleClick(int id)
+    {
+        float now = Time.unscaledTime;
+        bool dbl = id == lastClickId && now - lastClickTime <= doubleClickTime;
+        lastClickId = dbl ? -1 : id;
+        lastClickTime = now;
+        return dbl;
+    }
+
+    // Reads the mouse directly every frame. On a left press, finds the top-most UI element under the
+    // cursor; if it belongs to a desktop icon (and no window is covering it), counts it toward a double-click.
+    void CheckIconDoubleClick()
+    {
+        if (iconCells == null || desktopRoot == null || !desktopRoot.activeInHierarchy) return;
+        if (!LeftMousePressed(out Vector2 pos)) return;
+
+        var es = EventSystem.current;
+        if (!es) return;
+        var hits = new List<RaycastResult>();
+        es.RaycastAll(new PointerEventData(es) { position = pos }, hits);
+        if (hits.Count == 0) return;
+        var top = hits[0].gameObject.transform;
+
+        for (int i = 0; i < iconCells.Length; i++)
+        {
+            if (!iconCells[i] || !top.IsChildOf(iconCells[i])) continue;
+            float now = Time.unscaledTime;
+            bool dbl = i == iconLastId && now - iconLastTime <= doubleClickTime;
+            iconLastId = dbl ? -1 : i;
+            iconLastTime = now;
+            if (dbl)
+            {
+                Debug.Log("ComputerInteraction: opening " + apps[i].name);
+                OpenApp(i);
+            }
+            return;
+        }
+        iconLastId = -1;   // clicked something else: reset
+
+        // Diagnostics: the mouse is over an icon but something else is on top of it
+        for (int i = 0; i < iconCells.Length; i++)
+            if (iconCells[i] && RectTransformUtility.RectangleContainsScreenPoint(iconCells[i], pos, null))
+                Debug.LogWarning($"ComputerInteraction: the click on '{apps[i].name}' was blocked by '{GetPath(top)}'. " +
+                                 "Turn off Raycast Target on that object, or move it so it doesn't cover the desktop.", top);
+    }
+
+    static string GetPath(Transform t)
+    {
+        var sb = new StringBuilder(t.name);
+        for (var p = t.parent; p; p = p.parent) sb.Insert(0, p.name + "/");
+        return sb.ToString();
+    }
+
+    static bool LeftMousePressed(out Vector2 pos)
+    {
+#if ENABLE_INPUT_SYSTEM
+        var m = Mouse.current;
+        pos = m != null ? m.position.ReadValue() : Vector2.zero;
+        return m != null && m.leftButton.wasPressedThisFrame;
+#else
+        pos = Input.mousePosition;
+        return Input.GetMouseButtonDown(0);
+#endif
+    }
+
     // ───────────────────────────── Lifecycle ─────────────────────────────
 
     void Start()
     {
         cam = Camera.main;
+        Debug.Log("ComputerInteraction: desktop double-click fix v3 is running.");
         if (computerCanvas) computerCanvas.SetActive(false);
         EnsureMailApp();
+        EnsureSimulatorApp();
         CreatePrompt();
     }
 
@@ -170,8 +249,9 @@ public class ComputerInteraction : MonoBehaviour
             // Show PhMail in the Inspector's Apps list (so its icon etc. can be set) even before pressing Play
             int before = apps != null ? apps.Length : 0;
             EnsureMailApp();
+            bool renamed = EnsureSimulatorApp();
 #if UNITY_EDITOR
-            if (apps != null && apps.Length != before) UnityEditor.EditorUtility.SetDirty(this);
+            if (apps != null && (apps.Length != before || renamed)) UnityEditor.EditorUtility.SetDirty(this);
 #endif
             return;
         }
@@ -189,6 +269,7 @@ public class ComputerInteraction : MonoBehaviour
         if (isOpen)
         {
             if (Pressed(KeyCode.Escape) || (Pressed(KeyCode.E) && !IsTyping())) { Close(); return; }
+            CheckIconDoubleClick();
             UpdateClock();
             UpdateToast();
             return;
@@ -208,6 +289,16 @@ public class ComputerInteraction : MonoBehaviour
         if (looking && Pressed(KeyCode.E)) Open();
     }
 
+    // Other scripts (player controllers, mouse look, "click to lock the cursor" code) can re-lock or hide
+    // the cursor while the computer is open. Then the first click locks the mouse and the second click of a
+    // double-click lands in the middle of the screen instead of on the icon. Runs after every Update.
+    void LateUpdate()
+    {
+        if (!isOpen) return;
+        if (Cursor.lockState != CursorLockMode.None) Cursor.lockState = CursorLockMode.None;
+        if (!Cursor.visible) Cursor.visible = true;
+    }
+
     // Older scenes saved the Apps list before PhMail existed: add it so nobody has to edit the Inspector
     void EnsureMailApp()
     {
@@ -216,6 +307,19 @@ public class ComputerInteraction : MonoBehaviour
         foreach (var a in apps) if (IsApp(a, mailAppName)) return;
         var list = new List<DesktopApp>(apps) { new DesktopApp(mailAppName, new Color(0.05f, 0.34f, 0.82f)) };
         apps = list.ToArray();
+    }
+
+    // The old "Ascend Rocket Trajectory Calculator" app becomes the Ascend Mission Simulator (keeps its icon). Returns true if it changed something.
+    bool EnsureSimulatorApp()
+    {
+        if (string.IsNullOrEmpty(simulatorAppName)) return false;
+        if (apps == null) apps = new DesktopApp[0];
+        foreach (var a in apps) if (IsApp(a, simulatorAppName)) return false;
+        foreach (var a in apps)
+            if (IsApp(a, "Ascend Rocket Trajectory Calculator")) { a.name = simulatorAppName; return true; }
+        var list = new List<DesktopApp>(apps) { new DesktopApp(simulatorAppName, new Color(0.2f, 0.5f, 0.95f)) };
+        apps = list.ToArray();
+        return true;
     }
 
     // ───────────────────────────── Open / Close ─────────────────────────────
@@ -301,6 +405,7 @@ public class ComputerInteraction : MonoBehaviour
         if (taskbarIndicators[index]) taskbarIndicators[index].SetActive(true);
 
         if (first && maximizeAscendCAD && IsApp(apps[index], ascendCADAppName)) SetMaximized(index, true);
+        if (first && maximizeSimulator && IsApp(apps[index], simulatorAppName)) SetMaximized(index, true);
     }
 
     public void OpenAppByName(string appName)
@@ -455,6 +560,7 @@ public class ComputerInteraction : MonoBehaviour
         // Start the icons below the "Press E to exit" hint (pill = text + padding)
         float hintBottom = Mathf.Abs(exitHintOffset.y) + exitHintSize * 1.3f + 12f;
         float top = hintBottom + 12f;
+        iconCells = new RectTransform[apps.Length];
 
         for (int i = 0; i < apps.Length; i++)
         {
@@ -475,11 +581,10 @@ public class ComputerInteraction : MonoBehaviour
             btn.targetGraphic = bg;
             btn.colors = HoverColors(new Color(1f, 1f, 1f, 0.15f), new Color(0.55f, 0.75f, 1f, 0.3f));
 
-            // Double-click opens
-            AddTrigger(cell.gameObject, EventTriggerType.PointerClick, e =>
-            {
-                if (((PointerEventData)e).clickCount >= 2) OpenApp(index);
-            });
+            // Double-click is detected in CheckIconDoubleClick() straight from the mouse,
+            // so it doesn't depend on UI click events. The Button is only for the highlight.
+            btn.navigation = new Navigation { mode = Navigation.Mode.None };
+            iconCells[index] = cell;
 
             var icon = CreateAppIcon(app, cell, iconSize);
             icon.anchorMin = icon.anchorMax = new Vector2(0.5f, 1f);
@@ -643,7 +748,8 @@ public class ComputerInteraction : MonoBehaviour
         AddTrigger(bar.gameObject, EventTriggerType.Drag, e => DragWindow(index, (PointerEventData)e));
         AddTrigger(bar.gameObject, EventTriggerType.PointerClick, e =>
         {
-            if (((PointerEventData)e).clickCount == 2) ToggleMaximize(index);
+            var pe = (PointerEventData)e;
+            if (pe.button == PointerEventData.InputButton.Left && !pe.dragging && IsDoubleClick(1000 + index)) ToggleMaximize(index);
         });
 
         var icon = CreateAppIcon(app, bar, 20f);
@@ -698,6 +804,16 @@ public class ComputerInteraction : MonoBehaviour
         else if (IsApp(app, mailAppName))
         {
             mailScreen = new AscendMailScreen(ascendCAD, promptFont, body);
+        }
+        else if (IsApp(app, simulatorAppName))
+        {
+            // Built-in Ascend Mission Simulator (no prefab needed)
+            var simGo = new GameObject("Ascend Mission Simulator", typeof(RectTransform));
+            simGo.transform.SetParent(body, false);
+            Stretch((RectTransform)simGo.transform);
+            var sim = simGo.AddComponent<AscendMissionSimulatorApp>();
+            sim.ascendCADData = ascendCAD;
+            sim.font = promptFont;
         }
         else
         {

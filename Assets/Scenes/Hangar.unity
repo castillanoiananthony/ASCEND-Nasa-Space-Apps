@@ -298,6 +298,335 @@ MeshCollider:
   m_Convex: 0
   m_CookingOptions: 30
   m_Mesh: {fileID: -5495902117074765545, guid: ba2bb9489229c894bb12c353229ef801, type: 3}
+--- !u!1 &63723630
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 63723631}
+  - component: {fileID: 63723634}
+  - component: {fileID: 63723633}
+  - component: {fileID: 63723632}
+  - component: {fileID: 63723635}
+  m_Layer: 0
+  m_Name: 'Elevator '
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &63723631
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 63723630}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 89.119995, y: 0.33800006, z: 64.947205}
+  m_LocalScale: {x: 0.109160185, y: 3.6596878, z: 3.4791672}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2117589952}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!65 &63723632
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 63723630}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 1, y: 1, z: 1}
+  m_Center: {x: 0, y: 0, z: 0}
+--- !u!23 &63723633
+MeshRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 63723630}
+  m_Enabled: 1
+  m_CastShadows: 1
+  m_ReceiveShadows: 1
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 2
+  m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 2100000, guid: 1fd56696e24cb166c9459a4c3313dcd4, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 3
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_MaskInteraction: 0
+  m_AdditionalVertexStreams: {fileID: 0}
+--- !u!33 &63723634
+MeshFilter:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 63723630}
+  m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &63723635
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 63723630}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4e477467904f32d0fbd54614fe8e023d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MissionBriefing
+  ascendCADData: {fileID: 11400000, guid: 43cbf5acf3c2c65fa8ec5b18870623d0, type: 2}
+  senderName: Mission Control
+  elevatorDoorBox: {fileID: 63723632}
+  elevatorButtonBox: {fileID: 1373354924}
+  interactDistance: 4
+  elevatorKey: 101
+  player: {fileID: 1322462854}
+  teleportIntoElevator: 1
+  elevatorInsidePoint: {fileID: 0}
+  elevatorInsidePosition: {x: 810.2, y: 2, z: 710}
+  setElevatorFacing: 1
+  elevatorFacingY: -90
+  meetingRoomPoint: {fileID: 0}
+  meetingRoomPosition: {x: 811, y: 1.08, z: 721.2}
+  setMeetingRoomFacing: 1
+  meetingRoomFacingY: -90
+  levelCameraOnTeleport: 1
+  disableWhileBusy:
+  - {fileID: 1322462855}
+  hideWhileBusy: []
+  closePhoneKey: 112
+  skipKey: 115
+  continueKey: 32
+  font: {fileID: 0}
+  textScale: 1
+  speakerName: Mission Director
+  welcomeEmail: 'Dear Astronaut,
+
+
+    Welcome to the ASCEND Space Agency! We are very happy to have you on our team.
+
+
+    Our scientists have three missions that need a brave astronaut like you. Each one will teach us something new about our planet and our Moon.
+
+
+    Please read the missions below and tap the one you would like to lead.
+
+
+    Kind regards,
+
+    Mission Control
+
+    ASCEND Space Agency'
+  lettersPerSecond: 45
+  floorMessageSeconds: 1.5
+  fadeSeconds: 0.6
+  missions:
+  - title: Sky Sensor (CanSat)
+    subtitle: Easy  |  Measure the air while falling from the sky
+    briefingLines:
+    - 'Welcome to the Briefing Room, astronaut! Today you will learn about your mission: Sky Sensor.'
+    - Your job is to build a CanSat. A CanSat is a tiny satellite, about the size of a soda can!
+    - A small rocket will carry your CanSat high into the sky, about one kilometre up. That is higher than the tallest building in the world!
+    - At the top, your CanSat pops out of the rocket and opens its parachute.
+    - 'While it floats down, its sensors measure the air: how warm it is, and how hard the air is pushing. We call that air pressure.'
+    - 'Fun fact: the higher you go, the colder the air gets and the thinner it becomes.'
+    - Your CanSat uses a little radio to send its measurements to our ground station, so scientists can read them right away.
+    - Be careful when you build it! If the parachute is too small, your CanSat will fall too fast and might break when it lands.
+    - Real scientists send up balloons and small probes like this every day to help forecast the weather.
+    - First, you will design your CanSat and choose its parts. Good luck, astronaut!
+    summaryEmail: 'Mission: Sky Sensor (CanSat)
+
+      Difficulty: Easy
+
+
+      YOUR GOALS
+
+      - Launch your CanSat about 1 km high
+
+      - Open the parachute
+
+      - Measure air temperature and air pressure while falling
+
+      - Send your data to the ground station by radio
+
+      - Land softly without breaking
+
+
+      WHAT YOU WILL BUILD
+
+      Rocket: a small rocket that can lift a can-sized payload
+
+      Payload: your CanSat (about the size of a soda can)
+
+      Science instruments: temperature sensor, air pressure sensor
+
+      Other parts: parachute, battery, small radio
+
+
+      TIPS
+
+      - A bigger parachute means a softer landing, but it adds weight.
+
+      - Keep your CanSat light so the rocket can lift it easily.
+
+
+      Next step: design your mission. Good luck!
+
+      Mission Control'
+  - title: Earth Watcher
+    subtitle: Medium  |  Take pictures of Earth from orbit
+    briefingLines:
+    - Welcome, astronaut! Your mission is called Earth Watcher.
+    - You will send a satellite into orbit around Earth. Orbit means it keeps falling around the planet without ever hitting the ground!
+    - Your satellite will fly about 700 kilometres above Earth. That is way higher than any airplane can go.
+    - 'To stay in orbit it must move super fast: about 27,000 kilometres per hour!'
+    - Your satellite carries a special camera. It can see colours our eyes can't see, which helps scientists check if forests and farms are healthy.
+    - Its solar panels turn sunlight into electricity, and its antenna sends the pictures back to Earth.
+    - You will need a bigger rocket this time, because getting to orbit takes a lot of energy.
+    - NASA has a real mission just like this called Landsat. Landsat satellites have been taking pictures of Earth since 1972!
+    - 'Remember: every part adds weight, and a heavier satellite needs a bigger, more expensive rocket.'
+    - Now let's go design your satellite. Good luck, astronaut!
+    summaryEmail: 'Mission: Earth Watcher
+
+      Difficulty: Medium
+
+
+      YOUR GOALS
+
+      - Launch your satellite into orbit, about 700 km above Earth
+
+      - Open the solar panels to get power
+
+      - Take pictures of Earth''s land, forests and farms
+
+      - Send the pictures to the ground station
+
+
+      WHAT YOU WILL BUILD
+
+      Rocket: a medium rocket that can reach orbit
+
+      Payload: an Earth-watching satellite
+
+      Science instruments: Earth camera (sees normal and infrared light)
+
+      Other parts: solar panels, battery, antenna, small thrusters
+
+
+      TIPS
+
+      - Bigger solar panels give more power, but they add weight.
+
+      - Real mission like yours: NASA''s Landsat.
+
+
+      Next step: design your mission. Good luck!
+
+      Mission Control'
+  - title: Moon Mapper
+    subtitle: Hard  |  Fly to the Moon and map its surface
+    briefingLines:
+    - 'Welcome, astronaut! This is our hardest mission: Moon Mapper.'
+    - You will send a spacecraft all the way to the Moon. The Moon is about 384,000 kilometres away!
+    - The trip takes about four to five days, so your spacecraft needs lots of fuel.
+    - When it arrives, it must fire its engine to slow down. If it is too fast, it will fly right past the Moon!
+    - Then it will circle the Moon only about 50 kilometres above the ground, and make a map of the whole surface.
+    - Your spacecraft carries a camera to take pictures, and a laser that measures how tall the mountains are and how deep the craters go.
+    - Radio messages take more than one second to travel between the Moon and Earth, so your spacecraft must be smart enough to do some work on its own.
+    - NASA's Lunar Reconnaissance Orbiter, called LRO, has been mapping the Moon like this since 2009. Its maps help choose safe landing spots for astronauts.
+    - This mission needs the biggest rocket and the most careful planning. Every kilogram counts!
+    - Now let's go design your Moon mission. Good luck, astronaut!
+    summaryEmail: 'Mission: Moon Mapper
+
+      Difficulty: Hard
+
+
+      YOUR GOALS
+
+      - Launch on a big rocket and travel about 384,000 km to the Moon
+
+      - Fire your engine to slow down and go into orbit around the Moon
+
+      - Circle the Moon about 50 km above its surface
+
+      - Map the surface with your camera and laser
+
+      - Send your maps back to Earth
+
+
+      WHAT YOU WILL BUILD
+
+      Rocket: a heavy rocket that can reach the Moon
+
+      Payload: a Moon-orbiting spacecraft
+
+      Science instruments: mapping camera, laser altimeter (measures height)
+
+      Other parts: big fuel tank, main engine, solar panels, battery, large antenna
+
+
+      TIPS
+
+      - More fuel lets you slow down safely, but it makes the rocket heavier.
+
+      - Real mission like yours: NASA''s Lunar Reconnaissance Orbiter (LRO).
+
+
+      Next step: design your mission. Good luck!
+
+      Mission Control'
+  onBriefingFinished:
+    m_PersistentCalls:
+      m_Calls: []
 --- !u!1 &136070995
 GameObject:
   m_ObjectHideFlags: 0
@@ -566,6 +895,7 @@ Transform:
   - {fileID: 1300134680}
   - {fileID: 1402343284}
   - {fileID: 1644229873}
+  - {fileID: 2085613997}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &354062190
@@ -955,6 +1285,7 @@ MonoBehaviour:
   appWindowSize: {x: 1100, y: 650}
   windowColor: {r: 0.13, g: 0.13, b: 0.15, a: 1}
   titleBarColor: {r: 0.2, g: 0.2, b: 0.23, a: 1}
+  doubleClickTime: 0.4
   googel:
     appName: Googel
     data: {fileID: 11400000, guid: 14fd8b02a6f543487872229a9bcc6d0c, type: 2}
@@ -996,6 +1327,37 @@ MonoBehaviour:
   disableWhileOpen:
   - {fileID: 1322462855}
   hideWhileOpen: []
+--- !u!1 &689265541
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 689265542}
+  m_Layer: 0
+  m_Name: Enter
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &689265542
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 689265541}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2085613997}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &835018467
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -2239,6 +2601,140 @@ MonoBehaviour:
   m_ShadowLayerMask: 1
   m_RenderingLayers: 1
   m_ShadowRenderingLayers: 1
+--- !u!1 &1246345940
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1246345941}
+  - component: {fileID: 1246345944}
+  - component: {fileID: 1246345943}
+  - component: {fileID: 1246345942}
+  - component: {fileID: 1246345945}
+  m_Layer: 0
+  m_Name: Meeting Room
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1246345941
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1246345940}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 88.9365, y: -1.033, z: 80.331}
+  m_LocalScale: {x: 2.14708, y: 3.2438, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1456932201}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!65 &1246345942
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1246345940}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 1, y: 1, z: 1}
+  m_Center: {x: 0, y: 0, z: 0}
+--- !u!23 &1246345943
+MeshRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1246345940}
+  m_Enabled: 1
+  m_CastShadows: 1
+  m_ReceiveShadows: 1
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 2
+  m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 2100000, guid: 57f6d9e076e14639985ca26ec46758d1, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 3
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_MaskInteraction: 0
+  m_AdditionalVertexStreams: {fileID: 0}
+--- !u!33 &1246345944
+MeshFilter:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1246345940}
+  m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &1246345945
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1246345940}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6d8452a1614747c9a825c8ab541afd91, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DoorInteraction
+  promptMessage: Press E to Interact
+  interactionDistance: 4
+  teleportTarget: {x: 806, y: 2, z: 710}
+  teleportCooldown: 0.5
+  fadeDuration: 0.25
+  blackHold: 0.1
+  fontAsset: {fileID: 0}
+  fontSize: 32
+  textColor: {r: 1, g: 1, b: 1, a: 1}
 --- !u!1 &1271924645
 GameObject:
   m_ObjectHideFlags: 0
@@ -2663,9 +3159,123 @@ MonoBehaviour:
   interactionDistance: 4
   teleportTarget: {x: 798, y: 2.09, z: 700}
   teleportCooldown: 0.5
+  fadeDuration: 0.25
+  blackHold: 0.1
   fontAsset: {fileID: 0}
   fontSize: 32
   textColor: {r: 1, g: 1, b: 1, a: 1}
+--- !u!1 &1373354922
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1373354923}
+  - component: {fileID: 1373354926}
+  - component: {fileID: 1373354925}
+  - component: {fileID: 1373354924}
+  m_Layer: 0
+  m_Name: Elevator Buttons
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1373354923
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1373354922}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 89.632, y: 0.1504, z: 65.4071}
+  m_LocalScale: {x: 0.094194636, y: 1.1154319, z: 0.33791694}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2085613997}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!65 &1373354924
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1373354922}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 1, y: 1, z: 1}
+  m_Center: {x: 0, y: 0, z: 0}
+--- !u!23 &1373354925
+MeshRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1373354922}
+  m_Enabled: 1
+  m_CastShadows: 1
+  m_ReceiveShadows: 1
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 2
+  m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 2100000, guid: 1fd56696e24cb166c9459a4c3313dcd4, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 3
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_MaskInteraction: 0
+  m_AdditionalVertexStreams: {fileID: 0}
+--- !u!33 &1373354926
+MeshFilter:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1373354922}
+  m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
 --- !u!1 &1377269685
 GameObject:
   m_ObjectHideFlags: 0
@@ -3029,6 +3639,8 @@ Transform:
   m_Children:
   - {fileID: 1587891106}
   - {fileID: 1690083520}
+  - {fileID: 1246345941}
+  - {fileID: 1666448358}
   m_Father: {fileID: 1300134680}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!4 &1476782350 stripped
@@ -3232,6 +3844,8 @@ MonoBehaviour:
   interactionDistance: 4
   teleportTarget: {x: 785, y: 1, z: 735}
   teleportCooldown: 0.5
+  fadeDuration: 0.25
+  blackHold: 0.1
   fontAsset: {fileID: 0}
   fontSize: 32
   textColor: {r: 1, g: 1, b: 1, a: 1}
@@ -3267,6 +3881,140 @@ Transform:
   - {fileID: 1191013219}
   m_Father: {fileID: 296846532}
   m_LocalEulerAnglesHint: {x: 0, y: -26.488, z: 0}
+--- !u!1 &1666448357
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1666448358}
+  - component: {fileID: 1666448361}
+  - component: {fileID: 1666448360}
+  - component: {fileID: 1666448359}
+  - component: {fileID: 1666448362}
+  m_Layer: 0
+  m_Name: Elevator
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1666448358
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1666448357}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 89.465, y: -0.38, z: 64.5057}
+  m_LocalScale: {x: -0.074417524, y: 2.877631, z: 1.3130753}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1456932201}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!65 &1666448359
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1666448357}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 1, y: 1, z: 1}
+  m_Center: {x: 0, y: 0, z: 0}
+--- !u!23 &1666448360
+MeshRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1666448357}
+  m_Enabled: 1
+  m_CastShadows: 1
+  m_ReceiveShadows: 1
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 2
+  m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 3
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_MaskInteraction: 0
+  m_AdditionalVertexStreams: {fileID: 0}
+--- !u!33 &1666448361
+MeshFilter:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1666448357}
+  m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &1666448362
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1666448357}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6d8452a1614747c9a825c8ab541afd91, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DoorInteraction
+  promptMessage: Press E to Interact
+  interactionDistance: 1
+  teleportTarget: {x: 806, y: 2, z: 710}
+  teleportCooldown: 0.5
+  fadeDuration: 0.25
+  blackHold: 0.1
+  fontAsset: {fileID: 0}
+  fontSize: 32
+  textColor: {r: 1, g: 1, b: 1, a: 1}
 --- !u!1 &1690083519
 GameObject:
   m_ObjectHideFlags: 0
@@ -3396,9 +4144,100 @@ MonoBehaviour:
   interactionDistance: 4
   teleportTarget: {x: 737, y: 1, z: 658}
   teleportCooldown: 0.5
+  fadeDuration: 0.25
+  blackHold: 0.1
   fontAsset: {fileID: 0}
   fontSize: 32
   textColor: {r: 1, g: 1, b: 1, a: 1}
+--- !u!1001 &1734995128
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: -8427389843581640897, guid: 9902d5f601652b9ceb2b7f6bc1a4156a, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 1fd56696e24cb166c9459a4c3313dcd4, type: 2}
+    - target: {fileID: -6689036041284674117, guid: 9902d5f601652b9ceb2b7f6bc1a4156a, type: 3}
+      propertyPath: m_Name
+      value: jnkm_design_-_elevator_cab_interior(1)
+      objectReference: {fileID: 0}
+    - target: {fileID: -1519092589817119586, guid: 9902d5f601652b9ceb2b7f6bc1a4156a, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 75
+      objectReference: {fileID: 0}
+    - target: {fileID: -1519092589817119586, guid: 9902d5f601652b9ceb2b7f6bc1a4156a, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 23
+      objectReference: {fileID: 0}
+    - target: {fileID: -1519092589817119586, guid: 9902d5f601652b9ceb2b7f6bc1a4156a, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 9902d5f601652b9ceb2b7f6bc1a4156a, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 1.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 9902d5f601652b9ceb2b7f6bc1a4156a, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 1.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 9902d5f601652b9ceb2b7f6bc1a4156a, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 1.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 9902d5f601652b9ceb2b7f6bc1a4156a, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 811.0742
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 9902d5f601652b9ceb2b7f6bc1a4156a, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 9902d5f601652b9ceb2b7f6bc1a4156a, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 703.22437
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 9902d5f601652b9ceb2b7f6bc1a4156a, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 9902d5f601652b9ceb2b7f6bc1a4156a, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 9902d5f601652b9ceb2b7f6bc1a4156a, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 9902d5f601652b9ceb2b7f6bc1a4156a, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 9902d5f601652b9ceb2b7f6bc1a4156a, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 90
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 9902d5f601652b9ceb2b7f6bc1a4156a, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 9902d5f601652b9ceb2b7f6bc1a4156a, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 90
+      objectReference: {fileID: 0}
+    - target: {fileID: 6097758791838904055, guid: 9902d5f601652b9ceb2b7f6bc1a4156a, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 5eb41cbe0760c34f582da0520e49cdbd, type: 2}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: -5645937942226959685, guid: 9902d5f601652b9ceb2b7f6bc1a4156a, type: 3}
 --- !u!1 &1780804495
 GameObject:
   m_ObjectHideFlags: 0
@@ -3528,6 +4367,8 @@ MonoBehaviour:
   interactionDistance: 4
   teleportTarget: {x: 747, y: 1.6, z: 636.6}
   teleportCooldown: 0.5
+  fadeDuration: 0.25
+  blackHold: 0.1
   fontAsset: {fileID: 0}
   fontSize: 32
   textColor: {r: 1, g: 1, b: 1, a: 1}
@@ -3590,6 +4431,75 @@ MeshCollider:
   m_Convex: 0
   m_CookingOptions: 30
   m_Mesh: {fileID: 0}
+--- !u!1001 &1882647559
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: -6689036041284674117, guid: 4ee663f2513d8a5f49c8b7318af8b1c5, type: 3}
+      propertyPath: m_Name
+      value: a_designer_meeting_room
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 4ee663f2513d8a5f49c8b7318af8b1c5, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 1.1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 4ee663f2513d8a5f49c8b7318af8b1c5, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 1.1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 4ee663f2513d8a5f49c8b7318af8b1c5, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 1.1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 4ee663f2513d8a5f49c8b7318af8b1c5, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 814.83
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 4ee663f2513d8a5f49c8b7318af8b1c5, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.021333944
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 4ee663f2513d8a5f49c8b7318af8b1c5, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 720.26
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 4ee663f2513d8a5f49c8b7318af8b1c5, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 4ee663f2513d8a5f49c8b7318af8b1c5, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 4ee663f2513d8a5f49c8b7318af8b1c5, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 4ee663f2513d8a5f49c8b7318af8b1c5, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 4ee663f2513d8a5f49c8b7318af8b1c5, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: -90
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 4ee663f2513d8a5f49c8b7318af8b1c5, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774220344278030320, guid: 4ee663f2513d8a5f49c8b7318af8b1c5, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 90
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: -5645937942226959685, guid: 4ee663f2513d8a5f49c8b7318af8b1c5, type: 3}
 --- !u!1 &1937105651
 GameObject:
   m_ObjectHideFlags: 0
@@ -3857,6 +4767,40 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2013080756}
   m_Mesh: {fileID: 10206, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!1 &2085613996
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2085613997}
+  m_Layer: 0
+  m_Name: Elevator
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2085613997
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2085613996}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 689265542}
+  - {fileID: 2130684897}
+  - {fileID: 1373354923}
+  m_Father: {fileID: 296846532}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2117589951
 GameObject:
   m_ObjectHideFlags: 0
@@ -3888,7 +4832,39 @@ Transform:
   m_Children:
   - {fileID: 1356285302}
   - {fileID: 1780804496}
+  - {fileID: 63723631}
   m_Father: {fileID: 1300134680}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &2130684896
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2130684897}
+  m_Layer: 0
+  m_Name: Exit
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2130684897
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2130684896}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2085613997}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &2135813684
 PrefabInstance:
@@ -3986,3 +4962,5 @@ SceneRoots:
   - {fileID: 1512557098}
   - {fileID: 894343041}
   - {fileID: 1330065388}
+  - {fileID: 1882647559}
+  - {fileID: 1734995128}

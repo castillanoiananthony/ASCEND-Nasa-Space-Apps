@@ -3110,3 +3110,317 @@ MonoBehaviour:
         Carries up to: 8,165 t (rocket + launcher)'
       cost: '$150,000,000 (estimate). Where the numbers come from: NASA: Crawler-Transporter 2 upgraded to ~8,165 t capacity. Cost est..'
       history: Launch infrastructure in AscendCAD.
+    - title: CanSat Launch Rail
+      image: {fileID: 0}
+      shortDescription: 6 m steel launch rail on a tripod, with a blast plate and a wired launch controller.
+      purpose: 6 m steel launch rail on a tripod, with a blast plate and a wired launch controller. Small sounding rockets slide up the rail until they are fast enough for their fins to keep them straight. Only for hobby / CanSat rockets. Buy it once on the AscendCAD Launch Pad tab and choose it for any compatible rocket.
+      specs: 'Type: Launch pad
+
+        Max rocket height: 5 m
+
+        Max rocket width: 0.3 m
+
+        Max liftoff mass: 0 t'
+      cost: '$6,000 (estimate). Where the numbers come from: Typical high-power rocketry 1515 rail (~6 m), as used at CanSat competitions. Limits and cost est..'
+      history: Launch infrastructure in AscendCAD.
+  - name: 'AscendCAD Rocket: Sounding Rockets (CanSat)'
+    description: AscendCAD parts.
+    parts:
+    - title: "J310 Hobby Motor Section \xD80.1 m"
+      image: {fileID: 0}
+      shortDescription: "High-power hobby rocket motor in its mount tube (J class, about 560 N\xB7s)."
+      purpose: "High-power hobby rocket motor in its mount tube (J class, about 560 N\xB7s). Lifts a CanSat rocket to roughly 1 km. Once lit it can't be switched off. Put it at the bottom. Stacks on top of or under other parts."
+      specs: "AscendCAD section: Sounding Rockets (CanSat) > Hobby Motors\nMass: 750 g full, 450 g empty\nPropellant: 300 g solid\nThrust: 0 kN sea level, 0 kN vacuum\nSpecific impulse: 190 s sea level, 200 s vacuum\nBurn time: 2 s\nSize: \xD80.1 m x 0.45 m"
+      cost: "$300 (estimate). Where the numbers come from: Typical J-class reload: ~560 N\xB7s total impulse, Isp ~190 s; price est.."
+      history: Part of the AscendCAD catalog (Sounding Rockets (CanSat) > Hobby Motors). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: "K420 Hobby Motor Section \xD80.1 m"
+      image: {fileID: 0}
+      shortDescription: "Bigger hobby motor (K class, about 930 N\xB7s)."
+      purpose: "Bigger hobby motor (K class, about 930 N\xB7s). Flies higher, so the CanSat falls for longer. Stacks on top of or under other parts."
+      specs: "AscendCAD section: Sounding Rockets (CanSat) > Hobby Motors\nMass: 1.1 kg full, 600 g empty\nPropellant: 500 g solid\nThrust: 0 kN sea level, 0 kN vacuum\nSpecific impulse: 190 s sea level, 200 s vacuum\nBurn time: 2 s\nSize: \xD80.1 m x 0.6 m"
+      cost: "$450 (estimate). Where the numbers come from: Typical K-class reload: ~930 N\xB7s, Isp ~190 s; price est.."
+      history: Part of the AscendCAD catalog (Sounding Rockets (CanSat) > Hobby Motors). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: "Body Tube \xD80.1 m (avionics inside)"
+      image: {fileID: 0}
+      shortDescription: Fiberglass tube that forms the rocket's body.
+      purpose: Fiberglass tube that forms the rocket's body. The hobby avionics go inside it. Stacks on top of or under other parts.
+      specs: "AscendCAD section: Sounding Rockets (CanSat) > Airframe\nMass: 350 g\nSize: \xD80.1 m x 0.6 m\nRoom inside: 3 L"
+      cost: '$120 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Sounding Rockets (CanSat) > Airframe). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: "CanSat Payload Bay \xD80.1 m"
+      image: {fileID: 0}
+      shortDescription: Tube section that holds the CanSat.
+      purpose: Tube section that holds the CanSat. At the top of the flight the nose pops off and the CanSat is pushed out. Stacks on top of or under other parts.
+      specs: "AscendCAD section: Sounding Rockets (CanSat) > Airframe\nMass: 250 g\nSize: \xD80.1 m x 0.35 m\nMax payload: 2 kg\nUsable space inside: \xD80.09 m x 0.3 m"
+      cost: '$150 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Sounding Rockets (CanSat) > Airframe). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: "Nose Cone \xD80.1 m"
+      image: {fileID: 0}
+      shortDescription: Pointy plastic nose so the air flows smoothly around the rocket.
+      purpose: 'Reduces drag and aerodynamic heating at the front of the vehicle. On most orbital rockets, the payload fairing itself forms the nose cone.
+
+
+        Pointy plastic nose so the air flows smoothly around the rocket. Stacks on top of or under other parts.'
+      specs: "AscendCAD section: Sounding Rockets (CanSat) > Airframe\nMass: 150 g\nSize: \xD80.1 m x 0.3 m"
+      cost: '$60 (estimate). Where the numbers come from: est..'
+      history: Nose-cone shapes were studied heavily for supersonic missiles in the 1940s and 50s; the low-drag von Karman ogive is still a favorite.
+    - title: Hobby Rocket Fin
+      image: {fileID: 0}
+      shortDescription: Keeps a small rocket flying straight, like the feathers on an arrow.
+      purpose: Keeps a small rocket flying straight, like the feathers on an arrow. Put 3 or 4 near the bottom. Mounts on the side or face of a part (symmetry works).
+      specs: 'AscendCAD section: Sounding Rockets (CanSat) > Airframe
+
+        Mass: 50 g
+
+        Size: 0.004 x 0.12 x 0.1 m'
+      cost: '$30 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Sounding Rockets (CanSat) > Airframe). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Altimeter Flight Computer (hobby)
+      image: {fileID: 0}
+      shortDescription: Senses height from air pressure and releases the CanSat at the top of the flight.
+      purpose: Senses height from air pressure and releases the CanSat at the top of the flight. Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Sounding Rockets (CanSat) > Hobby Avionics
+
+        Mass: 30 g
+
+        Power draw: 0.3 W (100% of the time)
+
+        Volume: 0.03 L'
+      cost: '$150 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Sounding Rockets (CanSat) > Hobby Avionics). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Hobby IMU (6-axis)
+      image: {fileID: 0}
+      shortDescription: Tiny gyro and accelerometer chip that senses tilt and speed.
+      purpose: Tiny gyro and accelerometer chip that senses tilt and speed. Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Sounding Rockets (CanSat) > Hobby Avionics
+
+        Mass: 10 g
+
+        Power draw: 0.1 W (100% of the time)
+
+        Volume: 0.01 L'
+      cost: '$40 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Sounding Rockets (CanSat) > Hobby Avionics). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: GPS Radio Tracker
+      image: {fileID: 0}
+      shortDescription: Sends the rocket's position so you can find it after landing.
+      purpose: Sends the rocket's position so you can find it after landing. Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Sounding Rockets (CanSat) > Hobby Avionics
+
+        Mass: 50 g
+
+        Power draw: 0.5 W (100% of the time)
+
+        Volume: 0.05 L'
+      cost: '$200 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Sounding Rockets (CanSat) > Hobby Avionics). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: 9 V Battery
+      image: {fileID: 0}
+      shortDescription: Powers the altimeter and the tracker.
+      purpose: Powers the altimeter and the tracker. Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Sounding Rockets (CanSat) > Hobby Avionics
+
+        Mass: 50 g
+
+        Battery capacity: 5 Wh
+
+        Volume: 0.03 L'
+      cost: '$10 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Sounding Rockets (CanSat) > Hobby Avionics). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: "K700 Motor Section \xD815.6 cm"
+      image: {fileID: 0}
+      shortDescription: "High-power rocket motor in its mount tube (K class, about 1,700 N\xB7s)."
+      purpose: "High-power rocket motor in its mount tube (K class, about 1,700 N\xB7s). Lifts a full-size CanSat rocket to about 1.2 km. Once lit it can't be switched off. It goes at the very bottom. Stacks on top of or under other parts."
+      specs: "AscendCAD section: Sounding Rockets (CanSat) > Hobby Motors\nMass: 2.5 kg full, 1.6 kg empty\nPropellant: 900 g solid\nThrust: 1 kN sea level, 1 kN vacuum\nSpecific impulse: 195 s sea level, 205 s vacuum\nBurn time: 3 s\nSize: \xD80.16 m x 0.9 m"
+      cost: "$900 (estimate). Where the numbers come from: Typical K-class reload: ~1,700 N\xB7s total impulse, Isp ~195 s (Tripoli/NAR class); price est. incl. reusable case."
+      history: Part of the AscendCAD catalog (Sounding Rockets (CanSat) > Hobby Motors). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: "L850 Motor Section \xD815.6 cm"
+      image: {fileID: 0}
+      shortDescription: "Bigger motor (L class, about 2,300 N\xB7s)."
+      purpose: "Bigger motor (L class, about 2,300 N\xB7s). Flies higher, so the CanSat falls for longer. Needs a Level 2 certified flyer. Stacks on top of or under other parts."
+      specs: "AscendCAD section: Sounding Rockets (CanSat) > Hobby Motors\nMass: 3.1 kg full, 1.9 kg empty\nPropellant: 1.2 kg solid\nThrust: 1 kN sea level, 1 kN vacuum\nSpecific impulse: 195 s sea level, 205 s vacuum\nBurn time: 3 s\nSize: \xD80.16 m x 1.1 m"
+      cost: "$1,400 (estimate). Where the numbers come from: Typical L-class reload: ~2,300 N\xB7s, Isp ~195 s; price est. incl. reusable case."
+      history: Part of the AscendCAD catalog (Sounding Rockets (CanSat) > Hobby Motors). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: "Fiberglass Body Tube \xD815.6 cm x 1.2 m"
+      image: {fileID: 0}
+      shortDescription: Strong fiberglass tube that forms the rocket's body.
+      purpose: Strong fiberglass tube that forms the rocket's body. The flight electronics go inside it. Stacks on top of or under other parts.
+      specs: "AscendCAD section: Sounding Rockets (CanSat) > Airframe\nMass: 2.2 kg\nSize: \xD80.16 m x 1.2 m\nRoom inside: 15 L"
+      cost: '$650 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Sounding Rockets (CanSat) > Airframe). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: "CanSat Payload Bay \xD815.6 cm x 0.6 m"
+      image: {fileID: 0}
+      shortDescription: Tube section that holds the CanSat.
+      purpose: Tube section that holds the CanSat. At the top of the flight the nose pops off and the CanSat is pushed out. Stacks on top of or under other parts.
+      specs: "AscendCAD section: Sounding Rockets (CanSat) > Airframe\nMass: 1 kg\nSize: \xD80.16 m x 0.6 m\nMax payload: 4 kg\nUsable space inside: \xD80.14 m x 0.5 m"
+      cost: '$450 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Sounding Rockets (CanSat) > Airframe). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: "Ogive Nose Cone \xD815.6 cm"
+      image: {fileID: 0}
+      shortDescription: Pointy fiberglass nose so the air flows smoothly around the rocket.
+      purpose: Pointy fiberglass nose so the air flows smoothly around the rocket. Stacks on top of or under other parts.
+      specs: "AscendCAD section: Sounding Rockets (CanSat) > Airframe\nMass: 800 g\nSize: \xD80.16 m x 0.6 m"
+      cost: '$300 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Sounding Rockets (CanSat) > Airframe). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: G10 Fiberglass Fin
+      image: {fileID: 0}
+      shortDescription: Keeps the rocket flying straight, like the feathers on an arrow.
+      purpose: Keeps the rocket flying straight, like the feathers on an arrow. Use 3 or 4 near the bottom. Mounts on the side or face of a part (symmetry works).
+      specs: 'AscendCAD section: Sounding Rockets (CanSat) > Airframe
+
+        Mass: 250 g
+
+        Size: 0.006 x 0.3 x 0.2 m'
+      cost: '$120 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Sounding Rockets (CanSat) > Airframe). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Altimeter Flight Computer
+      image: {fileID: 0}
+      shortDescription: Senses height from air pressure and pops the nose to release the CanSat at the top of the flight.
+      purpose: Senses height from air pressure and pops the nose to release the CanSat at the top of the flight. Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Sounding Rockets (CanSat) > Flight Electronics
+
+        Mass: 50 g
+
+        Power draw: 0.3 W (100% of the time)
+
+        Volume: 0.05 L'
+      cost: '$350 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Sounding Rockets (CanSat) > Flight Electronics). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: 6-Axis IMU Board
+      image: {fileID: 0}
+      shortDescription: Gyro and accelerometer that sense tilt and speed.
+      purpose: Gyro and accelerometer that sense tilt and speed. Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Sounding Rockets (CanSat) > Flight Electronics
+
+        Mass: 20 g
+
+        Power draw: 0.1 W (100% of the time)
+
+        Volume: 0.02 L'
+      cost: '$120 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Sounding Rockets (CanSat) > Flight Electronics). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Li-Po Flight Battery
+      image: {fileID: 0}
+      shortDescription: Powers the altimeter and the tracker.
+      purpose: Powers the altimeter and the tracker. Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: Sounding Rockets (CanSat) > Flight Electronics
+
+        Mass: 100 g
+
+        Battery capacity: 10 Wh
+
+        Volume: 0.05 L'
+      cost: '$40 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (Sounding Rockets (CanSat) > Flight Electronics). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+  - name: 'AscendCAD Satellite: CanSat (Sky Sensor)'
+    description: AscendCAD parts.
+    parts:
+    - title: CanSat Shell (soda-can size)
+      image: {fileID: 0}
+      shortDescription: 66 x 115 mm can, the size of a soda can, just like real CanSat competitions.
+      purpose: 66 x 115 mm can, the size of a soda can, just like real CanSat competitions. Everything else goes inside. Stacks on top of or under other parts.
+      specs: "AscendCAD section: CanSat (Sky Sensor) > CanSat Parts\nMass: 60 g\nSize: \xD80.07 m x 0.12 m\nRoom inside: 0.3 L"
+      cost: '$40 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (CanSat (Sky Sensor) > CanSat Parts). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: CanSat Ejection Spring Plate
+      image: {fileID: 0}
+      shortDescription: Pushes the CanSat out of the rocket at the top of the flight.
+      purpose: Pushes the CanSat out of the rocket at the top of the flight. Stacks on top of or under other parts.
+      specs: "AscendCAD section: CanSat (Sky Sensor) > CanSat Parts\nMass: 10 g\nSize: \xD80.07 m x 0.01 m\nMax payload: 1 kg"
+      cost: '$15 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (CanSat (Sky Sensor) > CanSat Parts). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: CanSat Parachute (packed)
+      image: {fileID: 0}
+      shortDescription: Opens after release so the CanSat floats down slowly (about 8 m/s).
+      purpose: Opens after release so the CanSat floats down slowly (about 8 m/s). Mounts on the side or face of a part (symmetry works).
+      specs: 'AscendCAD section: CanSat (Sky Sensor) > CanSat Parts
+
+        Mass: 40 g
+
+        Size: 0.05 x 0.03 x 0.03 m'
+      cost: '$25 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (CanSat (Sky Sensor) > CanSat Parts). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Microcontroller Board (Arduino class)
+      image: {fileID: 0}
+      shortDescription: 'The CanSat''s little brain: reads the sensors and sends the data.'
+      purpose: 'The CanSat''s little brain: reads the sensors and sends the data. Installs inside a bay, interstage or satellite structure.'
+      specs: 'AscendCAD section: CanSat (Sky Sensor) > CanSat Parts
+
+        Mass: 10 g
+
+        Power draw: 0.3 W (100% of the time)
+
+        Volume: 0.02 L'
+      cost: '$25 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (CanSat (Sky Sensor) > CanSat Parts). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Temperature + Air Pressure Sensor
+      image: {fileID: 0}
+      shortDescription: Measures how warm the air is and how hard it pushes (air pressure).
+      purpose: Measures how warm the air is and how hard it pushes (air pressure). The main science of a CanSat! Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: CanSat (Sky Sensor) > CanSat Parts
+
+        Mass: 5 g
+
+        Power draw: 0.01 W (100% of the time)
+
+        Data rate: 1 kbps
+
+        Volume: 0.01 L'
+      cost: '$10 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (CanSat (Sky Sensor) > CanSat Parts). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Humidity Sensor
+      image: {fileID: 0}
+      shortDescription: Measures how much water vapor is in the air.
+      purpose: Measures how much water vapor is in the air. Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: CanSat (Sky Sensor) > CanSat Parts
+
+        Mass: 4 g
+
+        Power draw: 0.01 W (100% of the time)
+
+        Data rate: 1 kbps
+
+        Volume: 0 L'
+      cost: '$8 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (CanSat (Sky Sensor) > CanSat Parts). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: LoRa Radio 433 MHz
+      image: {fileID: 0}
+      shortDescription: Sends the measurements to the ground station while the CanSat falls.
+      purpose: Sends the measurements to the ground station while the CanSat falls. Installs inside a bay, interstage or satellite structure.
+      specs: 'AscendCAD section: CanSat (Sky Sensor) > CanSat Parts
+
+        Mass: 10 g
+
+        Power draw: 0.5 W (30% of the time)
+
+        Data rate: 5 kbps
+
+        Volume: 0.01 L'
+      cost: '$20 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (CanSat (Sky Sensor) > CanSat Parts). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: Wire Antenna
+      image: {fileID: 0}
+      shortDescription: Simple quarter-wave wire antenna for the radio.
+      purpose: Simple quarter-wave wire antenna for the radio. Wrapped around the can until release. Mounts on the side or face of a part (symmetry works).
+      specs: 'AscendCAD section: CanSat (Sky Sensor) > CanSat Parts
+
+        Mass: 5 g
+
+        Size: 0.005 x 0.005 x 0.17 m
+
+        Folded for launch: 0.01 x 0.01 x 0.01 m'
+      cost: '$5 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (CanSat (Sky Sensor) > CanSat Parts). Figures follow the real hardware where published; anything marked estimate is an engineering guess.
+    - title: CanSat Battery 2 Wh
+      image: {fileID: 0}
+      shortDescription: 'Small Li-ion cell: plenty for a few minutes of flight.'
+      purpose: 'Small Li-ion cell: plenty for a few minutes of flight. Installs inside a bay, interstage or satellite structure.'
+      specs: 'AscendCAD section: CanSat (Sky Sensor) > CanSat Parts
+
+        Mass: 50 g
+
+        Battery capacity: 2 Wh
+
+        Volume: 0.03 L'
+      cost: '$8 (estimate). Where the numbers come from: est..'
+      history: Part of the AscendCAD catalog (CanSat (Sky Sensor) > CanSat Parts). Figures follow the real hardware where published; anything marked estimate is an engineering guess.

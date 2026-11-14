@@ -6,6 +6,7 @@
 //    - Design data, physics stats (delta-v, TWR, power budget) and the realism review
 //    - PhMail (in-game email; the review board answers through it)
 //    - Procedural 3D models (or your own prefabs) + spawning the approved rocket
+//    - Real-size launch pads built from code
 //    - The AscendCAD and PhMail app screens shown inside ComputerInteraction
 //
 //  Data asset: Project window > right-click > Create > AscendCAD > AscendCAD Data
@@ -111,6 +112,8 @@ public class CADLaunchPad
     public string name = "New Launch Pad";
     [TextArea(2, 5)] public string description;
     public string source;
+    [Tooltip("Use AscendCAD's own real-size pad built from code. Turn off to use Model Prefab / Scene Object Name instead.")]
+    public bool useBuiltInModel = true;
     [Tooltip("Your 3D model (e.g. NASA's Mobile Launcher). Spawned at the Launch Site Position when this pad is used. If there's no Image, the card shows a one-time snapshot of it.")]
     public GameObject modelPrefab;
     [Tooltip("Picture shown on the pad card. Used first; the model is only snapshotted when this is empty.")]
@@ -135,7 +138,7 @@ public class CADLaunchPad
     [Tooltip("Transporters: the most they can carry (rocket + launcher) in tonnes.")]
     public float carryCapacityT;
 
-    [Header("Placement (meters, 1 unit = 1 m)")]
+    [Header("Placement (meters, 1 unit = 1 m). Ignored by the built-in model.")]
     [Tooltip("Where the rocket's base sits relative to the pad (deck height, offset over the flame hole).")]
     public Vector3 rocketOffset;
 }
@@ -167,7 +170,7 @@ public class AscendCADData : ScriptableObject
     public float maxDiameterStepRatio = 1.25f;
 
     [Header("Launch site")]
-    [Tooltip("Where the approved rocket's base is placed. 1 Unity unit = 1 meter everywhere.")]
+    [Tooltip("Where the launch pad's ground (and the rocket) is placed. Put it at ground level. 1 Unity unit = 1 meter everywhere.")]
     public Vector3 launchSitePosition = new Vector3(0f, 1f, 0f);
     public bool replacePreviousRocket = true;
 
@@ -196,7 +199,7 @@ public class AscendCADData : ScriptableObject
     public List<CADPart> parts = new List<CADPart>();
 
     [HideInInspector] public int catalogVersion;
-    public const int CatalogVersion = 3;
+    public const int CatalogVersion = 5;
 
     [NonSerialized] Dictionary<string, CADPart> lookup;
     static AscendCADData fallback;
@@ -228,7 +231,7 @@ public class AscendCADData : ScriptableObject
         foreach (var p in launchPads)
             if (oldPads.TryGetValue(p.id, out var o))
             {
-                p.modelPrefab = o.modelPrefab; p.image = o.image; p.sceneObjectName = o.sceneObjectName;
+                p.modelPrefab = o.modelPrefab; p.image = o.image; p.sceneObjectName = o.sceneObjectName; p.useBuiltInModel = o.useBuiltInModel;
                 if (o.rocketOffset != Vector3.zero) p.rocketOffset = o.rocketOffset;
             }
         catalogVersion = CatalogVersion;
@@ -576,10 +579,63 @@ public static class AscendCADDefaults
         Outside("rec.leg", "Carbon Landing Leg", CADRole.Recovery, CADShape.Leg, new Vector3(0.45f, 7.5f, 0.35f), 600f, 600000, 0f, 1f, Carbon,
             "Folds against the booster, deploys before touchdown. Use symmetry x4.");
 
+        BuildSounding();
         BuildHeritage();
         BuildPayloadParts();
+        BuildCanSat();
         BuildHeritageSpacecraft();
         return list;
+    }
+
+    // ───────────── Small hobby rockets for the Sky Sensor (CanSat) mission ─────────────
+    // Motor numbers: J-class ~560 N·s and K-class ~930 N·s (total impulse = propellant x Isp x g0), like real CanSat competition rockets.
+    static void BuildSounding()
+    {
+        Cat(CADBuilder.Rocket, "Sounding Rockets (CanSat)");
+        Sub("Hobby Motors");
+        Solid("snd.motor.j", "K700 Motor Section Ø15.6 cm", false, 2.5f, 0.90f, 0.69f, 0.73f, 195f, 205f, 2.5f, 0.156f, 0.9f, 900,
+            "High-power rocket motor in its mount tube (K class, about 1,700 N·s). Lifts a full-size CanSat rocket to about 1.2 km. Once lit it can't be switched off. It goes at the very bottom.",
+            "Typical K-class reload: ~1,700 N·s total impulse, Isp ~195 s (Tripoli/NAR class); price est. incl. reusable case");
+        Solid("snd.motor.k", "L850 Motor Section Ø15.6 cm", false, 3.1f, 1.20f, 0.82f, 0.86f, 195f, 205f, 2.8f, 0.156f, 1.1f, 1400,
+            "Bigger motor (L class, about 2,300 N·s). Flies higher, so the CanSat falls for longer. Needs a Level 2 certified flyer.",
+            "Typical L-class reload: ~2,300 N·s, Isp ~195 s; price est. incl. reusable case");
+        Sub("Airframe");
+        Body("snd.tube", "Fiberglass Body Tube Ø15.6 cm x 1.2 m", CADRole.Structure, CADShape.Cylinder, 0.156f, -1f, 1.2f, 2.2f, 650,
+            "Strong fiberglass tube that forms the rocket's body. The flight electronics go inside it.", White).internalVolumeL = 15f;
+        var bay = Body("snd.bay", "CanSat Payload Bay Ø15.6 cm x 0.6 m", CADRole.Fairing, CADShape.Cylinder, 0.156f, -1f, 0.6f, 1.0f, 450,
+            "Tube section that holds the CanSat. At the top of the flight the nose pops off and the CanSat is pushed out.", White);
+        bay.innerDiameter = 0.14f; bay.innerHeight = 0.5f; bay.maxPayloadKg = 4f;
+        Body("snd.nose", "Ogive Nose Cone Ø15.6 cm", CADRole.NoseCone, CADShape.NoseCone, 0.156f, -1f, 0.6f, 0.8f, 300,
+            "Pointy fiberglass nose so the air flows smoothly around the rocket.", White);
+        Outside("snd.fin", "G10 Fiberglass Fin", CADRole.Aero, CADShape.Fin, new Vector3(0.006f, 0.3f, 0.2f), 0.25f, 120, 0f, 1f, White,
+            "Keeps the rocket flying straight, like the feathers on an arrow. Use 3 or 4 near the bottom.");
+        Sub("Flight Electronics");
+        Inside("snd.alt", "Altimeter Flight Computer", CADRole.FlightComputer, 0.05f, 350, 0.05f, 0.3f, 1f,
+            "Senses height from air pressure and pops the nose to release the CanSat at the top of the flight.");
+        Inside("snd.imu", "6-Axis IMU Board", CADRole.IMU, 0.02f, 120, 0.02f, 0.1f, 1f, "Gyro and accelerometer that sense tilt and speed.");
+        Inside("snd.gps", "GPS Radio Tracker", CADRole.Telemetry, 0.1f, 600, 0.1f, 0.5f, 1f, "Sends the rocket's position so the recovery team can find it.");
+        Inside("snd.batt", "Li-Po Flight Battery", CADRole.Battery, 0.1f, 40, 0.05f, 0f, 1f, "Powers the altimeter and the tracker.").batteryWh = 10f;
+    }
+
+    // ───────────── CanSat parts (soda-can sized satellite) ─────────────
+    static void BuildCanSat()
+    {
+        Cat(CADBuilder.Payload, "CanSat (Sky Sensor)");
+        Sub("CanSat Parts");
+        Cyl("can.shell", "CanSat Shell (soda-can size)", 0.066f, 0.115f, 0.06f, 150, 0.3f,
+            "66 x 115 mm can, the size of a soda can, just like real CanSat competitions. Everything else goes inside.");
+        Sep("can.eject", "CanSat Ejection Spring Plate", false, 0.066f, 0.01f, 0.01f, 80, 1f, "Pushes the CanSat out of the rocket at the top of the flight.");
+        Outside("can.chute", "CanSat Parachute (packed)", CADRole.Recovery, CADShape.Box, new Vector3(0.05f, 0.03f, 0.03f), 0.04f, 120, 0f, 1f,
+            new Color(1f, 0.45f, 0.1f), "Opens after release so the CanSat floats down slowly (about 8 m/s).");
+        Inside("can.obc", "Microcontroller Board (Arduino class)", CADRole.OBC, 0.01f, 60, 0.02f, 0.3f, 1f, "The CanSat's little brain: reads the sensors and sends the data.");
+        InstIn("can.sensor", "Temperature + Air Pressure Sensor", 0.005f, 40, 0.005f, 0.01f, 1f, 1,
+            "Measures how warm the air is and how hard it pushes (air pressure). The main science of a CanSat!");
+        InstIn("can.humid", "Humidity Sensor", 0.004f, 30, 0.004f, 0.01f, 1f, 1, "Measures how much water vapor is in the air.");
+        Inside("can.radio", "LoRa Radio 433 MHz", CADRole.Transceiver, 0.01f, 90, 0.01f, 0.5f, 0.3f,
+            "Sends the measurements to the ground station while the CanSat falls.").dataRateKbps = 5f;
+        Outside("can.ant", "Wire Antenna", CADRole.Antenna, CADShape.Rod, new Vector3(0.005f, 0.005f, 0.17f), 0.005f, 20, 0f, 1f,
+            new Color(0.7f, 0.7f, 0.72f), "Simple quarter-wave wire antenna for the radio. Wrapped around the can until release.").stowedSize = new Vector3(0.005f, 0.005f, 0.005f);
+        Inside("can.batt", "CanSat Battery 2 Wh", CADRole.SatBattery, 0.05f, 40, 0.03f, 0f, 1f, "Small Li-ion cell: plenty for a few minutes of flight.").batteryWh = 2f;
     }
 
     // ───────────── Heritage hardware (used by the prebuilt Saturn V / Shuttle) ─────────────
@@ -663,6 +719,13 @@ public static class AscendCADDefaults
             maxHeightM = 40f, maxWidthM = 6f, maxLiftoffMassT = 150f,
             description = "Government-provided concrete pad with a hold-down clamp and a small umbilical mast. Fine for small launchers like Electron.",
             source = "Electron: 18 m tall, 1.2 m wide, ~13 t (Rocket Lab). Limits est."
+        },
+        new CADLaunchPad
+        {
+            id = "pad.rail", name = "CanSat Launch Rail", costUSD = 6000,
+            maxHeightM = 5f, maxWidthM = 0.3f, maxLiftoffMassT = 0.05f,
+            description = "6 m steel launch rail on a tripod, with a blast plate and a wired launch controller. Small sounding rockets slide up the rail until they are fast enough for their fins to keep them straight. Only for hobby / CanSat rockets.",
+            source = "Typical high-power rocketry 1515 rail (~6 m), as used at CanSat competitions. Limits and cost est."
         },
         new CADLaunchPad
         {
@@ -1037,7 +1100,7 @@ public class CADStats
     public int partCount;
     public Bounds bounds;
     // rocket
-    public float payloadMass, liftoffThrustkN, liftoffTWR, deltaV, maxPayloadLEO;
+    public float payloadMass, liftoffThrustkN, liftoffTWR, deltaV, maxPayloadLEO, requiredDv;
     public readonly List<CADStageInfo> stages = new List<CADStageInfo>();
     public readonly List<string> engineIssues = new List<string>();
     // satellite
@@ -1135,10 +1198,12 @@ public class CADStats
     static float Isp(CADPart p, bool firstStage) =>
         firstStage ? (p.ispSL > 0f ? (p.ispSL + p.ispVac) * 0.5f : p.ispVac * 0.5f) : p.ispVac;
 
-    public static CADStats Rocket(CADDesign d, AscendCADData data, float payloadKg)
+    // requiredDv: delta-v the mission needs (default = low Earth orbit). maxPayloadLEO is the payload the rocket can carry for that.
+    public static CADStats Rocket(CADDesign d, AscendCADData data, float payloadKg, float requiredDv = -1f)
     {
         var s = Common(d, data);
         s.payloadMass = payloadKg;
+        s.requiredDv = requiredDv > 0f ? requiredDv : data.requiredDeltaV;
         int n = d.parts.Count;
         if (n == 0) return s;
 
@@ -1223,7 +1288,8 @@ public class CADStats
         s.liftoffThrustkN = plan[0].thrustSL;
         s.liftoffTWR = liftoff > 0f ? s.liftoffThrustkN * 1000f / (liftoff * G0) : 0f;
         s.deltaV = Simulate(plan, payloadKg, s.stages);
-        s.maxPayloadLEO = MaxPayload(plan, data.requiredDeltaV);
+        s.requiredDv = requiredDv > 0f ? requiredDv : data.requiredDeltaV;
+        s.maxPayloadLEO = MaxPayload(plan, s.requiredDv);
         return s;
     }
 
@@ -1335,10 +1401,13 @@ public class CADReview
     static CADReview RunChecks(CADDesign rocket, CADDesign payload, AscendCADData data, out CADStats rs, out CADStats ps)
     {
         var r = new CADReview();
+        var mission = AscendMissionGuide.Mission;
+        bool sky = mission == AscendSimMission.SkySensor;
+        string mName = AscendMissionGuide.Title;
+        float req = AscendMissionGuide.RequiredDeltaV(data);
         ps = payload != null && !payload.IsEmpty ? CADStats.Payload(payload, data) : null;
-        rs = CADStats.Rocket(rocket, data, ps != null ? ps.wetMass : 0f);
+        rs = CADStats.Rocket(rocket, data, ps != null ? ps.wetMass : 0f, req);
         if (rocket.IsEmpty) { r.errors.Add("No launch vehicle was submitted."); return r; }
-        float req = data.requiredDeltaV;
 
         // Propulsion
         r.Check(rs.stages.Count > 0 && rs.stages[0].engines > 0, "Stage 1 has engines.", "Stage 1 has no engines that can fire at sea level.");
@@ -1346,16 +1415,17 @@ public class CADReview
             $"Liftoff thrust-to-weight is {rs.liftoffTWR:0.00}; it must be at least {data.minLiftoffTWR:0.0} to climb off the pad.");
         r.Check(rs.liftoffTWR <= data.maxLiftoffTWR, "Liftoff acceleration within structural limits.",
             $"Liftoff thrust-to-weight {rs.liftoffTWR:0.00} is very high; g-loads exceed typical limits.", false);
-        r.Check(rs.deltaV >= req, $"Delta-v {rs.deltaV:N0} m/s covers the {req:N0} m/s needed for low Earth orbit.",
-            $"Delta-v is {rs.deltaV:N0} m/s; low Earth orbit needs about {req:N0} m/s including gravity and drag losses.");
+        r.Check(rs.deltaV >= req, $"Delta-v {rs.deltaV:N0} m/s covers the {req:N0} m/s needed for {mName}.",
+            $"Delta-v is {rs.deltaV:N0} m/s; {mName} needs about {req:N0} m/s including gravity and drag losses.");
         foreach (var e in rs.engineIssues) r.errors.Add(e);
 
         // Avionics
         r.Check(rs.Has(CADRole.FlightComputer), "Flight computer installed.", "No flight computer: the rocket can't guide itself.");
-        r.Check(rs.Has(CADRole.IMU), "Inertial measurement unit installed.", "No IMU: the rocket can't sense attitude or velocity.");
+        if (sky) r.Check(rs.Has(CADRole.IMU) || rs.Has(CADRole.Aero), "Fins / IMU keep the rocket flying straight.", "No fins and no IMU: a small rocket needs fins (or an IMU) to fly straight.");
+        else r.Check(rs.Has(CADRole.IMU), "Inertial measurement unit installed.", "No IMU: the rocket can't sense attitude or velocity.");
         r.Check(rs.Has(CADRole.Battery), "Avionics battery installed.", "No avionics battery.");
-        r.Check(rs.Has(CADRole.FlightTermination), "Flight termination system installed.", "No flight termination system: range safety will not allow launch.");
-        r.Check(rs.Has(CADRole.Telemetry), "Telemetry transmitter installed.", "No telemetry transmitter: the launch team would fly blind.");
+        r.Check(rs.Has(CADRole.FlightTermination), "Flight termination system installed.", "No flight termination system: range safety will not allow launch.", !sky);
+        r.Check(rs.Has(CADRole.Telemetry), "Telemetry transmitter installed.", "No telemetry transmitter: the launch team would fly blind.", !sky);
         r.Check(rs.Has(CADRole.GNSS), "GNSS receiver installed.", "No GNSS receiver: tracking relies on the IMU alone.", false);
         r.Check(rs.Has(CADRole.PowerDistribution), "Power distribution unit installed.", "No power distribution unit.", false);
         r.Check(rs.Has(CADRole.Wiring), "Wiring harness included.", "No wiring harness kit listed.", false);
@@ -1404,8 +1474,25 @@ public class CADReview
         if (adapter != null)
             r.Check(ps.wetMass <= adapter.maxPayloadKg, $"{adapter.name} rated for {adapter.maxPayloadKg:N0} kg.",
                 $"{adapter.name} is only rated for {adapter.maxPayloadKg:N0} kg; satellite is {ps.wetMass:N0} kg.");
-        r.Check(ps.wetMass <= rs.maxPayloadLEO, $"Rocket can lift the {ps.wetMass:N1} kg satellite (max {rs.maxPayloadLEO:N0} kg to LEO).",
-            $"Satellite is {ps.wetMass:N1} kg but this rocket can only put {rs.maxPayloadLEO:N0} kg into LEO.");
+        r.Check(ps.wetMass <= rs.maxPayloadLEO, $"Rocket can carry the {ps.wetMass:N1} kg payload for {mName} (max {rs.maxPayloadLEO:N1} kg).",
+            $"Payload is {ps.wetMass:N1} kg but this rocket can only carry {rs.maxPayloadLEO:N1} kg for {mName}.");
+
+        if (sky)
+        {
+            // A CanSat is simple: it only flies for a few minutes
+            r.Check(ps.Has(CADRole.SatStructure), "CanSat shell present.", "No CanSat shell / frame.");
+            CADPart ej = null;
+            foreach (var pl in payload.parts) { var p = data.Get(pl.partId); if (p != null && p.role == CADRole.Separation) ej = p; }
+            r.Check(ej != null, "Ejection system installed.", "No ejection system: the CanSat can't leave the rocket.");
+            if (ej != null) r.Check(ps.wetMass <= ej.maxPayloadKg, $"{ej.name} rated for {ej.maxPayloadKg:N1} kg.", $"{ej.name} is rated for {ej.maxPayloadKg:N1} kg; CanSat is {ps.wetMass:N2} kg.");
+            r.Check(ps.Has(CADRole.Recovery), "Parachute packed.", "No parachute: the CanSat would crash.");
+            r.Check(ps.Has(CADRole.OBC), "Computer board installed.", "No computer board to read the sensors.");
+            r.Check(ps.Has(CADRole.Transceiver) && ps.Has(CADRole.Antenna), "Radio + antenna installed.", "No radio link (needs a radio AND an antenna).");
+            r.Check(ps.batteryWh >= ps.powerUse * 0.5f, $"Battery {ps.batteryWh:0.#} Wh lasts the flight.", $"Battery {ps.batteryWh:0.#} Wh is too small; needs {ps.powerUse * 0.5f:0.#} Wh for 30 minutes.");
+            r.Check(ps.instruments > 0, $"{ps.instruments} sensor(s) on board.", "No sensor: the CanSat has nothing to measure.");
+            r.Check(ps.volumeUsed <= ps.volumeCap + 1e-3f, $"Inside volume {ps.volumeUsed:0.###}/{ps.volumeCap:0.###} L.", $"Inside parts need {ps.volumeUsed:0.###} L but the shell only holds {ps.volumeCap:0.###} L.");
+            return r;
+        }
 
         r.Check(ps.Has(CADRole.SatStructure), "Satellite structure present.", "Satellite has no structure.");
         CADPart sep = null;
@@ -1427,6 +1514,9 @@ public class CADReview
         r.Check(ps.instruments > 0, $"{ps.instruments} scientific instrument(s) on board.", "No scientific instrument: the satellite has no mission.");
         r.Check(ps.volumeUsed <= ps.volumeCap + 1e-3f, $"Internal volume {ps.volumeUsed:0.##}/{ps.volumeCap:0.##} L.",
             $"Internal components need {ps.volumeUsed:0.##} L but structures only hold {ps.volumeCap:0.##} L.");
+        if (mission == AscendSimMission.MoonMapper)
+            r.Check(ps.satDeltaV >= AscendMissionGuide.MoonBrakeDv, $"Satellite propulsion {ps.satDeltaV:N0} m/s can brake into orbit around the Moon.",
+                $"Satellite propulsion is only {ps.satDeltaV:N0} m/s; braking into orbit around the Moon needs about {AscendMissionGuide.MoonBrakeDv:N0} m/s. Add hydrazine modules.");
         return r;
     }
 }
@@ -1664,7 +1754,8 @@ public static class AscendMail
             "1. Design a launch vehicle in <b>AscendCAD > Rocket Builder</b> and a satellite in <b>Payload Builder</b>. Use Googel for research.\n" +
             "2. Press <b>SUBMIT</b>: review the receipt and pay. Paid parts stay in your inventory.\n" +
             "3. Check the data sheet, then send the design to this address.\n" +
-            "4. Our engineers double-check the realism. If approved, the rocket is rolled out to the launch site.\n\n" +
+            "4. Our engineers double-check the realism. If approved, open <b>Ascend Mission Simulator</b> to plan the trajectory.\n" +
+            "5. Send the trajectory to Mission Control. When it is CONFIRMED, the rocket is built on the launch pad, ready to fly.\n\n" +
             "Minimum requirements: reach low Earth orbit, range safety (flight termination), a working satellite with power, comms, attitude control and a scientific instrument.\n\n" +
             "Mabuhay and good luck!\n- Ascend Philippines Review Board");
     }
@@ -1699,15 +1790,37 @@ public class AscendRunner : MonoBehaviour
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-//  MISSION CONTROL: submit -> email -> review -> roll out to the launch site
+//  MISSION CONTROL: submit -> email -> review -> APPROVED design waits for the
+//  Ascend Mission Simulator; a CONFIRMED trajectory builds it on the launch pad
 // ═════════════════════════════════════════════════════════════════════════════
 public static class AscendMissionControl
 {
     public static event Action<AscendMail.Message, CADReview> ReviewCompleted;
     public static bool Pending { get; private set; }
 
+    // The latest APPROVED design, waiting for its trajectory to be confirmed in the Ascend Mission Simulator
+    public static CADDesign ApprovedRocket { get; private set; }
+    public static CADDesign ApprovedPayload { get; private set; }
+    public static CADStats ApprovedStats { get; private set; }
+    public static string ApprovedPad { get; private set; }
+    public static bool HasApproved => ApprovedRocket != null && !ApprovedRocket.IsEmpty;
+    public static event Action DesignApproved;
+
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    static void ResetStatics() => Pending = false;
+    static void ResetStatics()
+    {
+        Pending = false;
+        ApprovedRocket = ApprovedPayload = null; ApprovedStats = null; ApprovedPad = null;
+    }
+
+    // Called by the Ascend Mission Simulator when Mission Control confirms the trajectory: build the rocket on the pad
+    public static GameObject BuildApproved(AscendCADData data)
+    {
+        if (!HasApproved) return null;
+        var go = AscendLaunchSite.Spawn(data, ApprovedRocket.Clone(), ApprovedPayload?.Clone(), ApprovedStats, ApprovedPad);
+        ApprovedRocket = ApprovedPayload = null; ApprovedStats = null;   // one approval = one rocket (its parts are used up)
+        return go;
+    }
 
     public static void Submit(AscendCADData data, CADDesign rocket, CADDesign payload)
     {
@@ -1732,7 +1845,8 @@ public static class AscendMissionControl
             if (rv.Approved)
             {
                 AscendEconomy.Consume(r, p);
-                AscendLaunchSite.Spawn(data, r, p, rs, pad);
+                ApprovedRocket = r; ApprovedPayload = p; ApprovedStats = rs; ApprovedPad = pad;   // built after the trajectory is confirmed
+                DesignApproved?.Invoke();
             }
             ReviewCompleted?.Invoke(msg, rv);
         });
@@ -1821,8 +1935,8 @@ public static class AscendReport
         Line(sb, "Liftoff thrust", $"{s.liftoffThrustkN:N0} kN");
         bool twrOk = s.liftoffTWR >= d.minLiftoffTWR && s.liftoffTWR <= d.maxLiftoffTWR;
         Line(sb, "Thrust-to-weight", C(twrOk ? GoodC : BadC, $"{s.liftoffTWR:0.00}") + C(SubC, $" (need {d.minLiftoffTWR:0.0}-{d.maxLiftoffTWR:0})"));
-        Line(sb, "Total delta-v", C(s.deltaV >= d.requiredDeltaV ? GoodC : BadC, $"{s.deltaV:N0} m/s") + C(SubC, $" / {d.requiredDeltaV:N0} to LEO"));
-        Line(sb, "Max payload to LEO", s.maxPayloadLEO > 0f ? Mass(s.maxPayloadLEO) : C(BadC, "can't reach orbit"));
+        Line(sb, "Total delta-v", C(s.deltaV >= s.requiredDv ? GoodC : BadC, $"{s.deltaV:N0} m/s") + C(SubC, $" / {s.requiredDv:N0} for {AscendMissionGuide.Title}"));
+        Line(sb, "Max payload (mission)", s.maxPayloadLEO > 0f ? Mass(s.maxPayloadLEO) : C(BadC, "not enough push for this mission"));
         foreach (var st in s.stages)
             sb.Append(C(SubC, $"  Stage {st.index + 1}: ")).Append($"{st.deltaV:N0} m/s, {st.engines} engine(s), {st.burnTime:0} s burn\n");
         foreach (var e in s.engineIssues) sb.Append(C(BadC, "  ! " + e)).Append('\n');
@@ -1898,9 +2012,9 @@ public static class AscendReport
         var sb = new StringBuilder("Dear design team,\n\n");
         if (rv.Approved)
             sb.Append($"Our engineers double-checked <b>{rocket.name}</b>{(payload != null ? " carrying <b>" + payload.name + "</b>" : "")} and the design is ")
-              .Append(C(GoodC, "<b>APPROVED</b>")).Append(".\n\nThe vehicle has been assembled from your inventory and rolled out to the launch site at ")
-              .Append($"({d.launchSitePosition.x:0.##}, {d.launchSitePosition.y:0.##}, {d.launchSitePosition.z:0.##}).\n")
-              .Append("Next step: calculate the trajectory and submit it for launch approval.\n\n");
+              .Append(C(GoodC, "<b>APPROVED</b>")).Append(".\n\nThe parts are reserved from your inventory.\n")
+              .Append("<b>Next step:</b> open <b>Ascend Mission Simulator</b> on the desktop, calculate the trajectory and send it to Mission Control. ")
+              .Append($"When the trajectory is CONFIRMED, the rocket is built on the launch pad at ({d.launchSitePosition.x:0.##}, {d.launchSitePosition.y:0.##}, {d.launchSitePosition.z:0.##}).\n\n");
         else
             sb.Append($"Our engineers reviewed <b>{rocket.name}</b> and the design is ").Append(C(BadC, "<b>NOT APPROVED</b>"))
               .Append($" ({rv.errors.Count} blocking issue{(rv.errors.Count == 1 ? "" : "s")}).\n\nPlease redesign and resubmit. Parts you already paid for stay in your inventory.\n\n");
@@ -2520,7 +2634,7 @@ public static class CADModels
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-//  LAUNCH SITE: places the approved rocket (with satellite in the fairing) in the world
+//  LAUNCH SITE: places the approved rocket (with satellite in the fairing) on the pad
 // ═════════════════════════════════════════════════════════════════════════════
 public class AscendRocket : MonoBehaviour
 {
@@ -2555,13 +2669,34 @@ public static class AscendLaunchSite
 
     public static GameObject CurrentPad { get; private set; }
     static string currentPadId;
+    static float currentDeck;
 
-    // Where the rocket's base goes: on the chosen pad (scene object or spawned model) plus the pad's deck offset
-    static Vector3 PadBase(AscendCADData data, string padId)
+    // Where the rocket's base goes: on the chosen pad's deck
+    static Vector3 PadBase(AscendCADData data, string padId, CADStats stats)
     {
         var pad = data.GetPad(padId);
         Vector3 basePos = data.launchSitePosition;
         if (pad == null) return basePos;
+
+        // Real-size pad built from code, sized to this rocket
+        if (pad.useBuiltInModel && AscendPadModels.Has(pad))
+        {
+            float r = stats != null && stats.width > 0f ? stats.width * 0.5f : 2f;
+            float h = stats != null && stats.height > 0f ? stats.height : 50f;
+            var mover = data.GetPad(pad.requiresId);
+            bool crawler = mover != null && AscendEconomy.OwnsPad(mover, data);
+            string key = $"{pad.id}|{r:0.0}|{h:0}|{crawler}";
+            if (CurrentPad && currentPadId != key) { Object.Destroy(CurrentPad); CurrentPad = null; }
+            if (!CurrentPad)
+            {
+                CurrentPad = AscendPadModels.Build(pad, data, r, h, true, crawler, out currentDeck);
+                CurrentPad.transform.position = basePos;
+                currentPadId = key;
+            }
+            return basePos + Vector3.up * currentDeck;
+        }
+
+        // Your own model / scene object
         GameObject padObj = !string.IsNullOrEmpty(pad.sceneObjectName) ? GameObject.Find(pad.sceneObjectName) : null;
         if (CurrentPad && (padObj || currentPadId != pad.id)) { Object.Destroy(CurrentPad); CurrentPad = null; }
         if (!padObj && pad.modelPrefab)
@@ -2606,21 +2741,336 @@ public static class AscendLaunchSite
             pay.transform.localPosition = new Vector3(axis.x - pb.center.x, baseY - pb.min.y + 0.05f, axis.z - pb.center.z);
         }
 
-        // Lowest point of the rocket sits exactly on the launch site position
+        // Lowest point of the rocket sits exactly on the pad's deck
         var renderers = site.GetComponentsInChildren<Renderer>();
         if (renderers.Length > 0)
         {
             var b = renderers[0].bounds;
             foreach (var r in renderers) b.Encapsulate(r.bounds);
-            site.transform.position += PadBase(data, padId) - new Vector3(b.center.x, b.min.y, b.center.z);
+            site.transform.position += PadBase(data, padId, stats) - new Vector3(b.center.x, b.min.y, b.center.z);
         }
-        else site.transform.position = PadBase(data, padId);
+        else site.transform.position = PadBase(data, padId, stats);
 
         var info = site.AddComponent<AscendRocket>();
         info.rocket = rocket.Clone(); info.payload = payload?.Clone(); info.stats = stats;
         Current = site;
         return site;
     }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  LAUNCH PAD MODELS: real-size pads built from code (1 unit = 1 m)
+//    Basic Launch Mount  ~ Rocket Lab LC-1: 30 m pad, launch table, strongback mast
+//    Gantry Launch Pad   ~ SLC-40 class: raised mount, flame trench, 90 m service tower,
+//                          lightning masts, LOX sphere, RP-1 tanks, water tower
+//    Mobile Launcher     ~ NASA ML on Pad 39B: 6 pedestals, 50 x 41 x 7.6 m base, 100 m tower,
+//                          180 m lightning towers; the Crawler parks beside it if you own one
+//    Crawler-Transporter ~ 40 x 35 m, 4 double-tracked trucks
+//  The exhaust hole fits the rocket's width and the service arms reach its side.
+// ═════════════════════════════════════════════════════════════════════════════
+public static class AscendPadModels
+{
+    static readonly Color Concrete = new Color(0.66f, 0.66f, 0.63f), DarkConcrete = new Color(0.30f, 0.30f, 0.30f),
+        Steel = new Color(0.58f, 0.60f, 0.63f), DarkSteel = new Color(0.25f, 0.26f, 0.28f),
+        White = new Color(0.92f, 0.92f, 0.93f), Track = new Color(0.17f, 0.17f, 0.18f);
+
+    static Vector3 V(float x, float y, float z) => new Vector3(x, y, z);
+
+    public static bool Has(CADLaunchPad p) =>
+        p != null && (p.id == "pad.rail" || p.id == "pad.basic" || p.id == "pad.gantry" || p.id == "pad.ml" || p.id == "pad.crawler");
+
+    // deckHeight = how high above the pad's ground the rocket's base sits
+    public static GameObject Build(CADLaunchPad p, AscendCADData data, float rocketRadius, float rocketHeight,
+        bool colliders, bool parkCrawler, out float deckHeight)
+    {
+        var k = new Kit();
+        float R = Mathf.Max(0.5f, rocketRadius), H = Mathf.Max(10f, rocketHeight);
+        switch (p.id)
+        {
+            case "pad.rail": deckHeight = Rail(k, rocketRadius); break;
+            case "pad.basic": deckHeight = Basic(k, R, H); break;
+            case "pad.gantry": deckHeight = Gantry(k, R, H); break;
+            case "pad.ml": deckHeight = MobileLauncher(k, R, H, parkCrawler); break;
+            case "pad.crawler": Crawler(k, Vector3.zero); deckHeight = 0f; break;
+            default: deckHeight = 0f; return null;
+        }
+        return k.Finish("Launch Pad - " + p.name, data, colliders);
+    }
+
+    // CanSat launch rail: concrete slab, blast plate, 6 m rail on a tripod, launch controller box
+    static float Rail(Kit k, float r)
+    {
+        const float g = 0.15f, railH = 6f;
+        r = Mathf.Clamp(r, 0.03f, 0.15f);
+        k.BoxB(V(-3, 0, -3), V(3, g, 3), Concrete);
+        k.BoxB(V(-0.5f, g, -0.5f), V(0.5f, g + 0.04f, 0.5f), DarkSteel);                      // blast plate
+        float deck = g + 0.3f, rx = r + 0.03f;
+        k.Box(V(rx, g + railH * 0.5f, 0), V(0.04f, railH, 0.04f), Steel);                       // the rail
+        Vector3 top = V(rx, g + railH * 0.55f, 0);
+        foreach (var leg in new[] { V(rx + 1.4f, g, 0), V(rx - 0.7f, g, 1.2f), V(rx - 0.7f, g, -1.2f) })
+            k.Beam(top, leg, 0.05f, DarkSteel);                                                    // tripod legs
+        k.Box(V(rx, deck - 0.1f, 0), V(0.25f, 0.06f, 0.25f), DarkSteel);                       // rail stop the rocket rests on
+        k.BoxB(V(-2.6f, g, 2.0f), V(-2.0f, g + 0.5f, 2.5f), White);                              // launch controller
+        k.Beam(V(-2.3f, g + 0.05f, 2.0f), V(0, g + 0.05f, 0), 0.02f, Track);                     // igniter cable
+        return deck;
+    }
+
+    static float Basic(Kit k, float R, float H)
+    {
+        const float g = 0.5f;
+        k.BoxB(V(-15, 0, -15), V(15, g, 15), Concrete);
+        float deck = 4.5f, hole = R + 0.25f, s = Mathf.Max(3f, R + 1.5f);
+        k.Frame(-s, s, -s, s, deck - 0.5f, deck, -hole, hole, -hole, hole, Steel);           // launch table
+        for (int sx = -1; sx <= 1; sx += 2)
+            for (int sz = -1; sz <= 1; sz += 2)
+                k.BoxB(V(sx * (s - 0.8f), g, sz * (s - 0.8f)), V(sx * s, deck - 0.5f, sz * s), Steel);
+        k.Box(V(0, g + 0.6f * hole, 0), V(2f * hole, 0.3f, 2f * hole), Quaternion.Euler(-30f, 0f, 0f), DarkSteel); // deflector
+
+        float tw = 2.5f, tx = R + 3f + tw * 0.5f, mastH = Mathf.Clamp(H * 1.1f, 15f, 45f);    // strongback mast
+        k.Lattice(V(tx, g, 0), tw, mastH, 2.5f, 0.15f, Steel);
+        foreach (float f in new[] { 0.3f, 0.75f })
+        {
+            float y = deck + H * f;
+            if (y < g + mastH - 0.5f) Arm(k, R, tx - tw * 0.5f, y, 1.2f);
+        }
+        k.BoxB(V(-14, g, 8), V(-8, g + 3.5f, 12), White);                                      // control hut
+        return deck;
+    }
+
+    static float Gantry(Kit k, float R, float H)
+    {
+        const float g = 0.6f;
+        k.BoxB(V(-55, 0, -55), V(55, g, 55), Concrete);
+        float h = Mathf.Clamp(2f * R + 2f, 4f, 14f) * 0.5f, s = Mathf.Max(9f, h + 4f);
+        float deck = Mathf.Max(7f, g + 1.3f * h + 1f);
+
+        // Hollow raised mount: exhaust drops in and leaves through the open front (-Z) into the trench
+        k.BoxB(V(-s, g, -s), V(-h, deck, s), Concrete);
+        k.BoxB(V(h, g, -s), V(s, deck, s), Concrete);
+        k.BoxB(V(-h, g, h), V(h, deck, s), Concrete);
+        k.BoxB(V(-h, deck - 1.5f, -s), V(h, deck, -h), Concrete);
+        k.Box(V(0, g + 0.6f * h, 0), V(2f * h, 0.6f, 2f * h), Quaternion.Euler(-35f, 0f, 0f), DarkSteel);
+        float th = R + 0.3f;
+        k.Frame(-s, s, -s, s, deck - 0.8f, deck, -th, th, -th, th, DarkSteel);                // hold-down table
+        foreach (var d in new[] { Vector3.forward, Vector3.back, Vector3.left, Vector3.right })
+            k.Box(d * (R + 0.7f) + Vector3.up * (deck + 0.6f), V(0.8f, 1.2f, 0.8f), DarkSteel);
+
+        k.BoxB(V(-h, g, -55), V(h, g + 0.05f, -s), DarkConcrete);                              // flame trench
+        k.BoxB(V(-h - 1.2f, g, -55), V(-h, g + 2.5f, -s), Concrete);
+        k.BoxB(V(h, g, -55), V(h + 1.2f, g + 2.5f, -s), Concrete);
+
+        float tw = 10f, tx = R + 4f + tw * 0.5f, towerH = 90f;                                  // service tower + arms
+        k.Lattice(V(tx, g, 0), tw, towerH, 5f, 0.35f, Steel, 4);
+        k.Box(V(tx, g + towerH + 0.25f, 0), V(tw + 1f, 0.5f, tw + 1f), DarkSteel);
+        foreach (float f in new[] { 0.3f, 0.62f, 0.88f })
+        {
+            float y = deck + H * f;
+            if (y < g + towerH - 2f) Arm(k, R, tx - tw * 0.5f, y, 2.2f);
+        }
+
+        Vector3 m1 = V(-32, g, 38), m2 = V(32, g, 38);                                          // lightning masts + wire
+        k.Cyl(m1 + Vector3.up * 55f, 0.8f, 110f, Steel);
+        k.Cyl(m2 + Vector3.up * 55f, 0.8f, 110f, Steel);
+        k.Beam(m1 + Vector3.up * 110f, m2 + Vector3.up * 110f, 0.08f, DarkSteel);
+        k.Beam(m1 + Vector3.up * 110f, V(tx, g + towerH, 0), 0.08f, DarkSteel);
+
+        var lox = V(-40, 10, -25);                                                              // propellant farm
+        k.Ball(lox, 14f, White);
+        for (int sx = -1; sx <= 1; sx += 2)
+            for (int sz = -1; sz <= 1; sz += 2)
+                k.Beam(lox + V(sx * 4.5f, -4f, sz * 4.5f), V(-40 + sx * 6f, g, -25 + sz * 6f), 0.6f, Steel);
+        for (int i = 0; i < 2; i++)
+        {
+            float z = 6f + i * 8f;
+            k.Cyl(V(-40, g + 3.2f, z), 2.6f, 20f, White, Quaternion.Euler(0f, 0f, 90f));
+            k.Box(V(-47, g + 0.5f, z), V(1f, 1f, 4f), Concrete);
+            k.Box(V(-33, g + 0.5f, z), V(1f, 1f, 4f), Concrete);
+        }
+        k.Beam(V(-34, g + 0.8f, -20), V(-s, g + 0.8f, -2), 0.6f, White);
+
+        k.Lattice(V(42, g, -35), 7f, 45f, 7.5f, 0.3f, Steel);                                  // water tower
+        k.Cyl(V(42, g + 50f, -35), 5.5f, 10f, White);
+        return deck;
+    }
+
+    static float MobileLauncher(Kit k, float R, float H, bool parkCrawler)
+    {
+        const float g = 0.6f, ped = 6.7f, baseT = 7.6f;
+        float deck = g + ped + baseT;
+        k.BoxB(V(-70, 0, -70), V(70, g, 70), Concrete);                                        // pad hardstand
+
+        float hx = Mathf.Clamp(2f * R + 4f, 10f, 22f) * 0.5f, hz = Mathf.Clamp(2f * R + 3f, 8f, 18f) * 0.5f;
+        k.BoxB(V(-hx, g, -70), V(hx, g + 0.05f, hz), DarkConcrete);                            // flame trench
+        k.BoxB(V(-hx - 1.5f, g, -70), V(-hx, g + 3f, -24f), Concrete);
+        k.BoxB(V(hx, g, -70), V(hx + 1.5f, g + 3f, -24f), Concrete);
+
+        float bx0 = -22f, bx1 = 28f, bz0 = -20.5f, bz1 = 20.5f;
+        foreach (float x in new[] { -18f, 3f, 24f })                                           // six pedestals
+            foreach (float z in new[] { -16f, 16f })
+                k.BoxB(V(x - 1.5f, g, z - 1.5f), V(x + 1.5f, g + ped, z + 1.5f), Concrete);
+        k.Frame(bx0, bx1, bz0, bz1, g + ped, deck, -hx, hx, -hz, hz, Steel);                    // two-story base
+
+        float th = R + 0.3f;                                                                    // vehicle support posts
+        foreach (var d in new[] { Vector3.forward, Vector3.back, Vector3.left, Vector3.right })
+            k.Box(d * (th + 0.5f) + Vector3.up * (deck + 0.75f), V(1f, 1.5f, 1f), DarkSteel);
+
+        float tw = 12f, towerH = 100f;                                                          // umbilical tower
+        float tx = Mathf.Min(Mathf.Max(R + 4f, hx + 2f) + tw * 0.5f, bx1 - tw * 0.5f);
+        k.Lattice(V(tx, deck, 0), tw, towerH, 6.25f, 0.45f, Steel, 4);
+        k.Box(V(tx, deck + towerH + 0.25f, 0), V(tw + 1f, 0.5f, tw + 1f), DarkSteel);
+        k.Cyl(V(tx, deck + towerH + 6f, 0), 0.4f, 12f, DarkSteel);
+        foreach (float f in new[] { 0.2f, 0.45f, 0.7f, 0.88f })
+        {
+            float y = deck + H * f;
+            if (y < deck + towerH - 2f) Arm(k, R, tx - tw * 0.5f, y, 2.5f);
+        }
+
+        var masts = new[] { V(-55, g, -50), V(55, g, -50), V(0, g, 62) };                     // 39B lightning towers
+        foreach (var m in masts) k.Cyl(m + Vector3.up * 90f, 1.2f, 180f, Steel);
+        for (int i = 0; i < 3; i++)
+            k.Beam(masts[i] + Vector3.up * 180f, masts[(i + 1) % 3] + Vector3.up * 180f, 0.1f, DarkSteel);
+
+        if (parkCrawler) Crawler(k, V(0, 0, 105));
+        return deck;
+    }
+
+    static void Crawler(Kit k, Vector3 o)
+    {
+        for (int sx = -1; sx <= 1; sx += 2)
+            for (int sz = -1; sz <= 1; sz += 2)
+            {
+                var c = o + V(sx * 14.5f, 0, sz * 13.5f);
+                for (int t = -1; t <= 1; t += 2)
+                    k.BoxB(c + V(-6, 0, t * 1.4f - 1f), c + V(6, 2f, t * 1.4f + 1f), Track);
+                k.BoxB(c + V(-5.5f, 2f, -2.6f), c + V(5.5f, 3f, 2.6f), DarkSteel);
+                k.Cyl(c + Vector3.up * 3.65f, 1.2f, 1.3f, Steel);
+            }
+        k.BoxB(o + V(-20, 4.3f, -17.5f), o + V(20, 6.1f, 17.5f), Steel);
+        k.BoxB(o + V(-21.8f, 2.6f, -17.5f), o + V(-20, 5.6f, -14f), White);                   // control cabs
+        k.BoxB(o + V(20, 2.6f, 14f), o + V(21.8f, 5.6f, 17.5f), White);
+    }
+
+    // Service arm from the tower face (+X side) to just off the rocket's side
+    static void Arm(Kit k, float R, float towerFaceX, float y, float w)
+    {
+        float x0 = R + 0.3f, x1 = towerFaceX, hw = w * 0.5f;
+        if (x1 - x0 < 0.5f) return;
+        k.BoxB(V(x0, y - 0.6f, -hw), V(x1, y, hw), DarkSteel);
+        k.Beam(V(x0, y + 1.1f, -hw), V(x1, y + 1.1f, -hw), 0.1f, Steel);
+        k.Beam(V(x0, y + 1.1f, hw), V(x1, y + 1.1f, hw), 0.1f, Steel);
+        k.Beam(V(x1, y - 0.6f, hw * 0.5f), V(x0 + 0.1f, y - 1.6f, hw * 0.5f), 0.35f, Track);  // umbilical hose
+    }
+
+    // Everything is merged into one mesh per color (few draw calls even for big towers)
+    class Kit
+    {
+        static Mesh cube, cyl, ball;
+        static Mesh Prim(PrimitiveType t)
+        {
+            var go = GameObject.CreatePrimitive(t);
+            var m = go.GetComponent<MeshFilter>().sharedMesh;
+            Object.DestroyImmediate(go);
+            return m;
+        }
+        static Mesh Cube => cube ? cube : cube = Prim(PrimitiveType.Cube);
+        static Mesh Cylinder => cyl ? cyl : cyl = Prim(PrimitiveType.Cylinder);
+        static Mesh Sphere => ball ? ball : ball = Prim(PrimitiveType.Sphere);
+
+        readonly Dictionary<Color, List<CombineInstance>> parts = new Dictionary<Color, List<CombineInstance>>();
+
+        void Add(Mesh m, Matrix4x4 mat, Color c)
+        {
+            if (!parts.TryGetValue(c, out var l)) parts[c] = l = new List<CombineInstance>();
+            l.Add(new CombineInstance { mesh = m, transform = mat });
+        }
+
+        public void Box(Vector3 c, Vector3 s, Color col) => Add(Cube, Matrix4x4.TRS(c, Quaternion.identity, s), col);
+        public void Box(Vector3 c, Vector3 s, Quaternion r, Color col) => Add(Cube, Matrix4x4.TRS(c, r, s), col);
+
+        public void BoxB(Vector3 a, Vector3 b, Color col)
+        {
+            Vector3 mn = Vector3.Min(a, b), mx = Vector3.Max(a, b), s = mx - mn;
+            if (s.x > 1e-4f && s.y > 1e-4f && s.z > 1e-4f) Box((mn + mx) * 0.5f, s, col);
+        }
+
+        // Slab from y0 to y1 with a rectangular hole
+        public void Frame(float x0, float x1, float z0, float z1, float y0, float y1, float hx0, float hx1, float hz0, float hz1, Color c)
+        {
+            BoxB(V(x0, y0, z0), V(hx0, y1, z1), c);
+            BoxB(V(hx1, y0, z0), V(x1, y1, z1), c);
+            BoxB(V(hx0, y0, z0), V(hx1, y1, hz0), c);
+            BoxB(V(hx0, y0, hz1), V(hx1, y1, z1), c);
+        }
+
+        public void Cyl(Vector3 c, float radius, float height, Color col, Quaternion? r = null) =>
+            Add(Cylinder, Matrix4x4.TRS(c, r ?? Quaternion.identity, V(2f * radius, height * 0.5f, 2f * radius)), col);
+
+        public void Ball(Vector3 c, float diameter, Color col) => Add(Sphere, Matrix4x4.TRS(c, Quaternion.identity, Vector3.one * diameter), col);
+
+        public void Beam(Vector3 a, Vector3 b, float t, Color col)
+        {
+            var d = b - a; float len = d.magnitude;
+            if (len < 1e-4f) return;
+            var dir = d / len;
+            var rot = Quaternion.LookRotation(dir, Mathf.Abs(dir.y) > 0.99f ? Vector3.forward : Vector3.up);
+            Add(Cube, Matrix4x4.TRS((a + b) * 0.5f, rot, V(t, t, len)), col);
+        }
+
+        // Open steel lattice tower standing on b
+        public void Lattice(Vector3 b, float w, float h, float bay, float t, Color c, int floorEvery = 0)
+        {
+            float hw = w * 0.5f;
+            var k4 = new[] { V(-hw, 0, -hw), V(hw, 0, -hw), V(hw, 0, hw), V(-hw, 0, hw) };
+            foreach (var q in k4) Beam(b + q, b + q + Vector3.up * h, t * 1.6f, c);
+            int n = Mathf.Max(1, Mathf.RoundToInt(h / bay));
+            float step = h / n;
+            var floor = new Color(c.r * 0.6f, c.g * 0.6f, c.b * 0.6f, 1f);
+            for (int i = 0; i <= n; i++)
+            {
+                var y = Vector3.up * (i * step);
+                for (int s = 0; s < 4; s++)
+                {
+                    Vector3 a = b + k4[s], e = b + k4[(s + 1) % 4];
+                    Beam(a + y, e + y, t, c);
+                    if (i < n)
+                    {
+                        var up = Vector3.up * step;
+                        bool flip = ((i + s) & 1) == 0;
+                        Beam(a + y + (flip ? Vector3.zero : up), e + y + (flip ? up : Vector3.zero), t * 0.7f, c);
+                    }
+                }
+                if (floorEvery > 0 && i > 0 && i < n && i % floorEvery == 0) Box(b + y, V(w - t, t, w - t), floor);
+            }
+        }
+
+        public GameObject Finish(string name, AscendCADData data, bool colliders)
+        {
+            var root = new GameObject(name);
+            var owner = root.AddComponent<AscendPadMeshes>();
+            foreach (var kv in parts)
+            {
+                var m = new Mesh { name = name, indexFormat = IndexFormat.UInt32 };
+                m.CombineMeshes(kv.Value.ToArray(), true, true);
+                m.RecalculateBounds();
+                owner.meshes.Add(m);
+                var go = new GameObject("Mesh");
+                go.transform.SetParent(root.transform, false);
+                go.AddComponent<MeshFilter>().sharedMesh = m;
+                var r = go.AddComponent<MeshRenderer>();
+                r.sharedMaterial = CADModels.Lit(data);
+                CADModels.Paint(r, kv.Key, null);
+                if (colliders) go.AddComponent<MeshCollider>().sharedMesh = m;
+            }
+            return root;
+        }
+    }
+}
+
+// Frees the generated pad meshes when a pad is removed
+public class AscendPadMeshes : MonoBehaviour
+{
+    public readonly List<Mesh> meshes = new List<Mesh>();
+    void OnDestroy() { foreach (var m in meshes) if (m) Destroy(m); }
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -2901,6 +3351,8 @@ public static class AscendPads
                 l.Add($"Rocket {m:N0} t + {who ?? "launcher"} {heaviest:N0} t = {m + heaviest:N0} t, but it can only carry {p.carryCapacityT:N0} t.");
             return l;
         }
+        if (p.id != "pad.rail" && rs.width < 0.4f && m < 0.1f)
+            l.Add("This is a small hobby rocket: it launches from the CanSat Launch Rail, not from this pad.");
         if (p.maxHeightM > 0f && rs.height > p.maxHeightM) l.Add($"Rocket is {rs.height:0.#} m tall; this pad takes up to {p.maxHeightM:0.#} m.");
         if (p.maxWidthM > 0f && rs.width > p.maxWidthM) l.Add($"Rocket is {rs.width:0.#} m wide; this pad takes up to {p.maxWidthM:0.#} m.");
         if (p.maxLiftoffMassT > 0f && m > p.maxLiftoffMassT) l.Add($"Rocket weighs {m:N0} t; this pad holds up to {p.maxLiftoffMassT:N0} t.");
@@ -3097,6 +3549,128 @@ public static class AscendTemplates
         return b.Done();
     }
 
+    // ═════════════ MISSION GUIDE: auto-designed suggestions (built like the editor's snapping) ═════════════
+    static string Fm(float v) => v.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
+    static readonly string[] AvionicsBasic = { "av.fc", "av.imu.mems", "av.gnss", "av.afts", "av.tlm", "av.batt" };
+
+    // Small hobby rocket for the CanSat (Sky Sensor) mission
+    public static CADDesign AutoHobby(AscendCADData data, string name, bool bigMotor, int fins, bool extras)
+    {
+        var b = new B(data, name);
+        int motor = b.Root(bigMotor ? "snd.motor.k" : "snd.motor.j");
+        b.Side(motor, "snd.fin", fins, -0.2f, 0f);
+        int tube = b.On(motor, "snd.tube");
+        if (extras) b.Inside(tube, "snd.alt", "snd.imu", "snd.gps", "snd.batt");
+        else b.Inside(tube, "snd.alt", "snd.batt");
+        int bay = b.On(tube, "snd.bay");
+        b.On(bay, "snd.nose");
+        return b.Done();
+    }
+
+    // Two-stage liquid rocket: stage 1 tanks + engines, interstage, stage 2 tanks + engine, avionics bay, fairing sized for the payload
+    public static CADDesign AutoLiquid(AscendCADData data, string name, float d, string e1, int n1, float[] s1, string p1,
+        string e2, float[] s2, string p2, float payW, float payH)
+    {
+        var b = new B(data, name);
+        string T(string prop, float len) => "tank." + prop + "." + Fm(d) + "x" + Fm(len);
+        int root = b.Root(T(p1, s1[0])), top = root;
+        for (int i = 1; i < s1.Length; i++) top = b.On(top, T(p1, s1[i]));
+        b.Engines(root, e1, n1 > 1 ? n1 - 1 : 0, true, 0f);
+        int inter = b.On(top, "str.interstage." + Fm(d));
+        int u = b.On(inter, T(p2, s2[0])), top2 = u;
+        for (int i = 1; i < s2.Length; i++) top2 = b.On(top2, T(p2, s2[i]));
+        b.Engines(u, e2, 0, true);
+        int av = b.On(top2, "str.avbay." + Fm(d));
+        b.Inside(av, AvionicsBasic);
+        // Fairing: same width as the rocket if the payload fits, otherwise widen with an adapter
+        float[] dias = { 1.2f, 1.8f, 2.5f, 3.7f, 5f };
+        float[] fl = { 2.5f, 3.6f, 6f, 9.5f, 13.1f };
+        int k = Array.IndexOf(dias, d);
+        if (k < 0) k = 0;
+        int below = av;
+        while (k < dias.Length - 1 && (payW > dias[k] * 0.88f || payH > fl[k] * 0.78f))
+        {
+            below = b.On(below, "str.adapter." + Fm(dias[k]) + "-" + Fm(dias[k + 1]));
+            k++;
+        }
+        b.On(below, "fair." + (dias[k] >= 5f ? "5.2" : Fm(dias[k])));
+        return b.Done();
+    }
+
+    // Every rocket the guide considers for a mission
+    public static List<CADDesign> AutoRockets(AscendSimMission m, AscendCADData data, float payW, float payH)
+    {
+        var list = new List<CADDesign>();
+        void Try(Func<CADDesign> f) { try { var d = f(); if (d != null) list.Add(d); } catch (Exception) { } }
+        if (m == AscendSimMission.SkySensor)
+        {
+            Try(() => AutoHobby(data, "Tarsier K (basic)", false, 3, false));
+            Try(() => AutoHobby(data, "Tarsier K", false, 4, true));
+            Try(() => AutoHobby(data, "Tarsier L (higher)", true, 4, true));
+            return list;
+        }
+        var s1Small = new[] { new[] { 12f }, new[] { 12f, 6f }, new[] { 12f, 12f } };
+        var s2Small = new[] { new[] { 1.5f }, new[] { 3f }, new[] { 6f } };
+        foreach (int n in new[] { 5, 7, 9 })
+            foreach (var a in s1Small) foreach (var c in s2Small)
+            { var n1 = n; var aa = a; var cc = c; Try(() => AutoLiquid(data, $"Maya-L {n1}R", 1.2f, "eng.rutherford", n1, aa, "kerolox", "eng.rutherfordvac", cc, "kerolox", payW, payH)); }
+        var s1Med = new[] { new[] { 12f }, new[] { 12f, 12f }, new[] { 12f, 12f, 12f } };
+        var s2Med = new[] { new[] { 2f }, new[] { 4f }, new[] { 4f, 4f } };
+        foreach (var a in s1Med) foreach (var c in s2Med)
+        { var aa = a; var cc = c; Try(() => AutoLiquid(data, "Agila 1M", 1.8f, "eng.merlin1d", 1, aa, "kerolox", "eng.aj10", cc, "hypergolic", payW, payH)); }
+        var s1Big = new[] { new[] { 12f, 12f }, new[] { 12f, 12f, 12f }, new[] { 12f, 12f, 12f, 6f } };
+        var s2Big = new[] { new[] { 3f }, new[] { 6f }, new[] { 12f } };
+        foreach (int n in new[] { 5, 7, 9 })
+            foreach (var a in s1Big) foreach (var c in s2Big)
+            { var n1 = n; var aa = a; var cc = c; Try(() => AutoLiquid(data, $"Haribon {n1}M", 3.7f, "eng.merlin1d", n1, aa, "kerolox", "eng.mvac", cc, "kerolox", payW, payH)); }
+        return list;
+    }
+
+    // Satellites for each mission: tier 0 = budget, 1 = balanced, 2 = best
+    public static CADDesign AutoSat(AscendSimMission m, int tier, AscendCADData data)
+    {
+        if (m == AscendSimMission.SkySensor)
+        {
+            var b = new B(data, tier == 0 ? "Sky Sensor CanSat" : "Sky Sensor CanSat Plus", CADBuilder.Payload);
+            int ej = b.Root("can.eject"), can = b.On(ej, "can.shell");
+            b.Face(can, "can.chute", true, Vector2.zero);
+            b.Side(can, "can.ant", 1, 0f, 0f);
+            b.Inside(can, "can.obc", "can.sensor", "can.radio", "can.batt");
+            if (tier > 0) b.Inside(can, "can.humid", "sci.cam.tiny");
+            return b.Done();
+        }
+        if (m == AscendSimMission.EarthWatcher)
+        {
+            if (tier >= 2) return Diwata(data, false);
+            if (tier == 0)
+            {
+                var b = new B(data, "Bantay 3U", CADBuilder.Payload);
+                int sep = b.Root("sat.sep.springs"), f = b.On(sep, "sat.str.3u");
+                b.Side(f, "sat.sol.3u", 4, 0f, 0f);
+                b.Side(f, "sat.ant.uhf", 1, 0.1f, 45f);
+                b.Inside(f, "sat.obc.cube", "sat.eps.cube", "sat.bat.40", "sat.com.uhf", "sat.adcs.3ax", "sci.mantis", "sat.th.mli");
+                return b.Done();
+            }
+            var c = new B(data, "Bantay 6U", CADBuilder.Payload);
+            int s6 = c.Root("sat.sep.cubesat"), f6 = c.On(s6, "sat.str.6u");
+            c.Side(f6, "sat.sol.6ud", 2, 0f, 90f);
+            c.Side(f6, "sat.ant.s", 1, 0f, 0f);
+            c.Inside(f6, "sat.obc.cube", "sat.eps.cube", "sat.bat.99", "sat.com.s", "sat.adcs.3ax", "sci.ms100", "sat.th.mli");
+            return c.Done();
+        }
+        // Moon Mapper: needs its own engine to brake into lunar orbit
+        var mb = new B(data, tier == 0 ? "Buwan Mapper" : tier == 1 ? "Buwan Mapper Plus" : "Buwan Mapper Pro", CADBuilder.Payload);
+        int msep = mb.Root("sat.sep.lb24"), bus = mb.On(msep, "sat.str.100");
+        mb.Side(bus, "sat.sol.sm", 4, 0f, 0f);
+        mb.Face(bus, tier == 0 ? "sci.mfc" : "sci.monitor", true, new Vector2(-0.15f, 0f));
+        if (tier >= 2) { mb.Face(bus, "hay.lidar", true, new Vector2(0.15f, 0f)); mb.Face(bus, "sat.ant.dish", false, new Vector2(0.15f, 0.15f)); }
+        else mb.Side(bus, "sat.ant.x", 1, 0.2f, 45f);
+        mb.Inside(bus, tier == 0 ? "sat.obc.cube" : "sat.obc.rad", "sat.eps.cube", tier == 0 ? "sat.bat.99" : "sat.bat.1k",
+            tier >= 2 ? "sat.com.xhr" : "sat.com.x", "sat.adcs.3ax", "sat.prop.hydrazine", "sat.prop.hydrazine", "sat.th.mli");
+        if (tier >= 1) mb.Inside(bus, "sat.prop.hydrazine");
+        return mb.Done();
+    }
+
     // Small helper that places parts exactly like the editor's snapping does
     class B
     {
@@ -3171,6 +3745,336 @@ public static class AscendTemplates
             foreach (var p in d.parts) p.pos.y -= y;   // stand on the ground
             return d;
         }
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  MISSION GUIDE: what each mission needs, a live checklist, and money-aware
+//  suggestions (Budget / Balanced / Best) for the rocket and the payload
+// ═════════════════════════════════════════════════════════════════════════════
+public static class AscendMissionGuide
+{
+    public const float MoonBrakeDv = 900f;   // lunar orbit insertion (~0.85 km/s) + margin
+    static bool overridden;
+    static AscendSimMission chosen;
+    public static event Action MissionChanged;
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetStatics() { overridden = false; MissionChanged = null; }
+
+    // The mission picked in the briefing (or changed in AscendCAD / the Mission Simulator)
+    public static AscendSimMission Mission
+    {
+        get => overridden ? chosen
+             : MissionBriefing.SelectedMissionIndex >= 0 ? (AscendSimMission)Mathf.Clamp(MissionBriefing.SelectedMissionIndex, 0, 2)
+             : AscendSimMission.EarthWatcher;
+        set { overridden = true; chosen = value; MissionChanged?.Invoke(); }
+    }
+
+    public static string Title => AscendSimPlan.Title(Mission);
+
+    // Delta-v the rocket must give (including gravity and drag losses)
+    public static float RequiredDeltaV(AscendCADData d) =>
+        Mission == AscendSimMission.SkySensor ? 200f : Mission == AscendSimMission.EarthWatcher ? d.requiredDeltaV + 400f : d.requiredDeltaV + 3150f;
+
+    public static string Difficulty => Mission == AscendSimMission.SkySensor ? "Easy" : Mission == AscendSimMission.EarthWatcher ? "Medium" : "Hard";
+
+    public struct Item { public bool ok; public string kid, expert; public Item(bool o, string k, string e) { ok = o; kid = k; expert = e; } }
+
+    // ───────────── Live checklist ─────────────
+    public static List<Item> Checklist(CADBuilder builder, CADDesign rocket, CADDesign payload, AscendCADData data)
+    {
+        var l = new List<Item>();
+        var m = Mission; bool sky = m == AscendSimMission.SkySensor;
+        float req = RequiredDeltaV(data);
+        var ps = payload != null && !payload.IsEmpty ? CADStats.Payload(payload, data) : null;
+
+        if (builder == CADBuilder.Rocket)
+        {
+            var rs = CADStats.Rocket(rocket, data, ps != null ? ps.wetMass : 0f, req);
+            bool any = rocket != null && !rocket.IsEmpty;
+            l.Add(new Item(any && rs.stages.Count > 0 && rs.stages[0].engines > 0 && rs.engineIssues.Count == 0,
+                sky ? "A motor at the bottom" : "Engines that can fire at liftoff", rs.engineIssues.Count > 0 ? rs.engineIssues[0] : "Stage 1 needs sea-level engines or a motor"));
+            l.Add(new Item(any && rs.liftoffTWR >= data.minLiftoffTWR, $"Strong enough to lift off", $"Thrust-to-weight {rs.liftoffTWR:0.00} (need {data.minLiftoffTWR:0.0} or more)"));
+            l.Add(new Item(any && rs.deltaV >= req, $"Enough push for {Title}", $"Delta-v {rs.deltaV:N0} of {req:N0} m/s"));
+            l.Add(new Item(rs.Has(CADRole.FlightComputer), "Flight computer: the rocket's brain", sky ? "Hobby altimeter computer" : "Install it inside an avionics bay"));
+            if (sky) l.Add(new Item(rs.Has(CADRole.Aero) || rs.Has(CADRole.IMU), "Fins to fly straight", "3-4 fins near the bottom (or an IMU)"));
+            else l.Add(new Item(rs.Has(CADRole.IMU), "IMU: senses which way is up", "Inertial measurement unit"));
+            l.Add(new Item(rs.Has(CADRole.Battery), "Battery for the electronics", ""));
+            if (!sky)
+            {
+                l.Add(new Item(rs.Has(CADRole.FlightTermination), "Safety system (flight termination)", "Range safety requires it"));
+                l.Add(new Item(rs.Has(CADRole.Telemetry), "Telemetry radio", "So Mission Control can follow the flight"));
+            }
+            l.Add(new Item(any && TopIsAero(rocket, data), "Pointy top: nose cone or fairing", "Smooth airflow, lower drag and air loads"));
+            if (any)
+            {
+                CADLaunchPad fit = null; bool owned = false;
+                foreach (var pad in data.launchPads)
+                {
+                    if (pad == null || pad.isTransporter || AscendPads.Problems(pad, rs, data).Count > 0) continue;
+                    bool own = AscendEconomy.OwnsPad(pad, data) && AscendPads.Lock(pad, data) == null;
+                    if (fit == null || (own && !owned)) { fit = pad; owned = own; }
+                }
+                var sel = data.GetPad(AscendEconomy.SelectedPad);
+                bool selOk = sel != null && !sel.isTransporter && AscendEconomy.OwnsPad(sel, data) && AscendPads.Problems(sel, rs, data).Count == 0;
+                l.Add(new Item(selOk, "A launch pad that fits (Launch Pad tab)",
+                    selOk ? sel.name : fit != null ? (owned ? $"Choose the {fit.name}" : $"Buy the {fit.name} ({AscendReport.Money(fit.costUSD)})") : "No pad can hold this rocket"));
+            }
+            if (ps == null) l.Add(new Item(false, sky ? "CanSat built (Payload Builder)" : "Satellite built (Payload Builder)", "The guide sizes the rocket for it"));
+            else
+            {
+                CADPart fairing = null;
+                if (rocket != null) foreach (var pl in rocket.parts) { var p = data.Get(pl.partId); if (p != null && p.innerDiameter > 0f) { fairing = p; break; } }
+                l.Add(new Item(fairing != null && ps.stowedWidth <= fairing.innerDiameter && ps.stowedHeight <= fairing.innerHeight,
+                    sky ? "CanSat fits in the payload bay" : "Satellite fits inside the fairing",
+                    fairing != null ? $"Folded {ps.stowedWidth:0.##} x {ps.stowedHeight:0.##} m, space Ø{fairing.innerDiameter:0.##} x {fairing.innerHeight:0.##} m" : "No fairing / payload bay yet"));
+                l.Add(new Item(any && rs.maxPayloadLEO >= ps.wetMass, "Can carry the payload", $"Payload {AscendReport.Mass(ps.wetMass)}, rocket can carry {AscendReport.Mass(rs.maxPayloadLEO)} for this mission"));
+            }
+            return l;
+        }
+
+        // Payload
+        if (ps == null) { l.Add(new Item(false, sky ? "Start with a CanSat shell" : "Start with a frame or bus", "")); return l; }
+        if (sky)
+        {
+            l.Add(new Item(ps.Has(CADRole.SatStructure), "CanSat shell", "Soda-can sized body"));
+            l.Add(new Item(ps.Has(CADRole.Separation), "Ejection plate", "Pushes the CanSat out at the top"));
+            l.Add(new Item(ps.Has(CADRole.Recovery), "Parachute", "Slow, soft landing"));
+            l.Add(new Item(ps.Has(CADRole.OBC), "Computer board", "Reads the sensors"));
+            l.Add(new Item(ps.instruments > 0, "Air sensor (temperature + pressure)", "The science of the mission"));
+            l.Add(new Item(ps.Has(CADRole.Transceiver) && ps.Has(CADRole.Antenna), "Radio + antenna", "Sends the data down"));
+            l.Add(new Item(ps.batteryWh > 0f && ps.batteryWh >= ps.powerUse * 0.5f, "Battery lasts the flight", $"{ps.batteryWh:0.#} Wh for {ps.powerUse:0.##} W"));
+            l.Add(new Item(ps.volumeUsed <= ps.volumeCap + 1e-3f, "Everything fits inside", $"{ps.volumeUsed:0.###} of {ps.volumeCap:0.###} L"));
+            return l;
+        }
+        l.Add(new Item(ps.Has(CADRole.SatStructure), "Structure (frame or bus)", ""));
+        l.Add(new Item(ps.Has(CADRole.Separation), "Separation system", "To leave the rocket"));
+        l.Add(new Item(ps.Has(CADRole.SolarPanel) && ps.powerGen >= ps.powerUse * data.powerMargin, "Solar panels make enough power", $"{ps.powerGen:0.#} W made, {ps.powerUse:0.#} W used (+{(data.powerMargin - 1f) * 100f:0}%)"));
+        l.Add(new Item(ps.Has(CADRole.EPS), "Power system (EPS)", ""));
+        l.Add(new Item(ps.batteryWh >= ps.batteryNeedWh && ps.batteryWh > 0f, "Battery for the dark side of Earth", $"{ps.batteryWh:0} of {ps.batteryNeedWh:0} Wh"));
+        l.Add(new Item(ps.Has(CADRole.OBC), "On-board computer", ""));
+        l.Add(new Item(ps.Has(CADRole.Transceiver) && ps.Has(CADRole.Antenna), "Radio + antenna", ""));
+        l.Add(new Item(ps.Has(CADRole.ADCSIntegrated) || (ps.Has(CADRole.ADCSActuator) && ps.Has(CADRole.ADCSSensor)), "Pointing control (ADCS)", "To aim the camera"));
+        l.Add(new Item(ps.instruments > 0, m == AscendSimMission.MoonMapper ? "Mapping camera / instrument" : "Earth camera / instrument", ""));
+        l.Add(new Item(ps.Has(CADRole.Thermal), "Thermal control", "Keeps electronics at a safe temperature"));
+        l.Add(new Item(ps.volumeUsed <= ps.volumeCap + 1e-3f, "Everything fits inside", $"{ps.volumeUsed:0.##} of {ps.volumeCap:0.##} L"));
+        if (m == AscendSimMission.MoonMapper)
+            l.Add(new Item(ps.satDeltaV >= MoonBrakeDv, "Own engine to brake at the Moon", $"{ps.satDeltaV:N0} of {MoonBrakeDv:N0} m/s (add hydrazine modules)"));
+        return l;
+    }
+
+    public static bool AllOk(List<Item> l) { foreach (var i in l) if (!i.ok) return false; return true; }
+
+    // ───────────── Step-by-step build guide ─────────────
+    public class Step { public string text, key, parentId; public CADPart part; public CADLink link; public int needTotal; }
+
+    public static List<Step> Steps(CADDesign d, AscendCADData data)
+    {
+        var steps = new List<Step>();
+        if (d == null) return steps;
+        int n = d.parts.Count;
+        var done = new bool[n];
+        var need = new Dictionary<string, int>();
+        bool payload = d.builder == CADBuilder.Payload;
+        int cur = 0;
+        void Add(CADPart p, int count, string text)
+        {
+            var pl0 = d.parts[cur];
+            string pid = pl0.parent >= 0 ? d.parts[pl0.parent].partId : "";
+            string key = StepKey(p.id, pl0.link, pid);
+            need.TryGetValue(key, out var c); c += count; need[key] = c;
+            steps.Add(new Step { part = p, needTotal = c, text = text, key = key, link = pl0.link, parentId = pid });
+        }
+        string Name(int i) { var q = i >= 0 ? data.Get(d.parts[i].partId) : null; return q != null ? q.name : "part"; }
+
+        for (int i = 0; i < n; i++)
+        {
+            if (done[i]) continue;
+            cur = i;
+            var pl = d.parts[i]; var p = data.Get(pl.partId);
+            if (p == null) { done[i] = true; continue; }
+            var grp = new List<int> { i };
+            if (pl.symGroup >= 0) for (int j = i + 1; j < n; j++) if (d.parts[j].symGroup == pl.symGroup) grp.Add(j);
+            foreach (int j in grp) done[j] = true;
+            int cnt = grp.Count;
+            string sym = cnt > 1 ? $" Set <b>Symmetry x{cnt}</b> first." : "";
+            string parent = Name(pl.parent);
+
+            switch (pl.link)
+            {
+                case CADLink.Root:
+                    Add(p, 1, payload ? $"Place the <b>{p.name}</b> first. It is what holds the satellite to the rocket until release."
+                                      : $"Place the <b>{p.name}</b> first. It is the bottom of the rocket.");
+                    break;
+                case CADLink.Top:
+                    Add(p, 1, $"Stack the <b>{p.name}</b> on top of the {parent} (click its top half).");
+                    break;
+                case CADLink.Bottom:
+                    Add(p, 1, $"Attach the <b>{p.name}</b> under the {parent} (click its bottom half).");
+                    break;
+                case CADLink.Cluster:
+                {
+                    // Upper-stage engine: it sits under a tank that stands on an interstage
+                    var tankPl = pl.parent >= 0 ? d.parts[pl.parent] : null;
+                    var under = tankPl != null && tankPl.parent >= 0 ? data.Get(d.parts[tankPl.parent].partId) : null;
+                    bool upper = under != null && under.role == CADRole.Decoupler;
+                    string where = upper ? $"Click the <b>bottom half of the {parent}</b> (the upper tank, NOT the interstage): the engine hides inside the interstage."
+                                         : $"Click the <b>bottom half of the {parent}</b>.";
+                    Add(p, cnt, (cnt == 1 ? $"Put one <b>{p.name}</b> in the center under the {parent}. Set <b>Symmetry x1</b>. "
+                                          : $"Add a ring of {cnt} <b>{p.name}</b> under the {parent}.{sym} ") + where);
+                    break;
+                }
+                case CADLink.RadialUpright:
+                    Add(p, cnt, $"Attach {cnt} <b>{p.name}</b> upright on the side of the {parent}.{sym}");
+                    break;
+                case CADLink.Radial:
+                {
+                    var pp = pl.parent >= 0 ? data.Get(d.parts[pl.parent].partId) : null;
+                    float dy = pl.parent >= 0 ? pl.pos.y - d.parts[pl.parent].pos.y : 0f;
+                    string where = pp != null && Mathf.Abs(dy) >= pp.StackHeight * 0.45f ? (dy > 0 ? "on the top face of" : "on the bottom face of") : "on the side of";
+                    Add(p, cnt, $"Attach {(cnt > 1 ? cnt + " " : "the ")}<b>{p.name}</b> {where} the {parent}.{sym}");
+                    break;
+                }
+                case CADLink.Internal:
+                {
+                    // Group every copy of this part installed in the same host
+                    int same = 1;
+                    for (int j = i + 1; j < n; j++)
+                        if (!done[j] && d.parts[j].link == CADLink.Internal && d.parts[j].parent == pl.parent && d.parts[j].partId == pl.partId) { done[j] = true; same++; }
+                    Add(p, same, $"Install {(same > 1 ? same + " x " : "the ")}<b>{p.name}</b> inside the {parent} (pick it, then click the {parent}).");
+                    break;
+                }
+            }
+        }
+        return steps;
+    }
+
+    public static string StepKey(string id, CADLink link, string parentId) => id + "|" + link + "|" + parentId;
+
+    // How many of this part the design has in the right place (same attachment type, on the same kind of part)
+    public static int CountOf(CADDesign d, Step st)
+    {
+        int c = 0;
+        if (d == null) return 0;
+        foreach (var pl in d.parts)
+        {
+            if (pl.partId != st.part.id) continue;
+            string pid = pl.parent >= 0 && pl.parent < d.parts.Count ? d.parts[pl.parent].partId : "";
+            bool sameLink = pl.link == st.link || (IsSide(pl.link) && IsSide(st.link)) || (IsStack(pl.link) && IsStack(st.link));
+            if (sameLink && (pid == st.parentId || st.link == CADLink.Root)) c++;
+        }
+        return c;
+    }
+    static bool IsSide(CADLink l) => l == CADLink.Radial || l == CADLink.RadialUpright;
+    static bool IsStack(CADLink l) => l == CADLink.Top || l == CADLink.Bottom || l == CADLink.Root;
+
+    public static string ChecklistText(List<Item> l, bool expert = true)
+    {
+        var sb = new StringBuilder();
+        foreach (var i in l)
+        {
+            sb.Append(i.ok ? "<color=#3FB950>• DONE</color>  " : "<color=#F85149>• TODO</color>  ").Append(i.kid);
+            if (expert && !string.IsNullOrEmpty(i.expert)) sb.Append("  <size=85%><color=#9AA0A6>").Append(i.expert).Append("</color></size>");
+            sb.Append('\n');
+        }
+        return sb.ToString();
+    }
+
+    static bool TopIsAero(CADDesign d, AscendCADData data)
+    {
+        if (d == null) return false;
+        int top = -1; float topY = float.MinValue;
+        for (int i = 0; i < d.parts.Count; i++)
+        {
+            var p = data.Get(d.parts[i].partId);
+            if (p == null || !CADStats.IsCore(d, i)) continue;
+            float y = d.parts[i].pos.y + p.StackHeight * 0.5f;
+            if (y > topY) { topY = y; top = i; }
+        }
+        var tp = top >= 0 ? data.Get(d.parts[top].partId) : null;
+        return tp != null && (tp.role == CADRole.NoseCone || tp.role == CADRole.Fairing || tp.shape == CADShape.OgiveTank);
+    }
+
+    // ───────────── Suggestions ─────────────
+    public class Option
+    {
+        public string tier; public CADDesign design; public double cost; public bool works, affordable;
+        public float margin; public string summary = "", why = "";
+    }
+
+    public static List<Option> Suggest(CADBuilder builder, CADDesign rocket, CADDesign payload, AscendCADData data, out string intro)
+    {
+        var m = Mission;
+        var opts = new List<Option>();
+        double fund = AscendEconomy.Balance;
+
+        if (builder == CADBuilder.Payload)
+        {
+            string[] tiers = { "Budget", "Balanced", "Best" };
+            int count = m == AscendSimMission.SkySensor ? 2 : 3;
+            for (int t = 0; t < count; t++)
+            {
+                CADDesign d;
+                try { d = AscendTemplates.AutoSat(m, t, data); } catch (Exception) { continue; }
+                var st = CADStats.Payload(d, data);
+                var o = new Option { tier = count == 2 && t == 1 ? "Best" : tiers[t], design = d, cost = AscendEconomy.Quote(data, d).total };
+                o.works = AllOk(Checklist(CADBuilder.Payload, null, d, data));
+                o.affordable = o.cost <= fund + 0.01;
+                o.summary = $"{AscendReport.Mass(st.wetMass)}, {st.instruments} instrument(s), {st.powerGen:0.#} W power" +
+                            (m == AscendSimMission.MoonMapper ? $", own engine {st.satDeltaV:N0} m/s" : "");
+                opts.Add(o);
+            }
+            intro = $"Satellites made for <b>{Title}</b>. Your fund: <b>{AscendReport.Money(fund)}</b>.";
+            return opts;
+        }
+
+        // Rocket: size it for the current payload (or the balanced suggested payload)
+        var pay = payload != null && !payload.IsEmpty ? payload : null;
+        bool sizedForBest = false;
+        if (pay == null) { try { pay = AscendTemplates.AutoSat(m, m == AscendSimMission.SkySensor ? 1 : 2, data); sizedForBest = true; } catch (Exception) { } }
+        var ps = pay != null ? CADStats.Payload(pay, data) : null;
+        double payCost = pay != null ? AscendEconomy.Quote(data, pay).total : 0;
+        double avail = fund - (payload != null && !payload.IsEmpty ? payCost : 0);
+        float req = RequiredDeltaV(data);
+
+        var all = new List<Option>();
+        foreach (var d in AscendTemplates.AutoRockets(m, data, ps != null ? ps.stowedWidth : 0.5f, ps != null ? ps.stowedHeight : 0.5f))
+        {
+            var rs = CADStats.Rocket(d, data, ps != null ? ps.wetMass : 0f, req);
+            var o = new Option { design = d, cost = AscendEconomy.Quote(data, d).total };
+            // Margin so small building differences can't turn a GO into a NO-GO
+            o.works = AllOk(Checklist(CADBuilder.Rocket, d, pay, data)) && rs.deltaV >= req * 1.05f && (ps == null || rs.maxPayloadLEO >= ps.wetMass * 1.25f);
+            o.affordable = o.cost <= avail + 0.01;
+            o.margin = req > 0 ? rs.deltaV / req : 0f;
+            o.summary = $"{rs.stages.Count} stage(s), {AscendReport.Mass(rs.wetMass)}, delta-v {rs.deltaV:N0}/{req:N0} m/s, TWR {rs.liftoffTWR:0.00}, carries {AscendReport.Mass(rs.maxPayloadLEO)}";
+            all.Add(o);
+        }
+        var good = all.Where(o => o.works).OrderBy(o => o.cost).ToList();
+        var cheapOk = good.Where(o => o.affordable).ToList();
+        if (cheapOk.Count > 0)
+        {
+            var budget = cheapOk[0];
+            budget.tier = "Budget"; opts.Add(budget);
+            var balanced = cheapOk.FirstOrDefault(o => o != budget && o.margin >= 1.12f) ?? cheapOk.Skip(cheapOk.Count / 2).FirstOrDefault(o => o != budget);
+            if (balanced != null) { balanced.tier = "Balanced"; opts.Add(balanced); }
+            var best = cheapOk.Where(o => !opts.Contains(o)).OrderByDescending(o => o.margin).FirstOrDefault();
+            if (best != null) { best.tier = "Best"; opts.Add(best); }
+        }
+        else if (good.Count > 0)
+        {
+            var o = good[0]; o.tier = "Cheapest that works"; o.why = "Costs more than your fund. Ask for more money (or use Sandbox Mode).";
+            opts.Add(o);
+        }
+        else
+        {
+            var o = all.OrderByDescending(x => x.margin).FirstOrDefault();
+            if (o != null) { o.tier = "Closest try"; o.why = "None of the guide's rockets can do this mission with this payload. Make the payload lighter."; opts.Add(o); }
+        }
+        intro = $"Rockets made for <b>{Title}</b>" + (ps != null ? $" carrying <b>{pay.name}</b> ({AscendReport.Mass(ps.wetMass)})" : "") +
+                (sizedForBest ? " <color=#D29922>(you haven't built a payload yet, so it's sized for the heaviest suggested one; build the payload first for a better fit)</color>" : "") +
+                $". Money left for the rocket: <b>{AscendReport.Money(Math.Max(0, avail))}</b>.";
+        return opts;
     }
 }
 
@@ -3477,6 +4381,7 @@ public class AscendCADScreen
         hook.onDestroy = Dispose;
         AscendEconomy.Changed += OnEconomy;
         AscendMissionControl.ReviewCompleted += OnReview;
+        AscendMissionGuide.MissionChanged += Changed;
 
         open.Add(CADBuilder.Rocket + "/Propulsion");
         open.Add(CADBuilder.Payload + "/Satellite Structure");
@@ -3560,6 +4465,7 @@ public class AscendCADScreen
         Camera.onPostRender -= PostRender;
         AscendEconomy.Changed -= OnEconomy;
         AscendMissionControl.ReviewCompleted -= OnReview;
+        AscendMissionGuide.MissionChanged -= Changed;
         if (world) Object.Destroy(world);
         if (rt) { rt.Release(); Object.Destroy(rt); }
         if (prt) { prt.Release(); Object.Destroy(prt); }
@@ -3567,24 +4473,32 @@ public class AscendCADScreen
         padViews.Clear(); padCams.Clear();
     }
 
-    // ───────────────────────────── Live 3D pictures of your launch pad models ─────────────────────────────
-    class PadView { public GameObject prefab, root; public Transform pivot; public Camera cam; public RenderTexture rt; public float dist; }
+    // ───────────────────────────── Pictures of the launch pads ─────────────────────────────
+    class PadView { public GameObject prefab, root; public Transform pivot; public Camera cam; public RenderTexture rt; public float dist; public bool builtIn; }
     readonly Dictionary<string, PadView> padViews = new Dictionary<string, PadView>();
     readonly HashSet<Camera> padCams = new HashSet<Camera>();
     static readonly Vector3 PadViewOffset = new Vector3(0f, 0f, 40000f);
 
-    // One turntable per pad model, built once and reused (big models aren't re-created every refresh)
+    // One snapshot per pad (built-in real-size model, or your own prefab), rendered once and reused
     PadView GetPadView(CADLaunchPad p, int index)
     {
-        if (!p.modelPrefab) return null;
-        if (padViews.TryGetValue(p.id, out var v) && v.rt && v.prefab == p.modelPrefab) return v;
+        bool builtIn = p.useBuiltInModel && AscendPadModels.Has(p);
+        if (!builtIn && !p.modelPrefab) return null;
+        var src = builtIn ? null : p.modelPrefab;
+        if (padViews.TryGetValue(p.id, out var v) && v.rt && v.prefab == src && v.builtIn == builtIn) return v;
         if (v != null) { if (v.root) Object.Destroy(v.root); if (v.cam) { padCams.Remove(v.cam); Object.Destroy(v.cam.gameObject); } if (v.rt) { v.rt.Release(); Object.Destroy(v.rt); } }
 
-        v = new PadView { prefab = p.modelPrefab };
+        v = new PadView { prefab = src, builtIn = builtIn };
         v.root = new GameObject("Pad Preview - " + p.name);
         v.root.transform.SetParent(world.transform, false);
         v.root.transform.localPosition = PadViewOffset + Vector3.right * (index * 3000f);
-        var model = Object.Instantiate(p.modelPrefab, v.root.transform, false);
+        GameObject model;
+        if (builtIn)
+        {
+            model = AscendPadModels.Build(p, data, 1.85f, 70f, false, false, out _);   // pictured sized for a Falcon 9
+            model.transform.SetParent(v.root.transform, false);
+        }
+        else model = Object.Instantiate(p.modelPrefab, v.root.transform, false);
         model.transform.localPosition = Vector3.zero;
         // Just a picture: switch off its scripts, cameras, lights, audio and physics
         foreach (var b in model.GetComponentsInChildren<Behaviour>(true)) b.enabled = false;
@@ -3687,7 +4601,9 @@ public class AscendCADScreen
         AUI.LE(AUI.Rect("Spacer", top), -1, -1, 1);
         fundLabel = AUI.Text(top, "", 14, Txt);
         fundLabel.textWrappingMode = TextWrappingModes.NoWrap; fundLabel.alignment = TextAlignmentOptions.MidlineRight;
-        AUI.LE(fundLabel, S(430));
+        AUI.LE(fundLabel, -1, -1, 1);
+        fundLabel.overflowMode = TextOverflowModes.Ellipsis;
+        AUI.Btn(top, "Mission Guide", 13, Color.white, AUI.Hex("#0B57D0"), ShowGuide, 112, 34);
         AUI.Btn(top, "Prebuilt", 13, Txt, Panel2, ShowTemplates, 76, 34);
         AUI.Btn(top, "Save", 13, Txt, Panel2, SaveDesign, 58, 34);
         AUI.Btn(top, "Load", 13, Txt, Panel2, LoadDesign, 58, 34);
@@ -3737,6 +4653,8 @@ public class AscendCADScreen
         statsTitle = AUI.Text(rc, "", 17, Txt, FontStyles.Bold);
         statsText = AUI.Text(rc, "", 13.5f, Txt);
         statsText.lineSpacing = 3f;
+        guideBox = AUI.V(AUI.Rect("Build Guide", rc), 0, 0, 12, 6, 6);
+        guideBox.gameObject.SetActive(false);
 
         // Center: 3D viewport
         var center = AUI.Rect("Viewport", root);
@@ -4090,6 +5008,8 @@ public class AscendCADScreen
         if (!tp.IsBody) return Fail("Can't stack onto a side-mounted part.");
         if (T.link == CADLink.Cluster) return Fail("Attach to the tank above the engine ring instead.");
         bool top = lp.y >= 0f;
+        if (p.role == CADRole.Engine && !top && tp.role == CADRole.Decoupler)
+            return Fail("Engines can't hang from an interstage. Click the BOTTOM half of the tank ABOVE the interstage: the upper-stage engine hides inside the interstage, like on Falcon 9.");
         if (p.role == CADRole.Engine && !top) return ClusterPlan(p, ti, tp, T);
         float h = p.StackHeight, hT = tp.StackHeight;
         var up = T.rot * Vector3.up;
@@ -4640,6 +5560,113 @@ public class AscendCADScreen
         ShowModal(sats ? "Prebuilt satellites" : "Prebuilt rockets", sb.ToString(), buttons.ToArray());
     }
 
+    // ───────────── Mission Guide ─────────────
+    void ShowGuide()
+    {
+        CloseMenu();
+        bool r = mode == CADBuilder.Rocket;
+        var m = AscendMissionGuide.Mission;
+        var sb = new System.Text.StringBuilder();
+        sb.Append($"<b>{AscendMissionGuide.Title}</b>  <color=#9AA0A6>({AscendMissionGuide.Difficulty})</color>\n{AscendSimPlan.Goal(m)}\n");
+        sb.Append($"<size=88%><color=#9AA0A6>{AscendSimPlan.Expert(m)}</color></size>\n\n");
+        var list = AscendMissionGuide.Checklist(mode, rocket, payload, data);
+        sb.Append($"<b>CHECKLIST: {(r ? "ROCKET" : "PAYLOAD")}</b>\n").Append(AscendMissionGuide.ChecklistText(list)).Append('\n');
+
+        List<AscendMissionGuide.Option> opts;
+        string intro;
+        try { opts = AscendMissionGuide.Suggest(mode, rocket, payload, data, out intro); }
+        catch (Exception e) { opts = new List<AscendMissionGuide.Option>(); intro = "<color=#F85149>" + e.Message + "</color>"; }
+        sb.Append($"<b>SUGGESTIONS: {(r ? "ROCKETS" : "PAYLOADS")}</b>\n{intro}\n\n");
+        if (opts.Count == 0) sb.Append("<color=#9AA0A6>No suggestion found. Select your AscendCAD Data asset and use its menu: Load default parts.</color>\n");
+        foreach (var o in opts)
+        {
+            string costC = o.affordable ? "#3FB950" : "#F85149";
+            sb.Append($"<color=#F07A26><b>{o.tier}</b></color>  <b>{o.design.name}</b>  <color={costC}>{AscendReport.Money(o.cost)}</color>")
+              .Append(o.works ? "  <color=#3FB950>can do the mission</color>" : "  <color=#F85149>not enough yet</color>").Append('\n')
+              .Append("<size=90%><color=#9AA0A6>").Append(o.summary).Append("</color></size>\n");
+            if (!string.IsNullOrEmpty(o.why)) sb.Append("<size=90%><color=#D29922>").Append(o.why).Append("</color></size>\n");
+            sb.Append('\n');
+        }
+        sb.Append("<color=#9AA0A6>Pick a guide to get <b>step-by-step building instructions</b> on the right, with every part shown in 3D. " +
+                  "You build it yourself, part by part. Prices are what the parts cost to buy (parts you already own count as free).</color>");
+
+        var buttons = new List<(string, bool, Action)>();
+        foreach (var o in opts) { var oo = o; buttons.Add(("Guide: " + o.tier, true, () => StartGuide(oo))); }
+        buttons.Add(("Change mission", true, ShowMissionPicker));
+        buttons.Add(("Close", true, CloseModal));
+        ShowModal("Mission Guide", sb.ToString(), buttons.ToArray());
+    }
+
+    // ───────────── Build guide (right panel) ─────────────
+    List<AscendMissionGuide.Step> guideSteps;
+    string guideName;
+    CADBuilder guideMode;
+    RectTransform guideBox;
+
+    void StartGuide(AscendMissionGuide.Option o)
+    {
+        guideSteps = AscendMissionGuide.Steps(o.design, data);
+        guideName = $"{o.design.name} ({o.tier})";
+        guideMode = o.design.builder;
+        CloseModal();
+        if (mode != guideMode) SetMode(guideMode);
+        sel = -1; picked = null;
+        BuildGuidePanel(); ShowInfo();
+        Status("Follow the BUILD GUIDE on the right: press 'Show part' on each step, then place it.", Blue);
+    }
+
+    void BuildGuidePanel()
+    {
+        if (!guideBox) return;
+        for (int i = guideBox.childCount - 1; i >= 0; i--) { var c = guideBox.GetChild(i).gameObject; c.SetActive(false); Object.Destroy(c); }
+        bool show = guideSteps != null && guideSteps.Count > 0;
+        guideBox.gameObject.SetActive(show);
+        if (!show) return;
+        var design = guideMode == CADBuilder.Rocket ? rocket : payload;
+        int doneCount = 0;
+        foreach (var st in guideSteps) if (AscendMissionGuide.CountOf(design, st) >= st.needTotal) doneCount++;
+        AUI.Text(guideBox, $"BUILD GUIDE  <size=75%><color=#9AA0A6>{doneCount}/{guideSteps.Count} steps done</color></size>", 17, Txt, FontStyles.Bold);
+        AUI.Text(guideBox, $"<color=#8AB4F8>{guideName}</color>", 13.5f, Txt);
+        if (mode != guideMode)
+            AUI.Text(guideBox, $"<color=#D29922>Switch to the {(guideMode == CADBuilder.Rocket ? "Rocket" : "Payload")} Builder to follow this guide.</color>", 13, Txt);
+        for (int i = 0; i < guideSteps.Count; i++)
+        {
+            var st = guideSteps[i];
+            bool ok = AscendMissionGuide.CountOf(design, st) >= st.needTotal;
+            var t = AUI.Text(guideBox, (ok ? "<color=#3FB950>DONE</color>  " : $"<color=#F07A26>STEP {i + 1}</color>  ") + st.text, 13, ok ? Sub : Txt);
+            t.lineSpacing = 2f;
+            if (!ok && mode == guideMode)
+            {
+                var part = st.part;
+                AUI.Btn(guideBox, "Show part: " + part.name, 12, Color.white, Panel2, () => Pick(part), -1, 30);
+            }
+        }
+        if (doneCount == guideSteps.Count)
+        {
+            var chk = AscendMissionGuide.Checklist(guideMode, rocket, payload, data);
+            var bad = chk.Where(x => !x.ok).ToList();
+            if (bad.Count == 0) AUI.Text(guideBox, "<color=#3FB950><b>All steps done and the mission check passes!</b></color> Press SUBMIT.", 13.5f, Txt);
+            else
+                AUI.Text(guideBox, "<color=#D29922><b>All steps done, but the mission check still finds:</b></color>\n" + AscendMissionGuide.ChecklistText(bad), 13.5f, Txt);
+        }
+        AUI.Btn(guideBox, "Hide build guide", 12, Txt, Panel2, () => { guideSteps = null; BuildGuidePanel(); }, -1, 30);
+    }
+
+    void ShowMissionPicker()
+    {
+        var sb = new System.Text.StringBuilder("Pick the mission to design for. The checklist, the review board and the suggestions follow it.\n\n");
+        foreach (AscendSimMission m in Enum.GetValues(typeof(AscendSimMission)))
+            sb.Append($"<b>{AscendSimPlan.Title(m)}</b>{(m == AscendMissionGuide.Mission ? "  <color=#3FB950>(current)</color>" : "")}\n{AscendSimPlan.Goal(m)}\n\n");
+        var buttons = new List<(string, bool, Action)>();
+        foreach (AscendSimMission m in Enum.GetValues(typeof(AscendSimMission)))
+        {
+            var mm = m;
+            buttons.Add((AscendSimPlan.Title(m), true, () => { AscendMissionGuide.Mission = mm; ShowGuide(); }));
+        }
+        buttons.Add(("Back", true, ShowGuide));
+        ShowModal("Choose mission", sb.ToString(), buttons.ToArray());
+    }
+
     void LoadTemplate(CADDesign d)
     {
         CloseModal();
@@ -4696,7 +5723,7 @@ public class AscendCADScreen
     void Changed()
     {
         var ps = payload.IsEmpty ? null : CADStats.Payload(payload, data);
-        var rs = CADStats.Rocket(rocket, data, ps != null ? ps.wetMass : 0f);
+        var rs = CADStats.Rocket(rocket, data, ps != null ? ps.wetMass : 0f, AscendMissionGuide.RequiredDeltaV(data));
         projected = AscendEconomy.Quote(data, rocket, payload).total;
         bool r = mode == CADBuilder.Rocket;
         statsTitle.text = r ? "ROCKET STATS" : "SATELLITE STATS";
@@ -4704,6 +5731,7 @@ public class AscendCADScreen
         UpdateFund();
         if (padsOpen) BuildPads();
         ShowInfo();
+        BuildGuidePanel();
     }
 
     void UpdateFund()
@@ -4718,7 +5746,7 @@ public class AscendCADScreen
     void OnEconomy() { Changed(); BuildSidebar(); }
 
     void OnReview(AscendMail.Message m, CADReview rv) =>
-        Status(rv.Approved ? "APPROVED! The rocket is now standing on the launch site. Details in PhMail."
+        Status(rv.Approved ? "APPROVED! Next: open Ascend Mission Simulator to plan the trajectory. Details in PhMail."
                            : "Design rejected. Open PhMail to see what the board found.", rv.Approved ? Good : Bad);
 
     void ShowInfo()
@@ -4728,10 +5756,13 @@ public class AscendCADScreen
         infoTools.gameObject.SetActive(pl != null);
         if (p == null)
         {
-            infoTitle.text = mode == CADBuilder.Rocket ? "Build a rocket" : "Build a satellite";
-            infoText.text = mode == CADBuilder.Rocket
+            infoTitle.text = (mode == CADBuilder.Rocket ? "Build a rocket" : "Build a satellite") + "  <size=70%><color=#8AB4F8>" + AscendMissionGuide.Title + "</color></size>";
+            var list = AscendMissionGuide.Checklist(mode, rocket, payload, data);
+            int done = list.Count(x => x.ok);
+            infoText.text = $"<b>MISSION GUIDE</b>  <color=#9AA0A6>{done}/{list.Count} done</color>\n" + AscendMissionGuide.ChecklistText(list, false) +
+                "<color=#8AB4F8>Press Mission Guide (top bar) for ready-made suggestions that fit your money.</color>\n\n" + (mode == CADBuilder.Rocket
                 ? "1. Pick an engine and place it.\n2. Stack tanks on top (same propellant!).\n3. Add an Interstage, then the upper stage.\n4. Avionics Bay + flight computer, IMU, battery, FTS, telemetry inside.\n5. Payload adapter, then a fairing on top.\n\n<color=#9AA0A6>Use Googel for research.</color>"
-                : "1. Place a frame or bus.\n2. Put a separation system under it.\n3. Install EPS, battery, computer, radio and ADCS inside.\n4. Add solar panels, an antenna and a scientific instrument outside.\n\n<color=#9AA0A6>Keep the power budget positive!</color>";
+                : "1. Place a frame or bus.\n2. Put a separation system under it.\n3. Install EPS, battery, computer, radio and ADCS inside.\n4. Add solar panels, an antenna and a scientific instrument outside.\n\n<color=#9AA0A6>Keep the power budget positive!</color>");
             previewBox.SetActive(false);
             return;
         }
