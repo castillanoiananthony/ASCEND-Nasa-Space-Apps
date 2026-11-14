@@ -1,0 +1,4 @@
+Animated characters by Quaternius (quaternius.com), via Poly Pizza (poly.pizza).
+- BusinessMan, Worker, WomanB, WomanC: CC0 (public domain).
+- BusinessWoman ("Suit"): CC-BY 4.0 - credit required: "Suit by Quaternius (CC-BY) via Poly Pizza".
+Each has Walk, Idle, Wave and more animations.

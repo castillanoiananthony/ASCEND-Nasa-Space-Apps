@@ -60,9 +60,58 @@ public class PlayerController : MonoBehaviour
     private bool isGrounded;
 
     public bool IsSprinting { get; private set; }
+    /// <summary>Horizontal speed in m/s (for the first-person body animation).</summary>
+    public float GroundSpeed { get; private set; }
+    public bool IsGrounded => isGrounded;
+    public float WalkSpeed => walkSpeed;
+    public float SprintSpeed => sprintSpeed;
+    public Transform CameraTransform => cameraTransform;
+    public float MouseSensitivity { get => mouseSensitivity; set => mouseSensitivity = value; }
+    void ApplySettings() { mouseSensitivity = GameSettings.MouseSensitivity; }
+    void OnEnable() { GameSettings.Changed += ApplySettings; ApplySettings(); }
+    void OnDisable() { GameSettings.Changed -= ApplySettings; }
+
+    // ── Sitting (e.g. at the office desk). Any movement key stands the player up. ──
+    public static PlayerController Instance { get; private set; }
+    public bool Seated { get; private set; }
+    [Header("Sitting")]
+    [Tooltip("Eye height above the floor while sitting on a chair.")]
+    [SerializeField] private float seatedEyeHeight = 1.2f;
+    private float eyeBlend;               // 0 = standing, 1 = seated (smoothed)
+    private Vector3 standUpPoint;
+    private bool hasStandUpPoint;
+
+    /// <summary>Sit down with the feet at 'feet', looking at 'lookAt'. 'standUp' is where the player stands when they move (optional).</summary>
+    public void SitAt(Vector3 feet, Vector3 lookAt, Vector3? standUp = null)
+    {
+        if (!controller) controller = GetComponent<CharacterController>();
+        controller.enabled = false;                       // the chair would push the capsule away
+        float feetOffset = controller.center.y - controller.height * 0.5f;
+        transform.position = feet - Vector3.up * feetOffset;
+        Vector3 flat = lookAt - feet; flat.y = 0f;
+        if (flat.sqrMagnitude > 0.0001f) transform.rotation = Quaternion.LookRotation(flat);
+        Vector3 eye = feet + Vector3.up * seatedEyeHeight;
+        float dist = Mathf.Max(0.1f, new Vector2(lookAt.x - eye.x, lookAt.z - eye.z).magnitude);
+        xRotation = Mathf.Clamp(-Mathf.Atan2(lookAt.y - eye.y, dist) * Mathf.Rad2Deg, -verticalLookLimit, verticalLookLimit);
+        if (cameraTransform) cameraTransform.localRotation = Quaternion.Euler(xRotation, 0f, 0f);
+        Seated = true; eyeBlend = 1f; velocity = Vector3.zero;
+        hasStandUpPoint = standUp.HasValue; if (standUp.HasValue) standUpPoint = standUp.Value - Vector3.up * feetOffset;
+        Physics.SyncTransforms();
+    }
+
+    public void StandUp()
+    {
+        if (!Seated) return;
+        Seated = false;
+        if (hasStandUpPoint) transform.position = standUpPoint;
+        controller.enabled = true;
+        velocity = Vector3.zero;
+        Physics.SyncTransforms();
+    }
 
     void Awake()
     {
+        Instance = this;
         controller = GetComponent<CharacterController>();
         if (applyBodySize) ApplyBodySize();
 
@@ -109,7 +158,7 @@ public class PlayerController : MonoBehaviour
     {
         if (!controller) return cameraHeight;
         float groundY = controller.center.y - controller.height * 0.5f - controller.skinWidth;   // where the feet touch the floor
-        return groundY + cameraHeight;
+        return groundY + Mathf.Lerp(cameraHeight, seatedEyeHeight, eyeBlend);
     }
 
     IEnumerator Start()
@@ -121,7 +170,7 @@ public class PlayerController : MonoBehaviour
         yield return null;
         if (addMissingColliders) AddMissingColliders();
         yield return new WaitForFixedUpdate();
-        if (snapToFloorOnStart) SnapToFloor();
+        if (snapToFloorOnStart && !Seated) SnapToFloor();
     }
 
     // Buildings and props imported without colliders are walk-through. Give each solid mesh one.
@@ -176,6 +225,17 @@ public class PlayerController : MonoBehaviour
 
     void Update()
     {
+        eyeBlend = Mathf.MoveTowards(eyeBlend, Seated ? 1f : 0f, Time.deltaTime * 2.5f);
+        if (Seated)
+        {
+            bool move = Mathf.Abs(Input.GetAxisRaw("Horizontal")) > 0.1f || Mathf.Abs(Input.GetAxisRaw("Vertical")) > 0.1f || Input.GetButtonDown("Jump");
+            if (move) StandUp();
+            moveInput = Vector3.zero;
+            GroundSpeed = 0f;
+            HandleHeadBob();
+            HandleLook();
+            return;
+        }
         HandleMovement();
         HandleHeadBob();
         HandleLook();
@@ -209,7 +269,7 @@ public class PlayerController : MonoBehaviour
             moveInput.Normalize();
 
         // Sprint only while holding R and actually moving
-        IsSprinting = Input.GetKey(sprintKey) && moveInput.sqrMagnitude > 0.01f;
+        IsSprinting = (Input.GetKey(sprintKey) || Input.GetKey(KeyCode.LeftShift)) && moveInput.sqrMagnitude > 0.01f;
         float speed = IsSprinting ? sprintSpeed : walkSpeed;
 
         Vector3 move = transform.TransformDirection(moveInput) * speed;
@@ -223,6 +283,7 @@ public class PlayerController : MonoBehaviour
 
         // One Move call per frame
         controller.Move((move + velocity) * Time.deltaTime);
+        GroundSpeed = new Vector2(controller.velocity.x, controller.velocity.z).magnitude;
     }
 
     private void HandleHeadBob()

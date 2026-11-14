@@ -184,7 +184,7 @@ Camera:
   m_Depth: -1
   m_CullingMask:
     serializedVersion: 2
-    m_Bits: 4294967295
+    m_Bits: 3221225471
   m_RenderingPath: -1
   m_TargetTexture: {fileID: 0}
   m_TargetDisplay: 0
@@ -260,8 +260,8 @@ MonoBehaviour:
   backgroundImage: {fileID: 2800000, guid: 1419f300c0dc0aad1b97baf1ad14800a, type: 3}
   hangarScene: {fileID: 102900000, guid: e46b3a1fe54bb9fe88f90106b8c5c6a8, type: 3}
   tutorialScene: {fileID: 0}
-  hangarScenePath: Assets/Scenes/Hangar.unity
-  hangarSceneName: Hangar
+  hangarScenePath: Assets/Scenes/Universe.unity
+  hangarSceneName: Universe
   tutorialScenePath: 
   tutorialSceneName: 
   textColor: {r: 0.93, g: 0.93, b: 0.96, a: 1}

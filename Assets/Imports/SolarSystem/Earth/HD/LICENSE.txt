@@ -1,0 +1,4 @@
+Earth textures (8k_earth_daymap, 8k_earth_nightmap, 8k_earth_clouds, 8k_earth_specular_map)
+by Solar System Scope - https://www.solarsystemscope.com/textures/
+License: Creative Commons Attribution 4.0 International (CC BY 4.0). Based on NASA imagery.
+Credit required in the game's credits: "Earth textures: Solar System Scope (CC BY 4.0), based on NASA data".

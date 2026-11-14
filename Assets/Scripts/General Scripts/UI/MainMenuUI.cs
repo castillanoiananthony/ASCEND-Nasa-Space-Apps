@@ -30,14 +30,14 @@ public class MainMenuUI : MonoBehaviour
     [SerializeField] private Texture2D backgroundImage;
 
     [Header("Scenes (drag the scene files in)")]
-    [Tooltip("Drag the Hangar scene file here")]
+    [Tooltip("Drag the Universe scene file here")]
     [SerializeField] private UnityEngine.Object hangarScene;
     [Tooltip("Drag the Tutorial scene file here (leave empty until you have one)")]
     [SerializeField] private UnityEngine.Object tutorialScene;
 
     // Filled in automatically from the scenes above. Builds use these.
     [SerializeField, HideInInspector] private string hangarScenePath = "";
-    [SerializeField, HideInInspector] private string hangarSceneName = "Hangar";
+    [SerializeField, HideInInspector] private string hangarSceneName = "Universe";
     [SerializeField, HideInInspector] private string tutorialScenePath = "";
     [SerializeField, HideInInspector] private string tutorialSceneName = "";
 
@@ -56,6 +56,7 @@ public class MainMenuUI : MonoBehaviour
     private TMP_FontAsset tmpFont;
     private GameObject mainPanel;
     private GameObject playPanel;
+    private GameObject settingsPanel;
     private RectTransform listContent;
     private ScrollRect scrollRect;
 
@@ -125,7 +126,31 @@ public class MainMenuUI : MonoBehaviour
 
     private void OnPlay() => ShowPanel(playPanel);
     private void OnBack() => ShowPanel(mainPanel);
-    private void OnOptions() => Debug.Log("Options menu not built yet.");
+    private void OnOptions() => ShowPanel(settingsPanel);
+
+    // Trailer: plays a 30-second cinematic in the Universe scene, then comes back here
+    private void OnTrailer()
+    {
+        if (startingGame) return;
+        startingGame = true;
+        GameFlow.PlayTrailer = true;
+        GameFlow.PlayOfficeIntro = false;
+        StartCoroutine(LoadTrailer());
+    }
+
+    private System.Collections.IEnumerator LoadTrailer()
+    {
+        // black "loading" screen while the big scene loads
+        var cgo = new GameObject("Trailer Loading", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler));
+        DontDestroyOnLoad(cgo);
+        var c = cgo.GetComponent<Canvas>(); c.renderMode = RenderMode.ScreenSpaceOverlay; c.sortingOrder = 3000;
+        var sc = cgo.GetComponent<CanvasScaler>(); sc.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize; sc.referenceResolution = new Vector2(1920, 1080);
+        var bg = MissionUI.Solid(cgo.transform, Color.black, true, "Black"); MissionUI.Stretch(bg.rectTransform);
+        var t = MissionUI.Lbl(cgo.transform, "ASCEND   //   LOADING", 16, tmpFont);
+        MissionUI.Place(t.rectTransform, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(800, 40)); t.alignment = TMPro.TextAlignmentOptions.Center;
+        yield return null;
+        OpenScene(hangarScenePath, hangarSceneName);
+    }
 
     private void OnTutorial()
     {
@@ -152,6 +177,32 @@ public class MainMenuUI : MonoBehaviour
         SceneManager.LoadScene(sceneName);
     }
 
+    // Black-screen story first; the Hangar loads in the background meanwhile
+    private bool startingGame;
+    private System.Collections.IEnumerator StoryThenHangar()
+    {
+        startingGame = true;
+        GameFlow.PlayOfficeIntro = true;
+        MissionBriefing.ResetForNewGame();
+        AsyncOperation op = null;
+        try
+        {
+#if UNITY_EDITOR
+            if (!string.IsNullOrEmpty(hangarScenePath))
+                op = UnityEditor.SceneManagement.EditorSceneManager.LoadSceneAsyncInPlayMode(hangarScenePath, new LoadSceneParameters(LoadSceneMode.Single));
+            else
+#endif
+                op = SceneManager.LoadSceneAsync(hangarSceneName);
+            if (op != null) op.allowSceneActivation = false;
+        }
+        catch (Exception e) { Debug.LogWarning("MainMenuUI: background load failed, loading after the story. " + e.Message); op = null; }
+
+        yield return IntroStory.Run(tmpFont);
+
+        if (op != null) op.allowSceneActivation = true;
+        else OpenScene(hangarScenePath, hangarSceneName);
+    }
+
     private void OnExit()
     {
 #if UNITY_EDITOR
@@ -165,6 +216,7 @@ public class MainMenuUI : MonoBehaviour
     {
         mainPanel.SetActive(panel == mainPanel);
         playPanel.SetActive(panel == playPanel);
+        if (settingsPanel) settingsPanel.SetActive(panel == settingsPanel);
     }
 
     // ======================= WORLD LIST LOGIC ===============================
@@ -246,7 +298,7 @@ public class MainMenuUI : MonoBehaviour
             row.lastClick = -1f;
             WorldSession.CurrentWorld = row.name;
             Debug.Log("Opening world: " + row.name);
-            OpenScene(hangarScenePath, hangarSceneName);
+            if (!startingGame) StartCoroutine(StoryThenHangar());
         }
         else
         {
@@ -356,6 +408,9 @@ public class MainMenuUI : MonoBehaviour
         MakeTextButton(main, "Play",    new Vector2(0.68f, 0.52f), OnPlay);
         MakeTextButton(main, "Options", new Vector2(0.68f, 0.40f), OnOptions);
         MakeTextButton(main, "Exit",    new Vector2(0.68f, 0.28f), OnExit);
+
+        // ---------- Settings panel ----------
+        settingsPanel = SettingsPanel.Build(root, tmpFont, OnTrailer, ("BACK", (Action)OnBack, true));
 
         // ---------- Play panel ----------
         var play = NewUI("PlayPanel", root);

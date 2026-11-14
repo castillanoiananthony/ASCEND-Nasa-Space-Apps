@@ -42,7 +42,7 @@ public static class AscendOrbitTransfer
     public static List<int> Keep = new List<int>();
     public static AscendSimMission Mission;
     public static float AltKm = 700f, FlightTime, MaxQ, MaxG;
-    public static string ReturnScene = "Hangar";
+    public static string ReturnScene = "Universe";
 
     public static void Begin(AscendCADData data, CADDesign rocket, CADDesign payload, List<int> keep, AscendSimMission mission,
         float altKm, string returnScene, float flightTime, float maxQ, float maxG)
@@ -77,7 +77,18 @@ public class AscendOrbitDirector : MonoBehaviour
     const int RigLayer = 31;
     const double Mu = 3.986004418e14, EarthRm = 6371000.0;
     static readonly Vector3 RigOrigin = new Vector3(50000f, 50000f, 50000f);
-    static readonly float[] Warps = { 1f, 2f, 5f, 10f };
+    const float MinSpeed = 1f, MaxSpeed = 5f;   // time speed slider (1x - 5x)
+    // Game time: one orbit takes 2 minutes at 1x, and the Earth turns once every 10 orbits,
+    // so every place on Earth comes into view within one turn (with the camera tilted)
+    const float OrbitSeconds = 120f, EarthDayOrbits = 10f;
+    double missionHours;
+    readonly bool[] done = new bool[5];
+    Vector3 spaceSun;
+    Quaternion sunOriginal;
+    bool playerWasEnabled;
+    readonly List<(Light l, int mask)> litRig = new List<(Light, int)>();
+    readonly List<ComputerInteraction> pausedComputers = new List<ComputerInteraction>();
+    float savedAmbient = 1f, savedReflect = 1f;
 
     enum Phase { Arrive, Release, Console, End }
     Phase phase = Phase.Arrive;
@@ -85,13 +96,13 @@ public class AscendOrbitDirector : MonoBehaviour
     AscendCADData data;
     Transform earth;
     float earthR = 0.637f, unitsPerM;
-    Light sunLight, rigSun;
+    Light sunLight, rigSun, earthShine;
     Transform sunObj;
 
     // orbit
     double rM, omega, theta;
     Vector3 axisX, axisY = Vector3.up;
-    int warpIndex;
+    float speed = 1f;
 
     // models (real size, on the rig layer)
     Transform rig, assembly, stageGo, payloadGo;
@@ -116,21 +127,39 @@ public class AscendOrbitDirector : MonoBehaviour
     readonly List<TextMeshProUGUI> thumbLabels = new List<TextMeshProUGUI>();
     float bigUntil, releaseAt = -1f, arriveTime;
 
-    class Photo { public Texture2D tex; public float score, coverage, light, detail; public bool centered; public string kind; public int number; }
+    class Photo { public Texture2D tex; public float score; public string kind; public int number, target; }
     readonly List<Photo> photos = new List<Photo>();
     const int PhotoGoal = 5;
 
     // ═════════════════════════════════════════════════════════════════════════
     bool ready;
     GameObject cover;
+    CanvasGroup coverGroup;
+
+    IEnumerator RemoveCover()
+    {
+        yield return new WaitForSecondsRealtime(1.4f);
+        for (float t = 0f; t < 1.6f && coverGroup; t += Time.unscaledDeltaTime) { coverGroup.alpha = 1f - t / 1.6f; yield return null; }
+        if (cover) Destroy(cover);
+        Big("IN ORBIT", 2.5f);
+    }
 
     void Awake()
     {
         cover = new GameObject("Orbit Cover", typeof(RectTransform), typeof(Canvas));
         var c = cover.GetComponent<Canvas>(); c.renderMode = RenderMode.ScreenSpaceOverlay; c.sortingOrder = 999;
+        var sc = cover.AddComponent<CanvasScaler>();
+        sc.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize; sc.referenceResolution = new Vector2(1920, 1080); sc.matchWidthOrHeight = 0.5f;
+        coverGroup = cover.AddComponent<CanvasGroup>();
         var img = new GameObject("Black", typeof(RectTransform)).AddComponent<Image>();
         img.transform.SetParent(cover.transform, false); img.color = Color.black;
         var r = img.rectTransform; r.anchorMin = Vector2.zero; r.anchorMax = Vector2.one; r.offsetMin = r.offsetMax = Vector2.zero;
+        var title = MissionUI.Txt(cover.transform, "ENTERING ORBIT", 64, Color.white, TMPro.FontStyles.Bold);
+        title.characterSpacing = 18f; title.alignment = TMPro.TextAlignmentOptions.Center;
+        MissionUI.Place(title.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0, 30), new Vector2(1600, 100));
+        var sub = MissionUI.Lbl(cover.transform, "ENGINES OFF   //   " + AscendOrbitTransfer.AltKm.ToString("N0") + " KM ABOVE EARTH   //   27,000 KM/H", 16);
+        sub.alignment = TMPro.TextAlignmentOptions.Center;
+        MissionUI.Place(sub.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0, -40), new Vector2(1600, 40));
     }
 
     IEnumerator Start()
@@ -145,18 +174,32 @@ public class AscendOrbitDirector : MonoBehaviour
         Recenter();
 
         rM = EarthRm + AscendOrbitTransfer.AltKm * 1000.0;
-        omega = Math.Sqrt(Mu / (rM * rM * rM));
+        omega = 2.0 * Math.PI / OrbitSeconds;
         Vector3 sd = SunDir();
         axisX = Vector3.ProjectOnPlane(sd, axisY).normalized;
         if (axisX.sqrMagnitude < 0.5f) axisX = Vector3.right;
         theta = -0.35;                        // start just before the sunny middle of the day side
+        // Our home first: turn the Earth so the Philippines is just ahead of the satellite
+        {
+            Vector3 ph = hdEarth.WorldDir(12.5f, 122.5f);
+            float a = Vector3.SignedAngle(Vector3.ProjectOnPlane(ph, Vector3.up), Vector3.ProjectOnPlane(Radial(), Vector3.up), Vector3.up);
+            earth.Rotate(0f, a, 0f, Space.World);
+        }
+        if (PlayerController.Instance && PlayerController.Instance.enabled) { playerWasEnabled = true; PlayerController.Instance.enabled = false; }
+        foreach (var l in FindObjectsByType<Light>(FindObjectsSortMode.None))
+            if (l.enabled && (l.cullingMask & (1 << RigLayer)) != 0 && l != rigSun) { litRig.Add((l, l.cullingMask)); l.cullingMask &= ~(1 << RigLayer); }
+        foreach (var ci in FindObjectsByType<ComputerInteraction>(FindObjectsSortMode.None)) if (ci.enabled) { pausedComputers.Add(ci); ci.enabled = false; }
+        MissionBriefing.SetUiVisible(false);
+        savedAmbient = RenderSettings.ambientIntensity; savedReflect = RenderSettings.reflectionIntensity;
+        RenderSettings.reflectionIntensity = 0.15f;
+        AscendSky.SetAltitude(AscendOrbitTransfer.AltKm * 1000f);
 
         SetupCameras();
         BuildModels();
         BuildUI();
         arriveTime = Time.time;
         ready = true;
-        if (cover) Destroy(cover);
+        StartCoroutine(RemoveCover());
     }
 
     void OnDestroy()
@@ -165,35 +208,14 @@ public class AscendOrbitDirector : MonoBehaviour
     }
 
     // ───────────── find things in the scene ─────────────
+    // The HD Earth lives in this scene, far away and on its own layer (1 unit = 1 km)
+    AscendEarth hdEarth;
     void FindEarth()
     {
-        foreach (var mb in FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None))
-            if (mb && mb.GetType().Name.ToLowerInvariant() == "earthbehaviour") { earth = mb.transform; break; }
-        if (!earth) { var g = GameObject.Find("Earth"); if (g) earth = g.transform; }
-        if (!earth)
-        {
-            // No Earth in this scene: make a simple one so the mission still works
-            var g = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            g.name = "Earth (made by AscendOrbit)";
-            Destroy(g.GetComponent<Collider>());
-            g.transform.localScale = Vector3.one * 1.2742f;
-            var r = g.GetComponent<Renderer>();
-            r.material.color = new Color(0.15f, 0.35f, 0.7f);
-            earth = g.transform;
-            Debug.LogWarning("AscendOrbit: no Earth found (earthBehaviour or an object named Earth). Made a simple one.");
-        }
-        var mf = earth.GetComponentInChildren<MeshFilter>();
-        float meshR = mf && mf.sharedMesh ? mf.sharedMesh.bounds.extents.x : 0.5f;
-        earthR = Mathf.Max(1e-4f, meshR * (mf ? mf.transform.lossyScale.x : earth.lossyScale.x));
+        hdEarth = AscendEarth.Create();
+        earth = hdEarth.transform;
+        earthR = AscendEarth.RadiusKm;
         unitsPerM = earthR / (float)EarthRm;
-
-        // Seen from 700 km the default sphere's corners show on the horizon: swap in a smooth one (same texture layout)
-        if (mf && mf.sharedMesh)
-        {
-            try { mf.sharedMesh = SmoothSphere(mf.sharedMesh, meshR); }
-            catch (Exception e) { Debug.LogWarning("AscendOrbit: smooth Earth failed: " + e.Message); }
-            BuildAtmosphere(mf.transform, meshR);
-        }
     }
 
     // A very smooth sphere whose texture lines up with the original mesh (longitude/latitude read from it)
@@ -310,6 +332,13 @@ public class AscendOrbitDirector : MonoBehaviour
 
     void FindSun()
     {
+        sunLight = RenderSettings.sun;
+        if (!sunLight) foreach (var l in FindObjectsByType<Light>(FindObjectsSortMode.None)) if (l.type == LightType.Directional && l.enabled) { sunLight = l; break; }
+        Vector3 s = sunLight ? -sunLight.transform.forward : new Vector3(1f, 0.3f, 0f);
+        s.y = 0f; if (s.sqrMagnitude < 1e-4f) s = Vector3.right;
+        spaceSun = (s.normalized + Vector3.up * 0.15f).normalized;
+        if (sunLight) { sunOriginal = sunLight.transform.rotation; sunLight.transform.rotation = Quaternion.LookRotation(-spaceSun); }
+        return;
         foreach (var go in SceneManager.GetActiveScene().GetRootGameObjects())
             foreach (var t in go.GetComponentsInChildren<Transform>(true))
                 if (t.name.ToLowerInvariant().Contains("sun") && !t.name.ToLowerInvariant().Contains("sunlight") && t != earth) { sunObj = t; break; }
@@ -319,6 +348,7 @@ public class AscendOrbitDirector : MonoBehaviour
 
     Vector3 SunDir()
     {
+        if (spaceSun.sqrMagnitude > 0.5f) return spaceSun;
         if (sunObj && (sunObj.position - earth.position).sqrMagnitude > 1f) return (sunObj.position - earth.position).normalized;
         if (sunLight) return -sunLight.transform.forward;
         return Vector3.right;
@@ -327,6 +357,7 @@ public class AscendOrbitDirector : MonoBehaviour
     // Keep the Earth at the world's center (big numbers make things shake)
     void Recenter()
     {
+        if (hdEarth) return;   // the HD Earth stays put; never move the Universe scene
         if (!earth) return;
         Vector3 e = earth.position;
         if (e.sqrMagnitude < 1e-10f) return;
@@ -349,8 +380,8 @@ public class AscendOrbitDirector : MonoBehaviour
         if (template) spaceCam.CopyFrom(template);
         spaceCam.enabled = true;
         spaceCam.clearFlags = CameraClearFlags.Skybox;
-        spaceCam.cullingMask = ~(1 << RigLayer);
-        spaceCam.nearClipPlane = 0.0008f; spaceCam.farClipPlane = 100000f;
+        spaceCam.cullingMask = 1 << AscendEarth.Layer;
+        spaceCam.nearClipPlane = 0.5f; spaceCam.farClipPlane = 60000f;
         spaceCam.fieldOfView = 55f;
         spaceCam.depth = 10f;
         spaceCam.targetTexture = null;
@@ -384,6 +415,15 @@ public class AscendOrbitDirector : MonoBehaviour
         rigSun.color = new Color(1f, 0.97f, 0.92f);
         rigSun.cullingMask = 1 << RigLayer;
         rigSun.shadows = LightShadows.Soft;
+
+        // Soft blue light reflected off the Earth, so the dark side of the satellite isn't pitch black
+        earthShine = new GameObject("Earthshine (satellite)").AddComponent<Light>();
+        earthShine.transform.SetParent(transform, false);
+        earthShine.type = LightType.Directional;
+        earthShine.intensity = 0.7f;
+        earthShine.color = new Color(0.55f, 0.7f, 1f);
+        earthShine.cullingMask = 1 << RigLayer;
+        earthShine.shadows = LightShadows.None;
     }
 
     // ───────────── the rocket's upper stage + satellite, at real size ─────────────
@@ -478,7 +518,7 @@ public class AscendOrbitDirector : MonoBehaviour
     }
 
     // ───────────── orbit ─────────────
-    Vector3 SatPos() => (axisX * (float)Math.Cos(theta) + axisY * (float)Math.Sin(theta)) * (float)(rM * unitsPerM);
+    Vector3 SatPos() => (earth ? earth.position : Vector3.zero) + (axisX * (float)Math.Cos(theta) + axisY * (float)Math.Sin(theta)) * (float)(rM * unitsPerM);
     Vector3 Radial() => (axisX * (float)Math.Cos(theta) + axisY * (float)Math.Sin(theta)).normalized;
     Vector3 Prograde() => (-axisX * (float)Math.Sin(theta) + axisY * (float)Math.Cos(theta)).normalized;
 
@@ -493,9 +533,13 @@ public class AscendOrbitDirector : MonoBehaviour
     void Update()
     {
         if (!ready) return;
-        if (KeyDown(KeyCode.Minus)) warpIndex = Mathf.Max(0, warpIndex - 1);
-        if (KeyDown(KeyCode.Equals)) warpIndex = Mathf.Min(Warps.Length - 1, warpIndex + 1);
-        float dt = Time.deltaTime * Warps[warpIndex];
+        if (KeyDown(KeyCode.Minus)) SetSpeed(speed - 0.5f);
+        if (KeyDown(KeyCode.Equals)) SetSpeed(speed + 0.5f);
+        // Arriving and releasing happen in slow motion (close to real orbital speed),
+        // so the photo mission starts in daylight near the Philippines
+        float dt = Time.deltaTime * speed * (phase == Phase.Console || phase == Phase.End ? 1f : 0.08f);
+        if (hdEarth) { hdEarth.Spin(360f / (OrbitSeconds * EarthDayOrbits) * dt, dt); hdEarth.SetSun(SunDir()); }
+        if (phase == Phase.Console && !finishing) missionHours += dt / (OrbitSeconds * EarthDayOrbits) * 24.0;
 
         if (phase == Phase.Arrive || phase == Phase.Release) PlaceOrbit(dt);
         else theta += omega * dt;
@@ -510,7 +554,7 @@ public class AscendOrbitDirector : MonoBehaviour
             stageGo.Rotate(stageSpin * rdt, Space.World);
             if (releaseAt > 0f && Time.time - releaseAt > 7f) { releaseAt = -1f; StartCoroutine(ToConsole()); }
         }
-        if (phase == Phase.Console) ConsoleUpdate();
+        if (phase == Phase.Console) { ConsoleUpdate(); UpdateConsoleUI(); }
 
         if (bigText && Time.time > bigUntil) bigText.text = "";
         UpdateHud();
@@ -522,6 +566,7 @@ public class AscendOrbitDirector : MonoBehaviour
         Recenter();
         Vector3 sd = SunDir();
         if (rigSun) rigSun.transform.rotation = Quaternion.LookRotation(-sd);
+        if (earthShine) earthShine.transform.rotation = Quaternion.LookRotation(Radial());   // light comes up from the Earth below
 
         if (phase == Phase.Arrive || phase == Phase.Release)
         {
@@ -543,7 +588,7 @@ public class AscendOrbitDirector : MonoBehaviour
         spaceCam.transform.rotation = rigCam.transform.rotation;
         spaceCam.fieldOfView = rigCam.fieldOfView;
 
-        UpdateAtmosphere(phase == Phase.Console && satCam ? satCam.transform.position : spaceCam.transform.position);
+
 
         if (satCam)
         {
@@ -616,16 +661,17 @@ public class AscendOrbitDirector : MonoBehaviour
     void OpenConsole()
     {
         phase = Phase.Console;
+        missionHours = 0;
         satRT = new RenderTexture(1280, 720, 24, RenderTextureFormat.ARGB32) { name = "Satellite Camera", antiAliasing = 2 };
         satCam = new GameObject("Satellite Photo Camera").AddComponent<Camera>();
         satCam.transform.SetParent(transform, false);
         satCam.CopyFrom(spaceCam);
-        satCam.cullingMask = ~(1 << RigLayer);
+        satCam.cullingMask = 1 << AscendEarth.Layer;
         satCam.targetTexture = satRT;
         satCam.depth = 5f;
-        satCam.nearClipPlane = 0.0005f; satCam.farClipPlane = 100000f;
-        try { var d = satCam.GetUniversalAdditionalCameraData(); d.renderType = CameraRenderType.Base; d.cameraStack.Clear(); d.renderPostProcessing = true; } catch (Exception) { }
-        photoPitch = photoYaw = photoRoll = 0f; photoFov = 40f;
+        satCam.nearClipPlane = 0.5f; satCam.farClipPlane = 60000f;
+        try { var d = satCam.GetUniversalAdditionalCameraData(); d.renderType = CameraRenderType.Base; d.cameraStack.Clear(); d.renderPostProcessing = false; } catch (Exception) { }
+        photoPitch = photoYaw = photoRoll = 0f; photoFov = 50f;
         liveView.texture = satRT;
         hud.SetActive(false);
         console.SetActive(true);
@@ -634,7 +680,7 @@ public class AscendOrbitDirector : MonoBehaviour
     void ConsoleUpdate()
     {
         float dt = Time.deltaTime;
-        float turn = 30f * dt * Mathf.Lerp(0.25f, 1f, photoFov / 60f);
+        float turn = 35f * dt * Mathf.Lerp(0.25f, 1f, photoFov / 60f);
         if (Held(KeyCode.W)) photoPitch -= turn;
         if (Held(KeyCode.S)) photoPitch += turn;
         if (Held(KeyCode.A)) photoYaw -= turn;
@@ -643,158 +689,147 @@ public class AscendOrbitDirector : MonoBehaviour
         if (Held(KeyCode.E)) photoRoll -= 40f * dt;
         if (Held(KeyCode.Z)) photoFov -= 20f * dt;
         if (Held(KeyCode.X)) photoFov += 20f * dt;
-        photoFov = Mathf.Clamp(photoFov * (1f - Scroll() * 0.08f), 4f, 75f);
-        photoPitch = Mathf.Clamp(photoPitch, -88f, 88f);
-        photoYaw = Mathf.Clamp(photoYaw, -88f, 88f);
-        if (KeyDown(KeyCode.Space) && photos.Count < PhotoGoal) TakePhoto();
+        photoFov = Mathf.Clamp(photoFov * (1f - Scroll() * 0.08f), 4f, 80f);
+        photoPitch = Mathf.Clamp(photoPitch, -70f, 70f);
+        photoYaw = Mathf.Clamp(photoYaw, -70f, 70f);
+        if (KeyDown(KeyCode.Space) && !finishing) TakePhoto();
     }
+
+    bool finishing;
 
     void TakePhoto()
     {
+        Vector3 sd = SunDir();
+        int best = -1; float bestScore = -1f; string whyNot = null;
+        var T = AscendEarth.Targets;
+        for (int i = 0; i < T.Length; i++)
+        {
+            if (done[i]) continue;
+            Vector3 p = hdEarth.WorldPoint(T[i].lat, T[i].lon);
+            Vector3 n = (p - earth.position).normalized;
+            Vector3 toCam = satCam.transform.position - p;
+            if (Vector3.Dot(n, toCam) <= 0f) continue;                       // behind the horizon
+            Vector3 vp = satCam.WorldToViewportPoint(p);
+            if (vp.z <= 0f || vp.x < 0.03f || vp.x > 0.97f || vp.y < 0.03f || vp.y > 0.97f) continue;
+            float sun = Vector3.Dot(n, sd);
+            if (sun < 0.05f) { whyNot = T[i].name + " is on the night side right now. Wait for daylight!"; continue; }
+            float center = 1f - Mathf.Clamp01(new Vector2(vp.x - 0.5f, vp.y - 0.5f).magnitude / 0.5f);
+            float angR = T[i].radiusKm / Mathf.Max(1f, toCam.magnitude);                      // how big it looks (radians)
+            float ratio = angR / (photoFov * 0.5f * Mathf.Deg2Rad);
+            float fit = ratio < 0.3f ? ratio / 0.3f : ratio > 1.3f ? Mathf.Clamp01(1.3f / ratio) : 1f;
+            float off = Vector3.Angle(satCam.transform.forward, -Radial());
+            float nadir = 1f - Mathf.Clamp01((off - 20f) / 50f) * 0.6f;
+            float light = Mathf.Clamp01(sun / 0.5f);
+            float score = Mathf.Round(100f * (0.35f * center + 0.30f * fit + 0.15f * nadir + 0.20f * light));
+            if (score > bestScore) { bestScore = score; best = i; }
+        }
+        if (best < 0) { StartCoroutine(FlashR(whyNot ?? "No target in the picture. Check the map and aim at one!", false)); return; }
+
         var prev = RenderTexture.active;
         RenderTexture.active = satRT;
-        var tex = new Texture2D(satRT.width, satRT.height, TextureFormat.RGB24, false) { name = "Photo " + (photos.Count + 1) };
+        var tex = new Texture2D(satRT.width, satRT.height, TextureFormat.RGB24, false) { name = AscendEarth.Targets[best].name };
         tex.ReadPixels(new Rect(0, 0, satRT.width, satRT.height), 0, 0);
         tex.Apply();
         RenderTexture.active = prev;
 
-        var ph = Rate(tex);
-        ph.number = photos.Count + 1;
+        done[best] = true;
+        var ph = new Photo { tex = tex, score = bestScore, target = best, kind = AscendEarth.Targets[best].name, number = photos.Count + 1 };
         photos.Add(ph);
-        int i = photos.Count - 1;
-        thumbs[i].texture = tex; thumbs[i].color = Color.white;
-        thumbLabels[i].text = $"#{ph.number}  {ph.kind}";
-        StartCoroutine(FlashR($"PHOTO {photos.Count} OF {PhotoGoal}"));
-        if (photos.Count >= PhotoGoal) StartCoroutine(Finish());
+        thumbs[best].texture = tex; thumbs[best].color = Color.white;
+        thumbLabels[best].text = $"{best + 1}  {AscendEarth.Targets[best].name.ToUpperInvariant()}  //  {bestScore:0}";
+        thumbLabels[best].color = MissionUI.Go;
+        StartCoroutine(FlashR($"{AscendEarth.Targets[best].name.ToUpperInvariant()}  -  {bestScore:0} / 100", true));
+        if (photos.Count >= PhotoGoal) { finishing = true; StartCoroutine(Finish()); }
     }
 
-    // Rate a photo by what the camera really sees: how much of the frame is Earth, how much of it is sunlit,
-    // whether the middle is on the Earth, and how far it is zoomed in (more detail)
-    Photo Rate(Texture2D tex)
-    {
-        int nx = 48, ny = 27, hits = 0, lit = 0;
-        Vector3 sd = SunDir(), c = earth.position;
-        for (int y = 0; y < ny; y++)
-        for (int x = 0; x < nx; x++)
-        {
-            var ray = satCam.ViewportPointToRay(new Vector3((x + 0.5f) / nx, (y + 0.5f) / ny, 0f));
-            if (HitEarth(ray, c, earthR, out Vector3 p)) { hits++; if (Vector3.Dot((p - c).normalized, sd) > 0.05f) lit++; }
-        }
-        var ph = new Photo { tex = tex };
-        ph.coverage = hits / (float)(nx * ny);
-        ph.light = hits > 0 ? lit / (float)hits : 0f;
-        var mid = satCam.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
-        ph.centered = HitEarth(mid, c, earthR, out Vector3 mp) && Vector3.Dot((mp - c).normalized, sd) > 0.05f;
-        ph.detail = Mathf.InverseLerp(60f, 6f, photoFov);
+    // ───────────── the end: rate, pay, report, back to the player ─────────────
+    const float ParHours = 16f;          // mission time before the score starts to drop
+    const float PenaltyPerHour = 3f;     // % taken off for every hour over par (max 45%)
 
-        if (hits == 0) { ph.score = 5f; ph.kind = "Empty space"; return ph; }
-        float cover = Mathf.Clamp01(ph.coverage / 0.85f);
-        ph.score = 100f * (0.35f * cover + 0.30f * ph.light * cover + 0.15f * (ph.centered ? 1f : 0f) + 0.20f * ph.detail);
-        if (ph.light < 0.2f) ph.kind = "Night side";
-        else if (ph.coverage < 0.85f) ph.kind = "Horizon view";
-        else if (ph.detail > 0.6f) ph.kind = "Close-up";
-        else ph.kind = "Earth view";
-        if (ph.coverage < 0.85f && ph.coverage > 0.25f && ph.light > 0.6f) ph.score = Mathf.Min(100f, ph.score + 8f);   // a sunlit horizon is beautiful
-        ph.score = Mathf.Round(Mathf.Clamp(ph.score, 0f, 100f));
-        return ph;
-    }
-
-    static bool HitEarth(Ray r, Vector3 c, float rad, out Vector3 p)
-    {
-        Vector3 oc = r.origin - c;
-        float b = Vector3.Dot(oc, r.direction), cc = oc.sqrMagnitude - rad * rad, disc = b * b - cc;
-        p = Vector3.zero;
-        if (disc < 0f) return false;
-        float t = -b - Mathf.Sqrt(disc);
-        if (t < 0f) return false;
-        p = r.origin + r.direction * t;
-        return true;
-    }
-
-    // ───────────── the end: rate, rank, pay, report ─────────────
     IEnumerator Finish()
     {
-        yield return new WaitForSeconds(1.2f);
+        yield return new WaitForSeconds(1.5f);
         phase = Phase.End;
-        var ranked = photos.OrderByDescending(p => p.score).ToList();
-        float overall = Mathf.Round(photos.Average(p => p.score));
+        float avg = Mathf.Round(photos.Average(p => p.score));
+        float hours = (float)missionHours;
+        float penalty = Mathf.Clamp((hours - ParHours) * PenaltyPerHour, 0f, 45f);
+        float overall = Mathf.Round(avg * (1f - penalty / 100f));
         string grade = Grade(overall);
+        bool success = overall >= 50f;
         string interest; float share;
-        if (overall >= 80f) { interest = "VERY INTERESTED: they want more satellites like this!"; share = 1f; }
-        else if (overall >= 65f) { interest = "INTERESTED: good work, the program continues."; share = 0.5f; }
-        else if (overall >= 50f) { interest = "UNSURE: the photos are okay, but not great."; share = 0f; }
-        else { interest = "NOT IMPRESSED: some of the budget is taken back."; share = -0.6f; }
+        if (overall >= 80f) { interest = "VERY HAPPY: they want more satellites like this!"; share = 1f; }
+        else if (overall >= 65f) { interest = "HAPPY: good work, the program continues."; share = 0.5f; }
+        else if (overall >= 50f) { interest = "OKAY: the photos are fine, but not great."; share = 0f; }
+        else { interest = "NOT HAPPY: some of the money is taken back."; share = -0.6f; }
         double before = AscendEconomy.Balance;
         double change = Math.Round(before * 0.04 * share * (overall / 100.0) / 1e5) * 1e5;
         if (overall < 50f) change = -Math.Round(before * 0.03 * (1.0 - overall / 100.0) / 1e5) * 1e5;
-        AscendEconomy.Grant(change);
 
-        // PhMail report
-        string mission = AscendSimPlan.Title(AscendOrbitTransfer.Mission);
         string sat = AscendOrbitTransfer.Payload != null ? AscendOrbitTransfer.Payload.name : "your satellite";
         var sb = new StringBuilder();
-        sb.Append("Hello Design Team,\n\n");
-        sb.Append($"<b>{sat}</b> is working in orbit {AscendOrbitTransfer.AltKm:N0} km above Earth! Our image analysts rated the first {PhotoGoal} photos.\n\n");
-        sb.Append("<b>PHOTO RANKING</b>\n");
-        for (int i = 0; i < ranked.Count; i++)
-        {
-            var p = ranked[i];
-            sb.Append($"{i + 1}. Photo #{p.number} - {p.kind}: <b>{p.score:0}/100</b> ({Grade(p.score)})  " +
-                      $"<color=#9AA0A6>Earth in frame {p.coverage * 100f:0}%, sunlit {p.light * 100f:0}%, {(p.centered ? "centered" : "off-center")}, zoom {p.detail * 100f:0}%</color>\n");
-        }
-        sb.Append($"\n<b>OVERALL:</b> {overall:0}/100 (grade {grade})\n");
-        sb.Append($"<b>GOVERNMENT INTEREST:</b> {interest}\n");
-        sb.Append($"<b>BUDGET:</b> {(change >= 0 ? "+" : "-")}{AscendReport.Money(Math.Abs(change))}  (new balance {AscendReport.Money(AscendEconomy.Balance)})\n\n");
-        sb.Append("<b>TIPS FOR BETTER PHOTOS</b>\n- Fill the frame with the sunlit Earth (W A S D to aim).\n- Zoom in (scroll or Z) for more detail.\n- A sunlit horizon with a bit of space looks beautiful.\n- Avoid the night side and empty space.\n\n");
-        sb.Append("Congratulations on completing the mission!\n\n- Ascend Philippines Mission Control");
-        string from = data ? data.agencyEmail : "ascend.philippines@phmail.com", to = data ? data.playerEmail : "design.team@phmail.com";
-        AscendMail.Deliver(from, to, $"MISSION REPORT: {mission} photos - grade {grade}", sb.ToString(), overall >= 50f);
+        sb.Append(success ? "<b><color=#81C995>MISSION SUCCESS!</color></b>\n\n" : "<b><color=#F28B82>MISSION FAILED</color></b>\n\n");
+        sb.Append($"<b>{sat}</b> is in orbit {AscendOrbitTransfer.AltKm:N0} km above Earth. Here is how your photos did.\n\n");
+        sb.Append("<b><color=#8AB4F8>YOUR PHOTOS</color></b>\n");
+        foreach (var p in photos.OrderBy(p => p.target))
+            sb.Append($"{p.target + 1}. {p.kind}: <b>{p.score:0}/100</b> ({Grade(p.score)})\n");
+        sb.Append($"\nAverage photo score: <b>{avg:0}/100</b>\n");
+        sb.Append($"\n<b><color=#8AB4F8>TIME</color></b>\nMission time: <b>{hours:0.0} hours</b> (goal: {ParHours:0} hours)\n");
+        sb.Append(penalty > 0f ? $"<color=#F28B82>Too slow: -{penalty:0}% from your score</color>\n" : "<color=#81C995>On time: no points lost</color>\n");
+        sb.Append($"\n<b><color=#8AB4F8>FINAL SCORE</color></b>\n<b>{overall:0}/100</b>  (grade {grade})\n");
+        sb.Append($"\n<b><color=#8AB4F8>MONEY</color></b>\nThe government is {interest}\n");
+        sb.Append($"Budget change: <b>{(change >= 0 ? "+" : "-")}{AscendReport.Money(Math.Abs(change))}</b>\n");
+        sb.Append($"New balance: <b>{AscendReport.Money(Math.Max(0, before + change))}</b>\n\n");
+        sb.Append("<b><color=#8AB4F8>TIPS</color></b>\n- Put the target in the middle of the picture.\n- Zoom so the target fills the picture.\n- Look straight down when you can.\n- Use the map to plan. Faster missions score more.\n\n");
+        sb.Append("- ASCEND Mission Control");
+        string subject = (success ? "MISSION REPORT: Success! " : "MISSION REPORT: Failed. ") + $"Score {overall:0}/100";
+        string body = sb.ToString();
 
-        ShowEnd(ranked, overall, grade, interest, change);
+        yield return ReturnToPlayer(change, subject, body, success);
     }
 
     static string Grade(float s) => s >= 90f ? "S" : s >= 80f ? "A" : s >= 65f ? "B" : s >= 50f ? "C" : "D";
 
-    void ShowEnd(List<Photo> ranked, float overall, string grade, string interest, double change)
+    // Fade out, give the player back their view and controls, then send the report
+    IEnumerator ReturnToPlayer(double change, string subject, string body, bool success)
     {
-        console.SetActive(false);
-        endCard = Panel("Mission Complete", canvas.transform, new Vector2(1500, 900), new Color(0.04f, 0.2f, 0.52f, 0.98f));
-        var rt = (RectTransform)endCard.transform;
-        var title = T(rt, "MISSION COMPLETE", 50, Color.white, FontStyles.Bold);
-        Place(title.rectTransform, new Vector2(0, -30), new Vector2(1400, 70), new Vector2(0.5f, 1f)); title.alignment = TextAlignmentOptions.Center;
-        var sub = T(rt, $"Overall <b>{overall:0}/100</b>  (grade {grade})", 30, new Color(1f, 0.85f, 0.4f));
-        Place(sub.rectTransform, new Vector2(0, -105), new Vector2(1400, 44), new Vector2(0.5f, 1f)); sub.alignment = TextAlignmentOptions.Center;
+        yield return FadeR(0f, 1f, 1.2f);
+        if (console) console.SetActive(false);
+        if (hud) hud.SetActive(false);
+        RestoreScene();
+        if (rig) Destroy(rig.gameObject);
+        if (hdEarth) Destroy(hdEarth.gameObject);
+        if (satCam) satCam.targetTexture = null;
+        if (satRT) { satRT.Release(); satRT = null; }
+        foreach (var c in new[] { spaceCam, rigCam, satCam }) if (c) c.enabled = false;
+        yield return new WaitForSecondsRealtime(0.4f);
 
-        for (int i = 0; i < ranked.Count; i++)
-        {
-            var p = ranked[i];
-            var card = Panel("Photo", rt, new Vector2(270, 260), new Color(0f, 0f, 0f, 0.25f));
-            var crt = (RectTransform)card.transform;
-            crt.anchorMin = crt.anchorMax = crt.pivot = new Vector2(0.5f, 1f);
-            crt.anchoredPosition = new Vector2((i - (ranked.Count - 1) * 0.5f) * 285f, -170f);
-            var img = new GameObject("Picture", typeof(RectTransform)).AddComponent<RawImage>();
-            img.transform.SetParent(crt, false); img.texture = p.tex;
-            Place(img.rectTransform, new Vector2(0, -10), new Vector2(250, 141), new Vector2(0.5f, 1f));
-            var lab = T(crt, $"<b>#{i + 1}</b>  {p.score:0}/100  ({Grade(p.score)})\n<size=80%>Photo {p.number}: {p.kind}</size>", 20, Color.white);
-            Place(lab.rectTransform, new Vector2(0, -158), new Vector2(255, 90), new Vector2(0.5f, 1f)); lab.alignment = TextAlignmentOptions.Top;
-        }
+        AscendEconomy.Grant(change);
+        string from = data ? data.agencyEmail : "ascend.philippines@phmail.com", to = data ? data.playerEmail : "design.team@phmail.com";
+        AscendMail.Deliver(from, to, subject, body, success);
+        MissionBriefing.Hint("Mission complete! Your report is in <b>PhMail</b>.\nPress <b>P</b> to read it.", 14f);
 
-        var body = T(rt, $"<b>Government interest:</b> {interest}\n<b>Budget:</b> {(change >= 0 ? "<color=#3FB950>+" : "<color=#F85149>-")}{AscendReport.Money(Math.Abs(change))}</color>   " +
-                         $"New balance {AscendReport.Money(AscendEconomy.Balance)}\n\n<size=85%><color=#C9D8F0>The full report with the photo ranking was sent to your phone (PhMail).</color></size>", 26, Color.white);
-        Place(body.rectTransform, new Vector2(0, -470), new Vector2(1380, 200), new Vector2(0.5f, 1f)); body.alignment = TextAlignmentOptions.Top;
-
-        if (font && !AUI.Font) AUI.Font = font;
-        var btn = AUI.Btn(rt, "RETURN TO MISSION CONTROL", 28, Color.white, new Color(0.86f, 0.2f, 0.16f), ReturnHome, 620, 80);
-        var brt = (RectTransform)btn.transform; brt.anchorMin = brt.anchorMax = brt.pivot = new Vector2(0.5f, 0f);
-        brt.sizeDelta = new Vector2(620, 80); brt.anchoredPosition = new Vector2(0, 40);
+        yield return FadeR(1f, 0f, 1.2f);
+        Destroy(gameObject);
     }
 
-    void ReturnHome()
+    // Everything the orbit changed in the Universe scene goes back
+    bool restored;
+    void RestoreScene()
     {
-        string sc = AscendOrbitTransfer.ReturnScene;
-        if (!string.IsNullOrEmpty(sc) && Application.CanStreamedLevelBeLoaded(sc)) SceneManager.LoadScene(sc);
-        else Debug.LogWarning("AscendOrbit: can't load the launch scene '" + sc + "'. Add it to File > Build Profiles (Scene List).");
+        if (restored) return;
+        restored = true;
+        foreach (var c in sceneCams) if (c) c.enabled = true;
+        if (playerWasEnabled && PlayerController.Instance) PlayerController.Instance.enabled = true;
+        if (sunLight) sunLight.transform.rotation = sunOriginal;
+        foreach (var (l, mask) in litRig) if (l) l.cullingMask = mask;
+        foreach (var ci in pausedComputers) if (ci) ci.enabled = true;
+        RenderSettings.reflectionIntensity = savedReflect;
+        MissionBriefing.SetUiVisible(true);
+        AscendSky.ResetAltitude();
+        Cursor.lockState = CursorLockMode.Locked; Cursor.visible = false;
     }
+
+    void OnDisable() => RestoreScene();
 
     // ═════════════════════════════════════════════════════════════════════════
     //  UI
@@ -822,14 +857,20 @@ public class AscendOrbitDirector : MonoBehaviour
         var root = (RectTransform)cgo.transform;
 
         // In-orbit HUD
-        hud = Panel("Orbit HUD", root, new Vector2(560, 300), new Color(0.02f, 0.07f, 0.16f, 0.9f));
+        hud = Panel("Orbit HUD", root, new Vector2(560, 330), MissionUI.HudBg);
         var hrt = (RectTransform)hud.transform;
         hrt.anchorMin = hrt.anchorMax = hrt.pivot = new Vector2(0f, 1f); hrt.anchoredPosition = new Vector2(24, -24);
-        hudText = T(hrt, "", 22, Color.white);
-        Place(hudText.rectTransform, Vector2.zero, new Vector2(520, 280), new Vector2(0.5f, 0.5f)); hudText.alignment = TextAlignmentOptions.TopLeft;
+        MissionUI.Corners(hrt, MissionUI.Text);
+        var hl = MissionUI.Lbl(hrt, "ORBIT TELEMETRY", 14);
+        hl.color = MissionUI.Text;
+        Place(hl.rectTransform, new Vector2(20, -14), new Vector2(520, 24), new Vector2(0f, 1f)); hl.alignment = TextAlignmentOptions.Left;
+        MissionUI.HLine(hrt, 46f, MissionUI.LineDim, 14f);
+        hudText = T(hrt, "", 18, Color.white);
+        Place(hudText.rectTransform, new Vector2(20, -58), new Vector2(520, 262), new Vector2(0f, 1f)); hudText.alignment = TextAlignmentOptions.TopLeft;
         hudText.lineSpacing = 6f;
 
-        bigText = T(root, "", 90, Color.white, FontStyles.Bold);
+        bigText = T(root, "", 84, Color.white, FontStyles.Bold);
+        bigText.characterSpacing = 8f;
         Place(bigText.rectTransform, new Vector2(0, 120), new Vector2(1700, 300), new Vector2(0.5f, 0.5f)); bigText.alignment = TextAlignmentOptions.Center;
         bigText.outlineWidth = 0.15f; bigText.outlineColor = new Color32(0, 0, 0, 230);
 
@@ -843,53 +884,160 @@ public class AscendOrbitDirector : MonoBehaviour
 
     void BuildConsole(RectTransform root)
     {
-        console = Panel("Satellite Control", root, new Vector2(1860, 1020), new Color(0.04f, 0.2f, 0.52f, 0.99f));
-        var rt = (RectTransform)console.transform;
-        var title = T(rt, "SATELLITE CONTROL", 34, Color.white, FontStyles.Bold);
-        Place(title.rectTransform, new Vector2(30, -18), new Vector2(900, 50), new Vector2(0f, 1f)); title.alignment = TextAlignmentOptions.Left;
+        console = MissionUI.Solid(root, MissionUI.Bg, true, "Satellite Control").gameObject;
+        MissionUI.Stretch((RectTransform)console.transform);
+        var rt = MissionUI.Box(console.transform, "Console", MissionUI.Line, null, true);
+        MissionUI.Place(rt, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(1860, 1020));
+        MissionUI.Header(rt, "SATELLITE CONTROL", "ASCEND MISSION CONTROL   //   EARTH PHOTO MISSION", 64f);
 
         // Live view
-        var frame = Panel("Live View Frame", rt, new Vector2(1296, 736), new Color(0f, 0f, 0f, 1f));
-        var lrt = (RectTransform)frame.transform; lrt.anchorMin = lrt.anchorMax = lrt.pivot = new Vector2(0f, 1f); lrt.anchoredPosition = new Vector2(22, -80);
+        var lrt = MissionUI.Box(rt, "Live View Frame", MissionUI.Line, Color.black);
+        MissionUI.Place(lrt, new Vector2(0f, 1f), new Vector2(22, -84), new Vector2(1296, 736));
         liveView = new GameObject("Live View", typeof(RectTransform)).AddComponent<RawImage>();
         liveView.transform.SetParent(lrt, false);
         Place(liveView.rectTransform, Vector2.zero, new Vector2(1280, 720), new Vector2(0.5f, 0.5f));
-        var live = T(lrt, "<color=#FF4444>REC</color>  LIVE SATELLITE CAMERA", 20, Color.white, FontStyles.Bold);
-        Place(live.rectTransform, new Vector2(20, -14), new Vector2(600, 30), new Vector2(0f, 1f)); live.alignment = TextAlignmentOptions.Left;
-        // crosshair
-        foreach (var sz in new[] { new Vector2(60, 2), new Vector2(2, 60) })
+        liveView.transform.SetSiblingIndex(0);
+        var live = T(lrt, "<color=#FF4444>REC</color>   LIVE SATELLITE CAMERA", 16, Color.white, FontStyles.Bold);
+        live.characterSpacing = 6f;
+        Place(live.rectTransform, new Vector2(24, -18), new Vector2(700, 30), new Vector2(0f, 1f)); live.alignment = TextAlignmentOptions.Left;
+        var vf = MissionUI.Rect("Viewfinder", lrt); MissionUI.Stretch(vf, 40, 40, 40, 60);
+        MissionUI.Corners(vf, new Color(1f, 1f, 1f, 0.6f), 40f, 2f);
+        foreach (var (pos, sz) in new[] { (new Vector2(-24, 0), new Vector2(30, 1.5f)), (new Vector2(24, 0), new Vector2(30, 1.5f)),
+                                          (new Vector2(0, -24), new Vector2(1.5f, 30)), (new Vector2(0, 24), new Vector2(1.5f, 30)) })
         {
-            var c = new GameObject("Crosshair", typeof(RectTransform)).AddComponent<Image>();
-            c.transform.SetParent(lrt, false); c.color = new Color(1f, 1f, 1f, 0.6f); c.raycastTarget = false;
-            Place(c.rectTransform, Vector2.zero, sz, new Vector2(0.5f, 0.5f));
+            var c = MissionUI.Solid(lrt, new Color(1f, 1f, 1f, 0.7f), false, "Crosshair");
+            Place(c.rectTransform, pos, sz, new Vector2(0.5f, 0.5f));
         }
         flash = new GameObject("Flash", typeof(RectTransform)).AddComponent<Image>();
         flash.transform.SetParent(lrt, false); flash.color = new Color(1f, 1f, 1f, 0f); flash.raycastTarget = false;
         Place(flash.rectTransform, Vector2.zero, new Vector2(1280, 720), new Vector2(0.5f, 0.5f));
-        flashText = T(lrt, "", 40, Color.white, FontStyles.Bold);
-        Place(flashText.rectTransform, new Vector2(0, -60), new Vector2(1000, 60), new Vector2(0.5f, 1f)); flashText.alignment = TextAlignmentOptions.Center;
+        flashText = T(lrt, "", 30, Color.white, FontStyles.Bold);
+        flashText.characterSpacing = 6f; flashText.outlineWidth = 0.2f; flashText.outlineColor = new Color32(0, 0, 0, 220);
+        Place(flashText.rectTransform, new Vector2(0, -70), new Vector2(1200, 90), new Vector2(0.5f, 1f)); flashText.alignment = TextAlignmentOptions.Center;
+        var keys = T(lrt, "W A S D  AIM      Q E  ROLL      SCROLL  ZOOM      <color=#FFC850>SPACE  TAKE PHOTO</color>", 15, MissionUI.Label, FontStyles.Bold);
+        keys.characterSpacing = 4f;
+        Place(keys.rectTransform, new Vector2(0, 16), new Vector2(1200, 30), new Vector2(0.5f, 0f)); keys.alignment = TextAlignmentOptions.Center;
 
-        // Info column
-        conCount = T(rt, "", 40, Color.white, FontStyles.Bold);
-        Place(conCount.rectTransform, new Vector2(-30, -80), new Vector2(500, 60), new Vector2(1f, 1f)); conCount.alignment = TextAlignmentOptions.Left;
-        conInfo = T(rt, "", 22, Color.white);
-        Place(conInfo.rectTransform, new Vector2(-30, -150), new Vector2(500, 660), new Vector2(1f, 1f)); conInfo.alignment = TextAlignmentOptions.TopLeft;
-        conInfo.lineSpacing = 8f;
+        // Info column: map, targets, time, speed
+        var info = MissionUI.Box(rt, "Mission", MissionUI.Line);
+        MissionUI.Place(info, new Vector2(1f, 1f), new Vector2(-22, -84), new Vector2(498, 736));
+        var il = MissionUI.Lbl(info, "WORLD MAP", 13);
+        Place(il.rectTransform, new Vector2(16, -12), new Vector2(460, 24), new Vector2(0f, 1f)); il.alignment = TextAlignmentOptions.Left;
+        var mapBox = MissionUI.Box(info, "Map", MissionUI.LineDim, Color.black);
+        MissionUI.Place(mapBox, new Vector2(0f, 1f), new Vector2(16, -40), new Vector2(466, 233));
+        mapRect = MissionUI.Rect("Map Image", mapBox); MissionUI.Stretch(mapRect, 1, 1, 1, 1);
+        var mapImg = mapRect.gameObject.AddComponent<RawImage>(); mapImg.raycastTarget = false;
+        mapImg.texture = hdEarth && hdEarth.surface ? hdEarth.surface.GetTexture("_DayTex") : null;
+        for (int i = 0; i < AscendEarth.Targets.Length; i++)
+        {
+            var m = new GameObject("Target " + (i + 1), typeof(RectTransform)).AddComponent<Image>();
+            m.transform.SetParent(mapRect, false); m.sprite = PhoneArt.Round; m.raycastTarget = false;
+            m.rectTransform.sizeDelta = new Vector2(16, 16);
+            var n = T(m.rectTransform, (i + 1).ToString(), 11, Color.black, FontStyles.Bold);
+            Place(n.rectTransform, Vector2.zero, new Vector2(16, 16), new Vector2(0.5f, 0.5f)); n.alignment = TextAlignmentOptions.Center;
+            targetDots.Add(m);
+        }
+        satDot = new GameObject("Satellite", typeof(RectTransform)).AddComponent<Image>();
+        satDot.transform.SetParent(mapRect, false); satDot.sprite = PhoneArt.Round; satDot.color = new Color(1f, 0.25f, 0.2f); satDot.raycastTarget = false;
+        satDot.rectTransform.sizeDelta = new Vector2(12, 12);
+        var ring = MissionUI.Box(satDot.rectTransform, "View", new Color(1f, 0.3f, 0.25f, 0.8f));
+        Place(ring, Vector2.zero, new Vector2(44, 44), new Vector2(0.5f, 0.5f));
 
-        // Photo strip
+        conCount = T(info, "", 18, Color.white, FontStyles.Bold);
+        conCount.characterSpacing = 3f;
+        Place(conCount.rectTransform, new Vector2(16, -284), new Vector2(466, 30), new Vector2(0f, 1f)); conCount.alignment = TextAlignmentOptions.Left;
+        clockText = T(info, "", 15, MissionUI.Label, FontStyles.Bold);
+        Place(clockText.rectTransform, new Vector2(16, -314), new Vector2(466, 26), new Vector2(0f, 1f)); clockText.alignment = TextAlignmentOptions.Left;
+        MissionUI.HLine(info, 350f, MissionUI.LineDim, 14f);
+        conInfo = T(info, "", 16, Color.white);
+        Place(conInfo.rectTransform, new Vector2(16, -362), new Vector2(466, 290), new Vector2(0f, 1f)); conInfo.alignment = TextAlignmentOptions.TopLeft;
+        conInfo.lineSpacing = 6f;
+
+        var sl = MissionUI.Lbl(info, "SPEED", 13);
+        Place(sl.rectTransform, new Vector2(16, 30), new Vector2(120, 40), new Vector2(0f, 0f)); sl.alignment = TextAlignmentOptions.MidlineLeft;
+        // Speed slider: thin track, bright fill, outlined handle (1x - 5x in 0.5 steps)
+        var sliderRt = MissionUI.Rect("Speed Slider", info);
+        MissionUI.Place(sliderRt, new Vector2(0f, 0f), new Vector2(120, 42), new Vector2(250, 30));
+        var track = MissionUI.Solid(sliderRt, MissionUI.LineDim, false, "Track").rectTransform;
+        track.anchorMin = new Vector2(0f, 0.5f); track.anchorMax = new Vector2(1f, 0.5f); track.sizeDelta = new Vector2(0f, 3f); track.anchoredPosition = Vector2.zero;
+        var hit = sliderRt.gameObject.AddComponent<Image>(); hit.color = Color.clear; hit.raycastTarget = true;
+        var fillArea = MissionUI.Rect("Fill Area", sliderRt); MissionUI.Stretch(fillArea, 0, 13, 0, 13);
+        var fill = MissionUI.Solid(fillArea, MissionUI.Accent, false, "Fill");
+        fill.rectTransform.sizeDelta = Vector2.zero;
+        var handleArea = MissionUI.Rect("Handle Area", sliderRt); MissionUI.Stretch(handleArea, 8, 0, 8, 0);
+        var handle = MissionUI.Box(handleArea, "Handle", MissionUI.Text, Color.black, false, true);
+        handle.sizeDelta = new Vector2(16f, 0f);
+        speedSlider = sliderRt.gameObject.AddComponent<Slider>();
+        speedSlider.fillRect = fill.rectTransform; speedSlider.handleRect = handle;
+        speedSlider.targetGraphic = handle.GetComponent<Image>();
+        speedSlider.direction = Slider.Direction.LeftToRight;
+        speedSlider.minValue = MinSpeed; speedSlider.maxValue = MaxSpeed; speedSlider.value = speed;
+        speedSlider.navigation = new Navigation { mode = Navigation.Mode.None };
+        speedSlider.onValueChanged.AddListener(v => SetSpeed(v, false));
+        speedLabel = T(info, "", 18, Color.white, FontStyles.Bold);
+        Place(speedLabel.rectTransform, new Vector2(388, 42), new Vector2(90, 30), new Vector2(0f, 0f)); speedLabel.alignment = TextAlignmentOptions.MidlineLeft;
+
+        // Photo strip: one slot per target
         for (int i = 0; i < PhotoGoal; i++)
         {
-            var slot = Panel("Photo Slot", rt, new Vector2(240, 135), new Color(0f, 0f, 0f, 0.35f));
-            var srt = (RectTransform)slot.transform; srt.anchorMin = srt.anchorMax = srt.pivot = new Vector2(0f, 0f);
-            srt.anchoredPosition = new Vector2(22 + i * 256, 54);
+            var srt = MissionUI.Box(rt, "Photo Slot", MissionUI.LineDim);
+            Place(srt, new Vector2(22 + i * 256, 54), new Vector2(240, 135), new Vector2(0f, 0f));
             var img = new GameObject("Photo", typeof(RectTransform)).AddComponent<RawImage>();
             img.transform.SetParent(srt, false); img.color = new Color(1f, 1f, 1f, 0f);
-            Place(img.rectTransform, Vector2.zero, new Vector2(240, 135), new Vector2(0.5f, 0.5f));
-            var lab = T(srt, $"Photo {i + 1}", 16, new Color(1f, 1f, 1f, 0.8f));
-            Place(lab.rectTransform, new Vector2(0, -24), new Vector2(240, 24), new Vector2(0.5f, 0f)); lab.alignment = TextAlignmentOptions.Center;
+            Place(img.rectTransform, Vector2.zero, new Vector2(236, 131), new Vector2(0.5f, 0.5f));
+            var lab = T(srt, $"{i + 1}  {AscendEarth.Targets[i].name.ToUpperInvariant()}", 12, MissionUI.Label);
+            lab.characterSpacing = 2f;
+            Place(lab.rectTransform, new Vector2(0, -26), new Vector2(256, 22), new Vector2(0.5f, 0f)); lab.alignment = TextAlignmentOptions.Center;
             thumbs.Add(img); thumbLabels.Add(lab);
         }
         console.SetActive(false);
+    }
+
+    RectTransform mapRect;
+    Image satDot;
+    readonly List<Image> targetDots = new List<Image>();
+    Slider speedSlider;
+    TextMeshProUGUI speedLabel;
+
+    void SetSpeed(float v, bool moveSlider = true)
+    {
+        speed = Mathf.Clamp(Mathf.Round(v * 2f) / 2f, MinSpeed, MaxSpeed);   // steps of 0.5x
+        if (moveSlider && speedSlider) speedSlider.SetValueWithoutNotify(speed);
+    }
+    TextMeshProUGUI clockText;
+
+    Vector2 MapPos(float lat, float lon) => new Vector2((lon + 180f) / 360f * mapRect.rect.width, (lat + 90f) / 180f * mapRect.rect.height);
+
+    void UpdateConsoleUI()
+    {
+        if (!hdEarth) return;
+        var T = AscendEarth.Targets;
+        Vector3 sd = SunDir();
+        hdEarth.LatLonOf(Radial(), out float sLat, out float sLon);
+        satDot.rectTransform.anchorMin = satDot.rectTransform.anchorMax = Vector2.zero;
+        satDot.rectTransform.anchoredPosition = MapPos(sLat, sLon);
+        var sb = new StringBuilder();
+        Vector3 subDir = Radial();
+        for (int i = 0; i < T.Length; i++)
+        {
+            Vector3 d = hdEarth.WorldDir(T[i].lat, T[i].lon);
+            bool day = Vector3.Dot(d, sd) > 0.05f;
+            float km = Vector3.Angle(subDir, d) * Mathf.Deg2Rad * AscendEarth.RadiusKm;
+            var dot = targetDots[i];
+            dot.rectTransform.anchorMin = dot.rectTransform.anchorMax = Vector2.zero;
+            dot.rectTransform.anchoredPosition = MapPos(T[i].lat, T[i].lon);
+            dot.color = done[i] ? MissionUI.Go : day ? MissionUI.Caution : new Color(0.55f, 0.65f, 0.85f);
+            sb.Append($"<b>{i + 1}  {T[i].name}</b>\n<size=85%>");
+            if (done[i]) { var p = photos.FirstOrDefault(x => x.target == i); sb.Append($"<color=#3FB950>DONE  {(p != null ? p.score : 0):0}/100</color>"); }
+            else sb.Append($"<color=#9AA0A6>{km:N0} km away   </color>" + (day ? "<color=#FFD166>DAY</color>" : "<color=#8CB4E6>NIGHT</color>") + (km < 1800f && day ? "   <color=#3FB950>IN RANGE</color>" : ""));
+            sb.Append("</size>\n");
+        }
+        conInfo.text = sb.ToString();
+        conCount.text = $"PHOTOS  {photos.Count} / {PhotoGoal}";
+        float hrs = (float)missionHours;
+        bool late = hrs > ParHours;
+        clockText.text = $"MISSION TIME  <color={(late ? "#F28B82" : "#FFFFFF")}>{(int)hrs:00}:{(int)((hrs % 1f) * 60f):00} h</color>   GOAL {ParHours:0} h" + (late ? $"   <color=#F28B82>-{Mathf.Min(45f, (hrs - ParHours) * PenaltyPerHour):0}%</color>" : "");
+        if (speedLabel) speedLabel.text = speed.ToString("0.0") + "x";
     }
 
     void UpdateHud()
@@ -898,37 +1046,31 @@ public class AscendOrbitDirector : MonoBehaviour
         if (phase == Phase.Arrive || phase == Phase.Release)
         {
             hudText.text =
-                "<color=#59D9FF><b>IN ORBIT</b></color>\n" +
-                $"Height  <b>{AscendOrbitTransfer.AltKm:N0} km</b>\n" +
-                $"Speed  <b>{v * 3.6:N0} km/h</b>  <size=80%>({v / 1000:0.00} km/s)</size>\n" +
-                $"One lap around Earth  <b>{period / 60:0} min</b>\n" +
-                $"Time speed  <b>{Warps[warpIndex]:0}x</b>  <size=80%>(- / +)</size>\n\n" +
-                (phase == Phase.Arrive ? "<color=#FFC850><b>SPACE: release the satellite</b></color>\n" : "<color=#3FB950>Satellite released</color>\n") +
-                "<size=80%><color=#9AA0A6>Hold right mouse: look around   Scroll: zoom</color></size>";
-        }
-        if (phase == Phase.Console)
-        {
-            bool day = Vector3.Dot(Radial(), SunDir()) > 0f;
-            conCount.text = $"PHOTOS  {photos.Count} / {PhotoGoal}";
-            conInfo.text =
-                $"<b>{(AscendOrbitTransfer.Payload != null ? AscendOrbitTransfer.Payload.name : "Satellite")}</b>\n" +
-                $"Height  {AscendOrbitTransfer.AltKm:N0} km\nSpeed  {v / 1000:0.00} km/s\nBelow  {(day ? "<color=#FFD166>daytime</color>" : "<color=#8CB4E6>night</color>")}\n" +
-                $"Zoom  {Mathf.InverseLerp(75f, 4f, photoFov) * 100f:0}%\n\n" +
-                "<b>CONTROLS</b>\nW A S D  turn the camera\nQ E  roll\nScroll or Z X  zoom\n<color=#FFC850><b>SPACE  take a photo</b></color>\n\n" +
-                "<b>TIPS</b>\n<size=85%>Fill the frame with the sunlit Earth, zoom in for detail, or catch a sunlit horizon. Photos of empty space or the night side score low.</size>";
+                $"{L("STATUS")}<color=#3FB950>NOMINAL ORBIT</color>\n" +
+                $"{L("ALTITUDE")}<b>{AscendOrbitTransfer.AltKm:N0} km</b>\n" +
+                $"{L("VELOCITY")}<b>{v / 1000:0.00} km/s</b>  <size=75%><color=#9AA0A6>{v * 3.6:N0} km/h</color></size>\n" +
+                $"{L("ORBIT")}<b>{period / 60 * 49.5:0} min</b>  <size=75%><color=#9AA0A6>(real time)</color></size>\n" +
+                $"{L("TIME RATE")}<b>{speed:0.0}x</b>  <size=75%><color=#9AA0A6>(- / +)</color></size>\n\n" +
+                (phase == Phase.Arrive ? "<color=#FFC850><b>[ SPACE ]  RELEASE SATELLITE</b></color>\n" : "<color=#3FB950>SATELLITE RELEASED</color>\n") +
+                "<size=75%><color=#9AA0A6>RMB  LOOK AROUND     SCROLL  ZOOM     - / +  SPEED</color></size>";
         }
     }
 
+    // Grey label column for readouts
+    static string L(string label) => $"<color=#9AA0A6><size=75%>{label}</size></color><pos=42%>";
+
     void Big(string s, float sec) { if (bigText) { bigText.text = s; bigUntil = Time.time + sec; } }
 
-    IEnumerator FlashR(string msg)
+    int flashId;
+    IEnumerator FlashR(string msg, bool shutter)
     {
+        int id = ++flashId;
         flashText.text = msg;
         float t = 0f;
-        while (t < 0.5f) { t += Time.deltaTime; flash.color = new Color(1f, 1f, 1f, Mathf.Lerp(0.85f, 0f, t / 0.5f)); yield return null; }
+        while (shutter && t < 0.5f) { t += Time.deltaTime; flash.color = new Color(1f, 1f, 1f, Mathf.Lerp(0.85f, 0f, t / 0.5f)); yield return null; }
         flash.color = new Color(1f, 1f, 1f, 0f);
-        yield return new WaitForSeconds(1f);
-        flashText.text = "";
+        yield return new WaitForSeconds(2.2f);
+        if (id == flashId) flashText.text = "";
     }
 
     IEnumerator FadeR(float from, float to, float sec)
@@ -943,8 +1085,9 @@ public class AscendOrbitDirector : MonoBehaviour
         var go = new GameObject(n, typeof(RectTransform));
         go.transform.SetParent(parent, false);
         var img = go.AddComponent<Image>();
-        img.color = c; img.sprite = AUI.Rounded; img.type = Image.Type.Sliced; img.raycastTarget = true;
+        img.color = c; img.raycastTarget = c.a > 0f;
         var rt = (RectTransform)go.transform;
+        MissionUI.Border(rt, c.a > 0.5f ? MissionUI.Line : MissionUI.LineDim);
         rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0.5f, 0.5f); rt.sizeDelta = size;
         return go;
     }

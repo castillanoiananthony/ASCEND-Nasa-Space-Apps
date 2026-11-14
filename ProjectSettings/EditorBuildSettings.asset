@@ -6,7 +6,7 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/Scenes/Hangar.unity
+    path: Assets/Scenes/Universe.unity
     guid: e46b3a1fe54bb9fe88f90106b8c5c6a8
   - enabled: 1
     path: Assets/Scenes/Solar System.unity

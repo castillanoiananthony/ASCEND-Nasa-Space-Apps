@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2d44f487ebf927b609c951c34abc1cd3, type: 3}
   m_Name: AscendCADData
   m_EditorClassIdentifier: Assembly-CSharp::AscendCADData
-  governmentFundUSD: 50000000000
+  governmentFundUSD: 30000000
   assemblyIntegrationRate: 0.1
   testingQARate: 0.05
   saveProgress: 0

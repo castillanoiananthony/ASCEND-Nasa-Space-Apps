@@ -116,3 +116,9 @@ InitTestScene*.unity*
 # Unity Version Control (Plastic SCM)
 .plastic/
 ignore.conf
+
+# Local backups (not part of the game)
+/TerrainBackup/
+/ScriptBackup/
+/[Aa]ssets/_Recovery/
+/[Aa]ssets/_Recovery.meta

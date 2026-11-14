@@ -1425,22 +1425,22 @@ public class CADReview
 
         // Propulsion
         r.Check(rs.stages.Count > 0 && rs.stages[0].engines > 0, "Stage 1 has engines.", "Stage 1 has no engines that can fire at sea level.");
-        r.Check(rs.liftoffTWR >= data.minLiftoffTWR, $"Liftoff thrust-to-weight {rs.liftoffTWR:0.00} (min {data.minLiftoffTWR:0.0}).",
-            $"Liftoff thrust-to-weight is {rs.liftoffTWR:0.00}; it must be at least {data.minLiftoffTWR:0.0} to climb off the pad.");
+        r.Check(rs.liftoffTWR >= data.minLiftoffTWR, $"Strong enough to lift off ({rs.liftoffTWR:0.00}x its weight).",
+            $"Too weak to lift off: push is {rs.liftoffTWR:0.00}x its weight, needs {data.minLiftoffTWR:0.0}x.");
         r.Check(rs.liftoffTWR <= data.maxLiftoffTWR, "Liftoff acceleration within structural limits.",
-            $"Liftoff thrust-to-weight {rs.liftoffTWR:0.00} is very high; g-loads exceed typical limits.", false);
-        r.Check(rs.deltaV >= req, $"Delta-v {rs.deltaV:N0} m/s covers the {req:N0} m/s needed for {mName}.",
-            $"Delta-v is {rs.deltaV:N0} m/s; {mName} needs about {req:N0} m/s including gravity and drag losses.");
+            $"Very strong push ({rs.liftoffTWR:0.00}x its weight): the shaking could harm the satellite.", false);
+        r.Check(rs.deltaV >= req, $"Enough fuel power (delta-v): {rs.deltaV:N0} of {req:N0} m/s.",
+            $"Not enough fuel power (delta-v): {rs.deltaV:N0} of {req:N0} m/s needed for {mName}.");
         foreach (var e in rs.engineIssues) r.errors.Add(e);
 
         // Avionics
         r.Check(rs.Has(CADRole.FlightComputer), "Flight computer installed.", "No flight computer: the rocket can't guide itself.");
         if (sky) r.Check(rs.Has(CADRole.IMU) || rs.Has(CADRole.Aero), "Fins / IMU keep the rocket flying straight.", "No fins and no IMU: a small rocket needs fins (or an IMU) to fly straight.");
-        else r.Check(rs.Has(CADRole.IMU), "Inertial measurement unit installed.", "No IMU: the rocket can't sense attitude or velocity.");
+        else r.Check(rs.Has(CADRole.IMU), "Motion sensor (IMU) installed.", "No motion sensor (IMU): the rocket can't tell which way it points.");
         r.Check(rs.Has(CADRole.Battery), "Avionics battery installed.", "No avionics battery.");
-        r.Check(rs.Has(CADRole.FlightTermination), "Flight termination system installed.", "No flight termination system: range safety will not allow launch.", !sky);
-        r.Check(rs.Has(CADRole.Telemetry), "Telemetry transmitter installed.", "No telemetry transmitter: the launch team would fly blind.", !sky);
-        r.Check(rs.Has(CADRole.GNSS), "GNSS receiver installed.", "No GNSS receiver: tracking relies on the IMU alone.", false);
+        r.Check(rs.Has(CADRole.FlightTermination), "Safety system (FTS) installed.", "No safety system (FTS): you are not allowed to launch without it.", !sky);
+        r.Check(rs.Has(CADRole.Telemetry), "Flight data radio (telemetry) installed.", "No telemetry radio: the team can't see what the rocket is doing.", !sky);
+        r.Check(rs.Has(CADRole.GNSS), "GPS receiver installed.", "No GPS receiver: the rocket is harder to track.", false);
         r.Check(rs.Has(CADRole.PowerDistribution), "Power distribution unit installed.", "No power distribution unit.", false);
         r.Check(rs.Has(CADRole.Wiring), "Wiring harness included.", "No wiring harness kit listed.", false);
 
@@ -1466,7 +1466,7 @@ public class CADReview
             float da = pl.link == CADLink.Top ? TopWidth(a) : BottomWidth(a);
             float db = pl.link == CADLink.Top ? BottomWidth(b) : TopWidth(b);
             if (Mathf.Max(da, db) / Mathf.Max(0.01f, Mathf.Min(da, db)) > data.maxDiameterStepRatio)
-                r.warnings.Add($"Size mismatch between {a.name} and {b.name}: use a diameter adapter.");
+                r.warnings.Add($"{a.name} and {b.name} are different widths: add an adapter between them.");
         }
 
         // Payload integration + satellite
@@ -1479,17 +1479,17 @@ public class CADReview
             if (p.role == CADRole.PayloadAdapter && (adapter == null || p.maxPayloadKg > adapter.maxPayloadKg)) adapter = p;
         }
         if (adapter == null && fairing != null && fairing.maxPayloadKg > 0f) adapter = fairing;   // built-in payload attach fitting
-        r.Check(fairing != null, "Payload fairing installed.", "No payload fairing: the satellite would be destroyed by air loads.");
+        r.Check(fairing != null, "Nose cover (fairing) installed.", "No nose cover (fairing): the air would rip the satellite apart.");
         if (fairing != null)
             r.Check(ps.stowedWidth <= fairing.innerDiameter && ps.stowedHeight <= fairing.innerHeight,
-                $"Satellite folded for launch ({ps.stowedWidth:0.##} x {ps.stowedHeight:0.##} m) fits the fairing.",
-                $"Satellite folded for launch is {ps.stowedWidth:0.##} m wide x {ps.stowedHeight:0.##} m tall; the fairing only fits Ø{fairing.innerDiameter:0.##} x {fairing.innerHeight:0.##} m.");
-        r.Check(adapter != null, "Payload adapter installed.", "No payload adapter between the upper stage and the satellite.");
+                $"Satellite fits inside the nose cover.",
+                $"Satellite is too big for the nose cover: {ps.stowedWidth:0.##} x {ps.stowedHeight:0.##} m, room is {fairing.innerDiameter:0.##} x {fairing.innerHeight:0.##} m.");
+        r.Check(adapter != null, "Payload adapter installed.", "No payload adapter to hold the satellite on the rocket.");
         if (adapter != null)
             r.Check(ps.wetMass <= adapter.maxPayloadKg, $"{adapter.name} rated for {adapter.maxPayloadKg:N0} kg.",
                 $"{adapter.name} is only rated for {adapter.maxPayloadKg:N0} kg; satellite is {ps.wetMass:N0} kg.");
         r.Check(ps.wetMass <= rs.maxPayloadLEO, $"Rocket can carry the {ps.wetMass:N1} kg payload for {mName} (max {rs.maxPayloadLEO:N1} kg).",
-            $"Payload is {ps.wetMass:N1} kg but this rocket can only carry {rs.maxPayloadLEO:N1} kg for {mName}.");
+            $"Satellite too heavy: {ps.wetMass:N1} kg, this rocket can only carry {rs.maxPayloadLEO:N1} kg.");
         if (rocketOnly) return r;
 
         if (sky)
@@ -1503,9 +1503,9 @@ public class CADReview
             r.Check(ps.Has(CADRole.Recovery), "Parachute packed.", "No parachute: the CanSat would crash.");
             r.Check(ps.Has(CADRole.OBC), "Computer board installed.", "No computer board to read the sensors.");
             r.Check(ps.Has(CADRole.Transceiver) && ps.Has(CADRole.Antenna), "Radio + antenna installed.", "No radio link (needs a radio AND an antenna).");
-            r.Check(ps.batteryWh >= ps.powerUse * 0.5f, $"Battery {ps.batteryWh:0.#} Wh lasts the flight.", $"Battery {ps.batteryWh:0.#} Wh is too small; needs {ps.powerUse * 0.5f:0.#} Wh for 30 minutes.");
+            r.Check(ps.batteryWh >= ps.powerUse * 0.5f, $"Battery {ps.batteryWh:0.#} Wh lasts the flight.", $"Battery too small: {ps.batteryWh:0.#} Wh, needs {ps.powerUse * 0.5f:0.#} Wh.");
             r.Check(ps.instruments > 0, $"{ps.instruments} sensor(s) on board.", "No sensor: the CanSat has nothing to measure.");
-            r.Check(ps.volumeUsed <= ps.volumeCap + 1e-3f, $"Inside volume {ps.volumeUsed:0.###}/{ps.volumeCap:0.###} L.", $"Inside parts need {ps.volumeUsed:0.###} L but the shell only holds {ps.volumeCap:0.###} L.");
+            r.Check(ps.volumeUsed <= ps.volumeCap + 1e-3f, $"Inside volume {ps.volumeUsed:0.###}/{ps.volumeCap:0.###} L.", $"Too many parts inside: need {ps.volumeUsed:0.###} L, room for {ps.volumeCap:0.###} L.");
             return r;
         }
 
@@ -1517,21 +1517,21 @@ public class CADReview
             $"{sep.name} is rated for {sep.maxPayloadKg:N0} kg; satellite is {ps.wetMass:N1} kg.");
         r.Check(ps.Has(CADRole.EPS), "Power system (EPS) installed.", "No EPS / power distribution in the satellite.");
         r.Check(ps.Has(CADRole.SolarPanel), "Solar panels installed.", "No solar panels.");
-        r.Check(ps.powerGen >= ps.powerUse * data.powerMargin, $"Power positive: {ps.powerGen:0.#} W generated vs {ps.powerUse:0.#} W used.",
-            $"Power negative: {ps.powerGen:0.#} W orbit-average generation vs {ps.powerUse:0.#} W needed (+{(data.powerMargin - 1f) * 100f:0}% margin).");
-        r.Check(ps.batteryWh >= ps.batteryNeedWh, $"Battery {ps.batteryWh:0} Wh covers eclipse ({ps.batteryNeedWh:0} Wh needed).",
-            $"Battery {ps.batteryWh:0} Wh is too small for eclipse; needs {ps.batteryNeedWh:0} Wh.");
+        r.Check(ps.powerGen >= ps.powerUse * data.powerMargin, $"Enough power: makes {ps.powerGen:0.#} W, uses {ps.powerUse:0.#} W.",
+            $"Not enough power: makes {ps.powerGen:0.#} W, needs {ps.powerUse:0.#} W. Add solar panels.");
+        r.Check(ps.batteryWh >= ps.batteryNeedWh, $"Battery lasts through Earth's shadow ({ps.batteryWh:0} Wh).",
+            $"Battery too small for Earth's shadow: {ps.batteryWh:0} Wh, needs {ps.batteryNeedWh:0} Wh.");
         r.Check(ps.Has(CADRole.OBC), "On-board computer installed.", "No on-board computer.");
-        r.Check(ps.Has(CADRole.Transceiver) && ps.Has(CADRole.Antenna), "Radio + antenna installed.", "No radio link (needs a transceiver AND an antenna).");
+        r.Check(ps.Has(CADRole.Transceiver) && ps.Has(CADRole.Antenna), "Radio + antenna installed.", "No radio: add a radio (transceiver) and an antenna.");
         r.Check(ps.Has(CADRole.ADCSIntegrated) || (ps.Has(CADRole.ADCSActuator) && ps.Has(CADRole.ADCSSensor)),
-            "Attitude control (sensors + actuators).", "No attitude control: add an integrated ADCS, or sensors plus wheels/torquers.");
+            "Attitude control (sensors + actuators).", "Can't point itself: add an ADCS unit (attitude control).");
         r.Check(ps.Has(CADRole.Thermal), "Thermal control installed.", "No thermal control: electronics may overheat or freeze.", false);
-        r.Check(ps.instruments > 0, $"{ps.instruments} scientific instrument(s) on board.", "No scientific instrument: the satellite has no mission.");
+        r.Check(ps.instruments > 0, $"{ps.instruments} scientific instrument(s) on board.", "No science instrument: the satellite has nothing to do!");
         r.Check(ps.volumeUsed <= ps.volumeCap + 1e-3f, $"Internal volume {ps.volumeUsed:0.##}/{ps.volumeCap:0.##} L.",
-            $"Internal components need {ps.volumeUsed:0.##} L but structures only hold {ps.volumeCap:0.##} L.");
+            $"Too many parts inside: need {ps.volumeUsed:0.##} L, room for {ps.volumeCap:0.##} L.");
         if (mission == AscendSimMission.MoonMapper)
-            r.Check(ps.satDeltaV >= AscendMissionGuide.MoonBrakeDv, $"Satellite propulsion {ps.satDeltaV:N0} m/s can brake into orbit around the Moon.",
-                $"Satellite propulsion is only {ps.satDeltaV:N0} m/s; braking into orbit around the Moon needs about {AscendMissionGuide.MoonBrakeDv:N0} m/s. Add hydrazine modules.");
+            r.Check(ps.satDeltaV >= AscendMissionGuide.MoonBrakeDv, $"Enough engine power to stop at the Moon ({ps.satDeltaV:N0} m/s).",
+                $"Not enough engine power to stop at the Moon: {ps.satDeltaV:N0} of {AscendMissionGuide.MoonBrakeDv:N0} m/s. Add fuel (hydrazine) modules.");
         return r;
     }
 }
@@ -1593,16 +1593,57 @@ public static class AscendEconomy
             parts = p.costUSD, total = p.costUSD
         });
         if (!p.isTransporter && string.IsNullOrEmpty(SelectedPad)) SelectedPad = p.id;
+        Log("Launch pad: " + p.name, -p.costUSD);
         Save(); Changed?.Invoke();
         return true;
     }
 
     public static void ChoosePad(string id) { SelectedPad = id; Save(); Changed?.Invoke(); }
 
+    // ── Bank ledger (shown in the ASCEND BANK phone app) ──
+    public class LedgerEntry { public string date, text; public double amount; }
+    public static readonly List<LedgerEntry> Ledger = new List<LedgerEntry>();
+    static void Log(string text, double amount) =>
+        Ledger.Add(new LedgerEntry { date = DateTime.Now.ToString("MMM d, h:mm tt"), text = text, amount = amount });
+
+    // ── Mission fund held until the mission briefing ──
+    // HoldFund: the fund is "pending" (balance 0) until ReleaseFund is called after the briefing.
+    public static bool FundHeld { get; private set; }
+    public static bool FundReleased { get; private set; }
+    public static double PendingFund { get; private set; }
+    public static event Action<double> FundDeposited;
+
+    public static void HoldFund()
+    {
+        if (FundReleased || FundHeld) return;
+        FundHeld = true;
+        if (ready)
+        {
+            PendingFund = Balance; Balance = 0;
+            Ledger.RemoveAll(e => e.amount > 0 && e.text.StartsWith("Government of the Philippines"));
+            Changed?.Invoke();
+        }
+    }
+
+    public static void ReleaseFund(string from = "Government of the Philippines - mission fund")
+    {
+        if (FundReleased) return;
+        FundReleased = true;
+        if (!FundHeld) return;
+        FundHeld = false;
+        double amt = PendingFund; PendingFund = 0;
+        Balance += amt;
+        Log(from, amt);
+        Save(); Changed?.Invoke();
+        FundDeposited?.Invoke(amt);
+    }
+
     // Money from (or taken back by) the government after a mission
     public static void Grant(double usd)
     {
+        double before = Balance;
         Balance = Math.Max(0, Balance + usd);
+        if (Math.Abs(Balance - before) > 0.5) Log(usd >= 0 ? "Government funding (mission results)" : "Funding returned to government", Balance - before);
         Save(); Changed?.Invoke();
     }
 
@@ -1616,7 +1657,11 @@ public static class AscendEconomy
         ready = true; cfg = d;
         configuredFund = FundOf(d);
         Balance = configuredFund;
+        bool loaded = d.saveProgress && PlayerPrefs.HasKey(SaveKey);
         if (d.saveProgress) Load();
+        if (loaded) { FundHeld = false; FundReleased = true; }
+        else if (FundHeld) { PendingFund = Balance; Balance = 0; }
+        else Log("Government of the Philippines - mission fund", Balance);
         if (string.IsNullOrEmpty(SelectedPad) && d.launchPads != null)          // start on the free pad
             foreach (var p in d.launchPads) if (p != null && p.ownedFromStart && !p.isTransporter) { SelectedPad = p.id; break; }
     }
@@ -1629,7 +1674,8 @@ public static class AscendEconomy
         cfg = d;
         double f = FundOf(d);
         if (Math.Abs(f - configuredFund) < 0.5) return;
-        Balance = Math.Max(0, Balance + (f - configuredFund));
+        if (FundHeld) PendingFund = Math.Max(0, PendingFund + (f - configuredFund));
+        else Balance = Math.Max(0, Balance + (f - configuredFund));
         configuredFund = f;
         Save(); Changed?.Invoke();
     }
@@ -1640,6 +1686,7 @@ public static class AscendEconomy
     {
         ready = false; cfg = null; Balance = 0; configuredFund = 0; receiptNo = 1;
         Inventory.Clear(); Receipts.Clear(); OwnedPads.Clear(); SelectedPad = null;
+        Ledger.Clear(); FundHeld = FundReleased = false; PendingFund = 0; FundDeposited = null;
     }
 
     public static int Owned(string id) => Inventory.TryGetValue(id, out var n) ? n : 0;
@@ -1678,6 +1725,7 @@ public static class AscendEconomy
     {
         if (r.total > Balance + 0.01) return false;
         Balance -= r.total;
+        Log("AscendCAD parts order " + r.number, -r.total);
         foreach (var l in r.lines) { int buy = l.qty - l.owned; if (buy > 0) Inventory[l.partId] = Owned(l.partId) + buy; }
         Receipts.Add(r); receiptNo++;
         Save(); Changed?.Invoke();
@@ -1764,6 +1812,9 @@ public static class AscendMail
     }
 
     public static void MarkRead(Message m) { if (m != null && !m.read) { m.read = true; Changed?.Invoke(); } }
+
+    // The mission briefing flow sends its own emails, so it turns the generic welcome email off
+    public static void SkipWelcome() { welcomed = true; }
 
     public static void EnsureWelcome(AscendCADData d)
     {
@@ -3937,7 +3988,7 @@ public static class AscendMissionGuide
             bool any = rocket != null && !rocket.IsEmpty;
             l.Add(new Item(any && rs.stages.Count > 0 && rs.stages[0].engines > 0 && rs.engineIssues.Count == 0,
                 sky ? "A motor at the bottom" : "Engines that can fire at liftoff", rs.engineIssues.Count > 0 ? rs.engineIssues[0] : "Stage 1 needs sea-level engines or a motor"));
-            l.Add(new Item(any && rs.liftoffTWR >= data.minLiftoffTWR, $"Strong enough to lift off", $"Thrust-to-weight {rs.liftoffTWR:0.00} (need {data.minLiftoffTWR:0.0} or more)"));
+            l.Add(new Item(any && rs.liftoffTWR >= data.minLiftoffTWR, $"Strong enough to lift off", $"Push is {rs.liftoffTWR:0.00}x its weight (needs {data.minLiftoffTWR:0.0}x)"));
             l.Add(new Item(any && rs.deltaV >= req, $"Enough push for {Title}", $"Delta-v {rs.deltaV:N0} of {req:N0} m/s"));
             l.Add(new Item(rs.Has(CADRole.FlightComputer), "Flight computer: the rocket's brain", sky ? "Hobby altimeter computer" : "Install it inside an avionics bay"));
             if (sky) l.Add(new Item(rs.Has(CADRole.Aero) || rs.Has(CADRole.IMU), "Fins to fly straight", "3-4 fins near the bottom (or an IMU)"));
@@ -3971,8 +4022,8 @@ public static class AscendMissionGuide
                 if (rocket != null) foreach (var pl in rocket.parts) { var p = data.Get(pl.partId); if (p != null && p.innerDiameter > 0f) { fairing = p; break; } }
                 l.Add(new Item(fairing != null && ps.stowedWidth <= fairing.innerDiameter && ps.stowedHeight <= fairing.innerHeight,
                     sky ? "CanSat fits in the payload bay" : "Satellite fits inside the fairing",
-                    fairing != null ? $"Folded {ps.stowedWidth:0.##} x {ps.stowedHeight:0.##} m, space Ø{fairing.innerDiameter:0.##} x {fairing.innerHeight:0.##} m" : "No fairing / payload bay yet"));
-                l.Add(new Item(any && rs.maxPayloadLEO >= ps.wetMass, "Can carry the payload", $"Payload {AscendReport.Mass(ps.wetMass)}, rocket can carry {AscendReport.Mass(rs.maxPayloadLEO)} for this mission"));
+                    fairing != null ? $"Satellite {ps.stowedWidth:0.##} x {ps.stowedHeight:0.##} m, room {fairing.innerDiameter:0.##} x {fairing.innerHeight:0.##} m" : "Add a nose cover (fairing) on top"));
+                l.Add(new Item(any && rs.maxPayloadLEO >= ps.wetMass, "Can carry the payload", $"Satellite {AscendReport.Mass(ps.wetMass)}, rocket can carry {AscendReport.Mass(rs.maxPayloadLEO)}"));
             }
             return l;
         }
@@ -3993,7 +4044,7 @@ public static class AscendMissionGuide
         }
         l.Add(new Item(ps.Has(CADRole.SatStructure), "Structure (frame or bus)", ""));
         l.Add(new Item(ps.Has(CADRole.Separation), "Separation system", "To leave the rocket"));
-        l.Add(new Item(ps.Has(CADRole.SolarPanel) && ps.powerGen >= ps.powerUse * data.powerMargin, "Solar panels make enough power", $"{ps.powerGen:0.#} W made, {ps.powerUse:0.#} W used (+{(data.powerMargin - 1f) * 100f:0}%)"));
+        l.Add(new Item(ps.Has(CADRole.SolarPanel) && ps.powerGen >= ps.powerUse * data.powerMargin, "Solar panels make enough power", $"Makes {ps.powerGen:0.#} W, uses {ps.powerUse:0.#} W"));
         l.Add(new Item(ps.Has(CADRole.EPS), "Power system (EPS)", ""));
         l.Add(new Item(ps.batteryWh >= ps.batteryNeedWh && ps.batteryWh > 0f, "Battery for the dark side of Earth", $"{ps.batteryWh:0} of {ps.batteryNeedWh:0} Wh"));
         l.Add(new Item(ps.Has(CADRole.OBC), "On-board computer", ""));
@@ -4003,7 +4054,7 @@ public static class AscendMissionGuide
         l.Add(new Item(ps.Has(CADRole.Thermal), "Thermal control", "Keeps electronics at a safe temperature"));
         l.Add(new Item(ps.volumeUsed <= ps.volumeCap + 1e-3f, "Everything fits inside", $"{ps.volumeUsed:0.##} of {ps.volumeCap:0.##} L"));
         if (m == AscendSimMission.MoonMapper)
-            l.Add(new Item(ps.satDeltaV >= MoonBrakeDv, "Own engine to brake at the Moon", $"{ps.satDeltaV:N0} of {MoonBrakeDv:N0} m/s (add hydrazine modules)"));
+            l.Add(new Item(ps.satDeltaV >= MoonBrakeDv, "Own engine to brake at the Moon", $"Braking power {ps.satDeltaV:N0} of {MoonBrakeDv:N0} m/s (add fuel modules)"));
         return l;
     }
 
@@ -4261,8 +4312,8 @@ public static class AscendMissionGuide
             // Margin so small building differences can't turn a GO into a NO-GO
             var rv = CADReview.RocketOnly(d, pay, data, out _);
             if (rv.errors.Count > 0) o.problem = rv.errors[0];
-            else if (rs.liftoffTWR < data.minLiftoffTWR * 1.08f) o.problem = $"Thrust-to-weight {rs.liftoffTWR:0.00} is too close to the {data.minLiftoffTWR:0.0} minimum";
-            else if (rs.deltaV < req * 1.03f) o.problem = $"Delta-v {rs.deltaV:N0} m/s has no spare over the {req:N0} m/s needed";
+            else if (rs.liftoffTWR < data.minLiftoffTWR * 1.08f) o.problem = $"Only just strong enough to lift off ({rs.liftoffTWR:0.00}x its weight)";
+            else if (rs.deltaV < req * 1.03f) o.problem = $"No spare fuel: {rs.deltaV:N0} of {req:N0} m/s needed";
             o.works = o.problem == null;
             o.liftsOff = rs.liftoffTWR >= data.minLiftoffTWR;
             // Which pad to use: one you own first, otherwise the cheapest that fits
@@ -4279,7 +4330,7 @@ public static class AscendMissionGuide
             else if (padFit != null) o.why = $"Launch it from the {padFit.name} (select it on the Launch Pad tab).";
             o.affordable = o.cost <= avail + 0.01;
             o.margin = req > 0 ? rs.deltaV / req : 0f;
-            o.summary = $"{rs.stages.Count} stage(s), {AscendReport.Mass(rs.wetMass)}, delta-v {rs.deltaV:N0}/{req:N0} m/s, TWR {rs.liftoffTWR:0.00}, carries {AscendReport.Mass(rs.maxPayloadLEO)}";
+            o.summary = $"{rs.stages.Count} stage(s)  |  {AscendReport.Mass(rs.wetMass)}  |  carries {AscendReport.Mass(rs.maxPayloadLEO)}";
             all.Add(o);
         }
         // Only suggest rockets that really fly the mission in the simulator (checked cheapest first, max 3 that pass + 1 spare)
@@ -4404,6 +4455,7 @@ public static class AUI
         var t = go.AddComponent<TextMeshProUGUI>();
         if (Font) t.font = Font;
         t.text = s; t.fontSize = FixedFontSize > 0f ? FixedFontSize : size * FontScale; t.color = c; t.fontStyle = st; t.raycastTarget = false; t.richText = true;
+        t.lineSpacing = 10f; t.paragraphSpacing = 4f;
         return t;
     }
 
@@ -4650,7 +4702,7 @@ public class AscendCADScreen
         open.Add(CADBuilder.Rocket + "/Propulsion");
         open.Add(CADBuilder.Payload + "/Satellite Structure");
         SetMode(CADBuilder.Rocket);
-        Status("Pick a part on the left, then click in the 3D view to place it. Right-drag or left-drag to orbit.", Sub);
+        Status("Pick a part on the left, then click the 3D view to place it. Drag to turn the view.", Sub);
     }
 
     // ───────────────────────────── 3D workspace ─────────────────────────────
@@ -5264,12 +5316,12 @@ public class AscendCADScreen
     Plan InternalPlan(CADPart p, int ti, CADPart tp, CADPlaced T)
     {
         if (tp.internalVolumeL <= 0f)
-            return Fail($"{tp.name} has no room inside. Avionics go in an Avionics Bay or Interstage; satellite parts go in a frame or bus.");
+            return Fail($"{tp.name} has no room inside. Electronics go in an Avionics Bay. Satellite parts go in a frame or bus.");
         float used = 0f;
         for (int i = 0; i < D.parts.Count; i++)
             if (D.parts[i].parent == ti && D.parts[i].link == CADLink.Internal) used += data.Get(D.parts[i].partId)?.volumeL ?? 0f;
         if (used + p.volumeL > tp.internalVolumeL + 1e-4f)
-            return Fail($"Not enough room in {tp.name}: {used:0.##}/{tp.internalVolumeL:0.##} L used, this needs {p.volumeL:0.##} L.");
+            return Fail($"{tp.name} is full ({used:0.##}/{tp.internalVolumeL:0.##} L). This part needs {p.volumeL:0.##} L.");
         var plan = new Plan { ok = true, msg = $"  (inside {tp.name}: {used + p.volumeL:0.##}/{tp.internalVolumeL:0.##} L)" };
         plan.adds.Add(New(p, ti, CADLink.Internal, T.pos, T.rot));
         return plan;
@@ -5289,7 +5341,7 @@ public class AscendCADScreen
             {
                 int above = -1;
                 for (int i = 0; i < D.parts.Count; i++) if (D.parts[i].parent == ti && D.parts[i].link == CADLink.Top) { above = i; break; }
-                if (above < 0) return Fail("Put the upper-stage tank on this interstage first. Its engine goes under that tank and hides inside the interstage.");
+                if (above < 0) return Fail("Put the upper-stage tank on this interstage first. Then its engine goes under that tank.");
                 ti = above; T = D.parts[ti]; tp = data.Get(T.partId);
                 if (tp == null) return Fail("Unknown part.");
             }
@@ -5353,7 +5405,7 @@ public class AscendCADScreen
         }
         if (sym == 1)
         {
-            if (rc > 0f) return Fail("There's already a center engine under this tank. Use symmetry x2 or more to add a ring around it.");
+            if (rc > 0f) return Fail("There is already an engine here. Set symmetry to x2 or more to add a ring of engines.");
             var one = new Plan { ok = true, msg = "  (center engine)" };
             one.adds.Add(New(p, ti, CADLink.Cluster, T.pos + T.rot * (Vector3.up * y0), T.rot));
             return one;
@@ -5361,7 +5413,7 @@ public class AscendCADScreen
         float rr = Mathf.Max(Rt - Re * 1.02f, Re * 1.1f);
         if (rc > 0f) rr = Mathf.Max(rr, rc + Re * 1.05f);
         if (2f * rr * Mathf.Sin(Mathf.PI / sym) < 2f * Re * 0.98f)
-            return Fail($"{sym} x {p.name} don't fit under a Ø{Rt * 2f:0.##} m part. Lower the symmetry or use a wider tank.");
+            return Fail($"{sym} x {p.name} don't fit under this part. Use fewer engines or a wider tank.");
         var plan = new Plan { ok = true, msg = rr + Re > Rt * 1.35f ? "  (nozzles stick out past the tank)" : "  (engine ring)" };
         float y = y0;
         for (int k = 0; k < sym; k++)
@@ -5443,7 +5495,7 @@ public class AscendCADScreen
         var q = AscendEconomy.QuoteCounts(data, counts);
         if (q.total > AscendEconomy.Balance + 0.01)
         {
-            Status($"Over budget: the build would cost {AscendReport.Money(q.total)} but the fund only has {AscendReport.Money(AscendEconomy.Balance)}.", Bad);
+            Status($"Not enough money: this costs {AscendReport.Money(q.total)}, you have {AscendReport.Money(AscendEconomy.Balance)}.", Bad);
             return;
         }
         bool wasEmpty = D.IsEmpty;
@@ -5729,9 +5781,9 @@ public class AscendCADScreen
         var ps = payload.IsEmpty ? null : CADStats.Payload(payload, data);
         var rs = CADStats.Rocket(rocket, data, ps != null ? ps.wetMass : 0f);
         padHeader.text = rocket.IsEmpty
-            ? "Build a rocket first: every pad is checked against your current rocket. Pads are bought once and kept forever."
+            ? "Build a rocket first. Each pad is checked against your rocket. You buy a pad once and keep it."
             : $"Your rocket <b>{rocket.name}</b>: {rs.height:0.#} m tall,  {rs.width:0.#} m wide,  {AscendPads.RocketMassT(rs):N0} t at liftoff.   " +
-              $"Fund {AscendReport.Money(AscendEconomy.Balance)}.   Pads are bought once and kept forever.";
+              $"Money: {AscendReport.Money(AscendEconomy.Balance)}.   You buy a pad once and keep it.";
         int n = 0;
         foreach (var p in data.launchPads) if (p != null) PadCard(p, rs, !rocket.IsEmpty, n++);
     }
@@ -5850,7 +5902,7 @@ public class AscendCADScreen
             }
             catch (Exception e) { sb.Append($"<b>{names[i]}</b>  <color=#F85149>{e.Message}</color>\n\n"); }
         }
-        sb.Append("<color=#9AA0A6>Real hardware is expensive. If one costs more than your fund, turn on <b>Sandbox Mode</b> (or raise the fund) on the AscendCAD Data asset.</color>");
+        sb.Append("<color=#9AA0A6>Real rockets are expensive. Some cost more than your whole fund!</color>");
         var buttons = new List<(string, bool, Action)>();
         for (int i = 0; i < built.Length; i++)
         {
@@ -5888,8 +5940,7 @@ public class AscendCADScreen
             if (!string.IsNullOrEmpty(o.why)) sb.Append("<size=90%><color=#D29922>").Append(o.why).Append("</color></size>\n");
             sb.Append('\n');
         }
-        sb.Append("<color=#9AA0A6>Pick a guide to get <b>one step at a time</b> on the right: a picture of the part, where to click (it glows green), " +
-                  "and a 'Do this step for me' button if you get stuck. Prices are what the parts cost (parts you already own count as free).</color>");
+        sb.Append("<color=#9AA0A6>Pick a guide. It shows <b>one step at a time</b>: which part, where to click (it glows green), and a 'Do this step for me' button. Parts you already own are free.</color>");
 
         var buttons = new List<(string, bool, Action)>();
         foreach (var o in opts) { var oo = o; buttons.Add(("Guide: " + o.tier, true, () => StartGuide(oo))); }
@@ -5937,7 +5988,7 @@ public class AscendCADScreen
             catch (Exception e) { Debug.LogWarning("AscendCAD guide pad: " + e.Message); }
         }
         if (!D.IsEmpty && AscendMissionGuide.Match(guideDesign, D)[0] < 0)
-            Status("Your current design doesn't match this guide. Press 'Start fresh' in the BUILD GUIDE to clear it and begin at step 1.", Bad);
+            Status("Your design doesn't match this guide. Press 'Start fresh' in the BUILD GUIDE to begin again.", Bad);
     }
 
     static string Plain(string s)
@@ -6150,7 +6201,7 @@ public class AscendCADScreen
         var q = AscendEconomy.QuoteCounts(data, counts);
         if (q.total > AscendEconomy.Balance + 0.01)
         {
-            Status($"Over budget: the build would cost {AscendReport.Money(q.total)} but the fund only has {AscendReport.Money(AscendEconomy.Balance)}.", Bad);
+            Status($"Not enough money: this costs {AscendReport.Money(q.total)}, you have {AscendReport.Money(AscendEconomy.Balance)}.", Bad);
             return;
         }
         bool wasEmpty = D.IsEmpty;
@@ -6257,7 +6308,7 @@ public class AscendCADScreen
 
     void ShowMissionPicker()
     {
-        var sb = new System.Text.StringBuilder("Pick the mission to design for. The checklist, the review board and the suggestions follow it.\n\n");
+        var sb = new System.Text.StringBuilder("Pick the mission to design for. The checklist and the suggestions will follow it.\n\n");
         foreach (AscendSimMission m in Enum.GetValues(typeof(AscendSimMission)))
             sb.Append($"<b>{AscendSimPlan.Title(m)}</b>{(m == AscendMissionGuide.Mission ? "  <color=#3FB950>(current)</color>" : "")}\n{AscendSimPlan.Goal(m)}\n\n");
         var buttons = new List<(string, bool, Action)>();
@@ -6349,8 +6400,8 @@ public class AscendCADScreen
     void OnEconomy() { Changed(); BuildSidebar(); }
 
     void OnReview(AscendMail.Message m, CADReview rv) =>
-        Status(rv.Approved ? "APPROVED! Next: open Ascend Mission Simulator to plan the trajectory. Details in PhMail."
-                           : "Design rejected. Open PhMail to see what the board found.", rv.Approved ? Good : Bad);
+        Status(rv.Approved ? "APPROVED! Next: open the Ascend Mission Simulator. Details are in PhMail."
+                           : "Not approved. Open PhMail to see why.", rv.Approved ? Good : Bad);
 
     void ShowInfo()
     {
@@ -6371,9 +6422,9 @@ public class AscendCADScreen
             var list = AscendMissionGuide.Checklist(mode, rocket, payload, data);
             int done = list.Count(x => x.ok);
             infoText.text = $"<b>MISSION GUIDE</b>  <color=#9AA0A6>{done}/{list.Count} done</color>\n" + AscendMissionGuide.ChecklistText(list, false) +
-                "<color=#8AB4F8>Press Mission Guide (top bar) for ready-made suggestions that fit your money.</color>\n\n" + (mode == CADBuilder.Rocket
-                ? "1. Pick an engine and place it.\n2. Stack tanks on top (same propellant!).\n3. Add an Interstage, then the upper stage.\n4. Avionics Bay + flight computer, IMU, battery, FTS, telemetry inside.\n5. Payload adapter, then a fairing on top.\n\n<color=#9AA0A6>Use Googel for research.</color>"
-                : "1. Place a frame or bus.\n2. Put a separation system under it.\n3. Install EPS, battery, computer, radio and ADCS inside.\n4. Add solar panels, an antenna and a scientific instrument outside.\n\n<color=#9AA0A6>Keep the power budget positive!</color>");
+                "<color=#8AB4F8>Need ideas? Press Mission Guide at the top.</color>\n\n" + (mode == CADBuilder.Rocket
+                ? "1. Place an engine.\n2. Stack fuel tanks on top (same fuel type!).\n3. Add an interstage, then the upper stage.\n4. Add an Avionics Bay. Put the computer, IMU, battery, FTS and radio inside.\n5. Add a payload adapter, then a nose cover (fairing).\n\n<color=#9AA0A6>Stuck? Search Googel.</color>"
+                : "1. Place a frame or bus.\n2. Put a separation system under it.\n3. Put power, battery, computer, radio and ADCS inside.\n4. Add solar panels, an antenna and a science instrument outside.\n\n<color=#9AA0A6>Make more power than you use!</color>");
             previewBox.SetActive(false);
             return;
         }
@@ -6483,8 +6534,8 @@ public class AscendCADScreen
         var pay = payload.IsEmpty ? null : payload;
         var rv = CADReview.Run(rocket, pay, data, out var rs, out var ps);
         string head = rv.Approved
-            ? "<color=#3FB950><b>Preliminary check passed.</b></color> The review board will double-check everything.\n\n"
-            : $"<color=#D29922><b>{rv.errors.Count} problem(s) found.</b></color> You can still send it, but the board will probably reject it.\n\n";
+            ? "<color=#3FB950><b>Quick check passed.</b></color> The review board will check everything again.\n\n"
+            : $"<color=#D29922><b>{rv.errors.Count} problem(s) found.</b></color> You can still send it, but it will probably be rejected.\n\n";
         ShowModal("Design data sheet", head + "<b>Checklist</b>\n" + AscendReport.Checks(rv) + "\n" + AscendReport.DataSheet(rocket, pay, rs, ps, data),
             ("Send to " + data.agencyEmail, true, () =>
             {

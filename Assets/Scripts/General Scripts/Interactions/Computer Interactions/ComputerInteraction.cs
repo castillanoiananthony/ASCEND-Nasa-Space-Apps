@@ -60,6 +60,8 @@ public class ComputerInteraction : MonoBehaviour
     public bool maximizeAscendCAD = true;
     [Tooltip("Must match the app name in Apps. The old 'Ascend Rocket Trajectory Calculator' app is renamed to this automatically.")]
     public string simulatorAppName = "Ascend Mission Simulator";
+    [Tooltip("Must match the app name in Apps. Added automatically if missing.")]
+    public string bankAppName = "ASCEND BANK";
     [Tooltip("Open the Mission Simulator full screen the first time (it needs the room).")]
     public bool maximizeSimulator = true;
 
@@ -228,6 +230,7 @@ public class ComputerInteraction : MonoBehaviour
         UiText = uiTextSize; AUI.FixedFontSize = uiTextSize;
         EnsureMailApp();
         EnsureSimulatorApp();
+        EnsureBankApp();
         CreatePrompt();
     }
 
@@ -253,6 +256,7 @@ public class ComputerInteraction : MonoBehaviour
             // Show PhMail in the Inspector's Apps list (so its icon etc. can be set) even before pressing Play
             int before = apps != null ? apps.Length : 0;
             EnsureMailApp();
+            EnsureBankApp();
             bool renamed = EnsureSimulatorApp();
 #if UNITY_EDITOR
             if (apps != null && (apps.Length != before || renamed)) UnityEditor.EditorUtility.SetDirty(this);
@@ -310,6 +314,16 @@ public class ComputerInteraction : MonoBehaviour
         if (apps == null) apps = new DesktopApp[0];
         foreach (var a in apps) if (IsApp(a, mailAppName)) return;
         var list = new List<DesktopApp>(apps) { new DesktopApp(mailAppName, new Color(0.05f, 0.34f, 0.82f)) };
+        apps = list.ToArray();
+    }
+
+    // ASCEND BANK: same app as on the phone
+    void EnsureBankApp()
+    {
+        if (string.IsNullOrEmpty(bankAppName)) return;
+        if (apps == null) apps = new DesktopApp[0];
+        foreach (var a in apps) if (IsApp(a, bankAppName)) return;
+        var list = new List<DesktopApp>(apps) { new DesktopApp(bankAppName, new Color(0.05f, 0.12f, 0.3f)) };
         apps = list.ToArray();
     }
 
@@ -810,6 +824,11 @@ public class ComputerInteraction : MonoBehaviour
         {
             mailScreen = new AscendMailScreen(ascendCAD, promptFont, body);
         }
+        else if (IsApp(app, bankAppName))
+        {
+            try { AscendEconomy.Init(AscendCADData.Resolve(ascendCAD)); } catch (Exception e) { Debug.LogException(e); }
+            new AscendBankScreen(body, promptFont, 1f, 760f);
+        }
         else if (IsApp(app, simulatorAppName))
         {
             // Built-in Ascend Mission Simulator (no prefab needed)
@@ -948,9 +967,11 @@ public class ComputerInteraction : MonoBehaviour
         var img = rt.gameObject.AddComponent<Image>();
         img.raycastTarget = false;
 
-        if (app.icon)
+        // PhMail and ASCEND BANK use the same icons as on the phone
+        Sprite icon = IsApp(app, mailAppName) ? PhoneArt.MailIcon : IsApp(app, bankAppName) ? PhoneArt.BankIcon : app.icon;
+        if (icon)
         {
-            img.sprite = app.icon;
+            img.sprite = icon;
             img.preserveAspect = true;
         }
         else

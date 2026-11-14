@@ -25,6 +25,16 @@ public class CameraScreen : MonoBehaviour
     [Tooltip("Optional. If Track Target is empty, the object with this tag is tracked instead. Leave blank for a fixed camera.")]
     public string trackTag = "";
 
+    [Header("Follow the rocket you built")]
+    [Tooltip("If nothing else is tracked, aim at the rocket built on the launch pad (AscendCAD).")]
+    public bool trackBuiltRocket = true;
+    [Tooltip("Zoom in so the rocket fills the screen, like a real tracking camera.")]
+    public bool autoZoom = true;
+    [Tooltip("How much of the screen height the rocket fills (0.7 = 70%).")]
+    [Range(0.2f, 0.95f)] public float frameFill = 0.7f;
+    [Tooltip("Narrowest zoom (degrees). Smaller = can zoom in further on a far rocket.")]
+    public float minFieldOfView = 1f;
+
     [Header("Launch Shots")]
     [Tooltip("Follow the launch: wide shot, then nose cam. Turn off for a camera that never moves.")]
     public bool useLaunchShots = true;
@@ -73,14 +83,16 @@ public class CameraScreen : MonoBehaviour
     Transform taggedTarget;
     Transform cachedCenterTarget;
     Vector3 cachedCenterLocal;
+    float cachedSize;
+    float homeFov;
 
     // ---------------------------------------------------------------------------------------
 
     void Start()
     {
         if (!playerCamera) playerCamera = Camera.main;
-        if (!uiCanvas) uiCanvas = FindFirstObjectByType<Canvas>();
-        if (!launchConsole) launchConsole = FindFirstObjectByType<RocketLaunchConsole>();
+        if (!uiCanvas) uiCanvas = FindAnyObjectByType<Canvas>();
+        if (!launchConsole) launchConsole = FindAnyObjectByType<RocketLaunchConsole>();
 
         if (!feedCamera)
         {
@@ -99,6 +111,7 @@ public class CameraScreen : MonoBehaviour
         homePos = feedCamera.transform.position;
         homeRot = feedCamera.transform.rotation;
         homeFar = feedCamera.farClipPlane;
+        homeFov = feedCamera.fieldOfView;
 
         BuildScreen();
         SetOn(startOn);
@@ -122,7 +135,8 @@ public class CameraScreen : MonoBehaviour
         if (!launching)
         {
             if (movedByLaunch) RestoreHome();
-            if (target) camT.LookAt(GetCenter(target));
+            if (target) { camT.LookAt(GetCenter(target)); Frame(target); }
+            else if (autoZoom) feedCamera.fieldOfView = Mathf.Lerp(feedCamera.fieldOfView, homeFov, Time.deltaTime * 2f);
             return;
         }
 
@@ -163,10 +177,24 @@ public class CameraScreen : MonoBehaviour
         if (target) camT.LookAt(GetCenter(target));
     }
 
+    // Zoom so the target fills the frame, and see far enough to keep it in view
+    void Frame(Transform target)
+    {
+        if (!autoZoom) return;
+        Vector3 c = GetCenter(target);
+        float dist = Vector3.Distance(feedCamera.transform.position, c);
+        float size = Mathf.Max(1f, cachedSize);
+        float fov = 2f * Mathf.Atan(size * 0.5f / Mathf.Max(0.1f, frameFill) / Mathf.Max(0.5f, dist)) * Mathf.Rad2Deg;
+        fov = Mathf.Clamp(fov, minFieldOfView, Mathf.Max(homeFov, 60f));
+        feedCamera.fieldOfView = Mathf.Lerp(feedCamera.fieldOfView, fov, 1f - Mathf.Exp(-Time.deltaTime * 4f));
+        feedCamera.farClipPlane = Mathf.Max(homeFar, dist + size * 4f + 500f);
+    }
+
     void RestoreHome()
     {
         feedCamera.transform.SetPositionAndRotation(homePos, homeRot);
         feedCamera.farClipPlane = homeFar;
+        feedCamera.fieldOfView = homeFov;
         movedByLaunch = false;
         widenPlanned = false;
     }
@@ -200,7 +228,8 @@ public class CameraScreen : MonoBehaviour
     Transform ResolveTarget()
     {
         if (trackTarget) return trackTarget;
-        if (string.IsNullOrEmpty(trackTag)) return null;
+        if (string.IsNullOrEmpty(trackTag))
+            return trackBuiltRocket && AscendLaunchSite.Current ? AscendLaunchSite.Current.transform : null;
         if (!taggedTarget)
         {
             var go = GameObject.FindWithTag(trackTag);
@@ -227,6 +256,7 @@ public class CameraScreen : MonoBehaviour
                 else b.Encapsulate(r.bounds);
             }
             cachedCenterLocal = t.InverseTransformPoint(any ? b.center : t.position);
+            cachedSize = any ? Mathf.Max(b.size.y, Mathf.Max(b.size.x, b.size.z) * 0.6f) : 1f;
         }
         return t.TransformPoint(cachedCenterLocal);
     }

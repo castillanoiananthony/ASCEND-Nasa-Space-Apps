@@ -966,7 +966,7 @@ public class AscendMissionSimulatorApp : MonoBehaviour
         ShowResult();
         DrawResult();
         BuildSuggestions();
-        SetStatus(result.go ? "It works! Press SEND TO MISSION CONTROL." : "This path doesn't work with your rocket. Try another one, or see HOW TO FIX IT.", result.go ? Good : Bad);
+        SetStatus(result.go ? "It works! Press SEND TO MISSION CONTROL." : "This flight path doesn't work with your rocket. Try another one, or read HOW TO FIX IT.", result.go ? Good : Bad);
     }
 
     void ToggleAdvanced()
@@ -1175,7 +1175,7 @@ public class AscendMissionSimulatorApp : MonoBehaviour
             var rs = AscendMissionControl.ApprovedStats;
             var p = AscendMissionControl.ApprovedPayload;
             rocketInfo.text = $"<b>{d.name}</b>" + (p != null ? $" carrying <b>{p.name}</b>" : " <color=#D29922>(no payload)</color>") + "\n" +
-                (rs != null ? $"Liftoff mass {AscendReport.Mass(rs.wetMass + rs.payloadMass)}\nStages {rs.stages.Count}   Delta-v {rs.deltaV:N0} m/s\nThrust-to-weight {rs.liftoffTWR:0.00}" : "");
+                (rs != null ? $"Liftoff mass {AscendReport.Mass(rs.wetMass + rs.payloadMass)}\nStages {rs.stages.Count}   Fuel power {rs.deltaV:N0} m/s\nPush vs weight {rs.liftoffTWR:0.00}x" : "");
             emptyMsg.text = result == null ? "Pick a flight path on the left." : "";
         }
         RefreshPictures(d, AscendMissionControl.ApprovedPayload);
@@ -1220,17 +1220,17 @@ public class AscendMissionSimulatorApp : MonoBehaviour
         switch (mission)
         {
             case AscendSimMission.SkySensor:
-                suggestText.text = "<color=#9AA0A6>How it flies: up the launch rail, the motor burns out, the rocket coasts to the top, the CanSat pops out and parachutes down at about 8 m/s.</color>";
+                suggestText.text = "<color=#9AA0A6>How it flies: the motor burns, the rocket coasts to the top, then the CanSat pops out and floats down on its parachute.</color>";
                 targetLabel.text = "Highest point (apogee)";
                 kickLabel.text = "Launch rail tilt";
                 break;
             case AscendSimMission.EarthWatcher:
-                suggestText.text = "<color=#9AA0A6>How it flies: straight up, a small pitch kick, a gravity turn, engines off when the orbit's top reaches the target, coast up, then a burn at the top rounds out the orbit.</color>";
+                suggestText.text = "<color=#9AA0A6>How it flies: straight up, then it slowly tips over. The engines stop when the orbit is high enough, and one more burn at the top makes the orbit round.</color>";
                 targetLabel.text = "Orbit height";
                 kickLabel.text = "Pitch kick (tilt after liftoff)";
                 break;
             default:
-                suggestText.text = "<color=#9AA0A6>How it flies: launch east into a parking orbit, burn toward the Moon (trans-lunar injection, ~3.1 km/s), travel ~5 days, brake into a 50 km lunar orbit (~0.85 km/s).</color>";
+                suggestText.text = "<color=#9AA0A6>How it flies: into orbit around Earth, a big burn toward the Moon, 3 to 5 days of travel, then a braking burn to circle the Moon.</color>";
                 targetLabel.text = "Parking orbit height";
                 kickLabel.text = "Pitch kick (tilt after liftoff)";
                 break;
@@ -1287,7 +1287,7 @@ public class AscendMissionSimulatorApp : MonoBehaviour
             if (mission == AscendSimMission.SkySensor) sb.Append($"  top {r.apogeeKm * 1000f:N0} m");
             else if (r.orbit) sb.Append($"  orbit {r.apoKm:N0} x {r.periKm:N0} km");
             else sb.Append($"  top {r.apogeeKm:N0} km");
-            sb.Append($"\n<size=90%><color=#9AA0A6>Max Q {r.maxQ / 1000f:0.0} kPa, max {r.maxG:0.0} g" + (mission != AscendSimMission.SkySensor ? $", {r.dvLeft:N0} m/s left" : "") + "</color></size>\n");
+            sb.Append($"\n<size=90%><color=#9AA0A6>Air push {r.maxQ / 1000f:0.0} kPa, max {r.maxG:0.0} g" + (mission != AscendSimMission.SkySensor ? $", {r.dvLeft:N0} m/s left" : "") + "</color></size>\n");
         }
         compareText.text = sb.ToString();
         DrawCompare();
@@ -1326,8 +1326,8 @@ public class AscendMissionSimulatorApp : MonoBehaviour
         verdictTitle.text = result.go ? "IT WORKS!" + (result.verdict != "GO" ? "  <size=70%>(" + result.verdict.Replace("GO ", "").Trim('(', ')') + ")</size>" : "") : result.verdict;
         verdictBody.text = result.kid;
         details.text = "<b>Engineer's note</b>\n<color=#9AA0A6>" + result.expert + "</color>\n" +
-                       $"Liftoff thrust-to-weight {result.liftoffTWR:0.00}\nMax Q {result.maxQ / 1000f:0.0} kPa   Max {result.maxG:0.0} g" +
-                       (mission != AscendSimMission.SkySensor ? $"\nPush (delta-v) left in the rocket {result.dvLeft:N0} m/s" : "");
+                       $"Push vs weight at liftoff {result.liftoffTWR:0.00}x\nStrongest air push {result.maxQ / 1000f:0.0} kPa   Max {result.maxG:0.0} g" +
+                       (mission != AscendSimMission.SkySensor ? $"\nFuel power left {result.dvLeft:N0} m/s" : "");
         bool showFix = !result.go && !string.IsNullOrEmpty(result.fix);
         fixHeader.gameObject.SetActive(showFix); fixText.gameObject.SetActive(showFix);
         fixText.text = showFix ? result.fix : "";
