@@ -24,7 +24,7 @@ public class TrailerDirector : MonoBehaviour
 {
     public string mainMenuScene = "Main Menu";
     const int RigLayer = 31;
-    static readonly Vector3 RigOrigin = new Vector3(52000f, 52000f, 52000f);
+    static readonly Vector3 RigOrigin = new Vector3(0f, 3000f, 0f);   // near the origin: far away, float precision makes small things shake
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void Hook() { SceneManager.sceneLoaded -= OnLoaded; SceneManager.sceneLoaded += OnLoaded; Try(); }
@@ -37,7 +37,8 @@ public class TrailerDirector : MonoBehaviour
 
     Camera cam, spaceCam, rigCam;
     CanvasGroup fade, flash;
-    TextMeshProUGUI caption, sub, title, tagline, count;
+    TextMeshProUGUI caption, sub, title, glow, tagline, count;
+    RectTransform line;
     AscendCADData data;
     Vector3 site; float rocketH = 40f;
     GameObject rocket; Transform rocketBody;
@@ -183,7 +184,8 @@ public class TrailerDirector : MonoBehaviour
         away = TowerFrame();
 
         // map parts (same order as the build, skipping internal parts) and find the engines + first stage
-        int child = 0; float decY = float.MaxValue;
+        int child = 0; float decY = float.MaxValue, lowEng = float.MaxValue;
+        for (int i = 0; i < design.parts.Count; i++) { var p = data.Get(design.parts[i].partId); if (p != null && (p.role == CADRole.Engine || p.role == CADRole.SolidMotor)) lowEng = Mathf.Min(lowEng, design.parts[i].pos.y); }
         for (int i = 0; i < design.parts.Count; i++) { var p = data.Get(design.parts[i].partId); if (p != null && p.role == CADRole.Decoupler) decY = Mathf.Min(decY, design.parts[i].pos.y); }
         for (int i = 0; i < design.parts.Count; i++)
         {
@@ -194,7 +196,8 @@ public class TrailerDirector : MonoBehaviour
             if (t.name.StartsWith("Payload - ")) { child--; continue; }
             parts.Add(t);
             if (p.role == CADRole.Engine || p.role == CADRole.SolidMotor) engines.Add(t);
-            if (design.parts[i].pos.y < decY - 0.01f) lowerStage.Add(t);
+            bool isEngine = p.role == CADRole.Engine || p.role == CADRole.SolidMotor;
+            if (isEngine ? design.parts[i].pos.y <= lowEng + 1.5f && lowEng < decY : design.parts[i].pos.y < decY - 0.01f) lowerStage.Add(t);
         }
         // payload is the last part to arrive
         for (int c = 0; c < rocketBody.childCount; c++) if (rocketBody.GetChild(c).name.StartsWith("Payload - ")) parts.Add(rocketBody.GetChild(c));
@@ -245,7 +248,7 @@ public class TrailerDirector : MonoBehaviour
 
         // ignition
         foreach (var e in engines) if (lowerStage.Contains(e)) Ignite(e, 1.4f);
-        if (engines.Count > 0 && fx.Count == 0) foreach (var e in engines) Ignite(e, 1.2f);
+        StartCoroutine(GroundCloud());
         Caption("LAUNCH.", "");
         float t0 = Time.time;
         Vector3 basePos = rocket.transform.position;
@@ -257,19 +260,21 @@ public class TrailerDirector : MonoBehaviour
             cam.transform.position += UnityEngine.Random.insideUnitSphere * Mathf.Clamp01(1.5f - y / 120f) * 0.15f;
         };
         // low angle: the rocket clears the tower
-        var gAng = Clear(new Vector3(rocketH * 0.9f, 2.2f, -rocketH * 1.1f), 0.3f, 2f);
-        Vector3 g1 = site + gAng * new Vector3(rocketH * 0.9f, 2.2f, -rocketH * 1.1f);
-        yield return Shot(3f, k => g1 + Vector3.up * 2f * k, k => rocket.transform.position + Vector3.up * rocketH * 0.75f, 52f, 46f, 0.08f, climb);
+        // ignition: engines, flame and the smoke cloud in frame, then tilt up as it climbs
+        var gOff = new Vector3(rocketH * 0.85f, 2.5f, -rocketH * 1.15f);
+        var gAng = Clear(gOff, 0f, 1.2f);
+        Vector3 g1 = site + gAng * gOff;
+        yield return Shot(3f, k => g1 + Vector3.up * 2f * k, k => rocket.transform.position + Vector3.up * rocketH * Mathf.Lerp(0.22f, 0.5f, k), 50f, 44f, 0.08f, climb);
         // tracking shot from the side
         var tAng = Clear(new Vector3(-rocketH * 1.5f, rocketH * 0.5f, -rocketH * 2f), 0.8f, 1.6f);
         yield return Shot(2.2f, k => rocket.transform.position + tAng * new Vector3(-rocketH * 1.5f, rocketH * (0.2f + 0.4f * k), -rocketH * 2f), k => rocket.transform.position + Vector3.up * rocketH * 0.5f, 42f, 38f, 0.06f, climb);
 
         // high in a dark sky: stage separation
-        yield return Fade(0f, 1f, 0.2f);
+        yield return Fade(0f, 1f, 0.4f);
         rocket.transform.position = basePos + Vector3.up * 52000f;
         AscendSky.SetAltitude(52000f);
         var cleanup = new List<GameObject>();
-        StartCoroutine(Fade(1f, 0f, 0.25f));
+        StartCoroutine(Fade(1f, 0f, 0.5f));
         Caption("", "STAGE SEPARATION   //   T+02:41   //   52 KM");
         Vector3 up = Vector3.up;
         float tSep = Time.time + 1.1f; bool separated = false;
@@ -298,12 +303,44 @@ public class TrailerDirector : MonoBehaviour
         };
         Vector3 off = new Vector3(rocketH * 1.4f, -rocketH * 0.2f, -rocketH * 1.6f);
         yield return Shot(3f, k => rocket.transform.position + off + Vector3.down * rocketH * 0.6f * k, k => rocket.transform.position + Vector3.up * rocketH * (0.35f - 0.25f * k), 38f, 46f, 0.04f, high);
-        yield return Flash();
+        yield return Fade(0f, 1f, 0.7f);   // soft fade to black into orbit
         foreach (var f in fx) if (f) Destroy(f.gameObject);
         fx.Clear();
         if (dropped) Destroy(dropped.gameObject);
         if (rocket) rocket.SetActive(false);
         if (AscendLaunchSite.CurrentPad) AscendLaunchSite.CurrentPad.SetActive(false);
+    }
+
+    // billowing exhaust cloud rolling out across the pad at liftoff
+    IEnumerator GroundCloud()
+    {
+        Vector3 c = site + Vector3.up * 2f;
+        // engine glow: lights the smoke and the pad orange, flickering
+        var glowL = new GameObject("Engine Glow").AddComponent<Light>();
+        glowL.type = LightType.Point; glowL.color = new Color(1f, 0.55f, 0.2f); glowL.range = rocketH * 0.9f; glowL.shadows = LightShadows.None;
+        glowL.transform.SetParent(rocket.transform, false);
+        glowL.transform.position = site + Vector3.up * 0.5f;
+        StartCoroutine(Flicker(glowL));
+        for (int wave = 0; wave < 5; wave++)
+        {
+            for (int i = 0; i < 5; i++)
+            {
+                float a = (i / 5f + wave * 0.11f) * Mathf.PI * 2f;
+                Vector3 dir = new Vector3(Mathf.Cos(a), 0.15f, Mathf.Sin(a));
+                AscendFX.Puff(c + dir * (4f + wave * 3f), 6f + wave * 1.2f, dir, dir * (10f + wave * 2f));
+            }
+            yield return new WaitForSeconds(0.45f);
+        }
+    }
+
+    IEnumerator Flicker(Light l)
+    {
+        for (float a = 0f; l && a < 9f; a += Time.deltaTime)
+        {
+            l.intensity = Mathf.Min(1f, a * 3f) * (14f + 6f * Mathf.PerlinNoise(a * 9f, 0.3f)) * Mathf.Clamp01(1.5f - a / 6f);
+            yield return null;
+        }
+        if (l) Destroy(l.gameObject);
     }
 
     void Ignite(Transform e, float size)
@@ -347,10 +384,9 @@ public class TrailerDirector : MonoBehaviour
         cam.enabled = false;
 
         // satellite (real size) with its own sun
-        var sat = AscendTemplates.AutoSat(AscendSimMission.EarthWatcher, 0, data);
-        var satGo = AscendLaunchSite.BuildDesign(sat, data, null, RigLayer, false);
-        foreach (var tr in satGo.GetComponentsInChildren<Transform>()) tr.gameObject.layer = RigLayer;
+        var satGo = ClassicSatellite();
         satGo.transform.position = RigOrigin;
+        satGo.transform.rotation = Quaternion.Euler(0f, 30f, 0f);
         spawned.Add(satGo);
         var rsun = new GameObject("Trailer Sat Sun").AddComponent<Light>(); rsun.type = LightType.Directional; rsun.cullingMask = 1 << RigLayer; rsun.intensity = 1.7f;
         rsun.transform.rotation = Quaternion.LookRotation(-s); spawned.Add(rsun.gameObject);
@@ -364,8 +400,8 @@ public class TrailerDirector : MonoBehaviour
         Vector3 camEarth = AscendEarth.Center + earth.WorldDir(4f, 118f) * (AscendEarth.RadiusKm + 700f);
         Vector3 lookEarth = AscendEarth.Center + earth.WorldDir(13f, 123f) * AscendEarth.RadiusKm;
         Caption("EXPLORE.", "FOR THE PHILIPPINES   //   700 KM ABOVE HOME");
-        StartCoroutine(Fade(1f, 0f, 0.6f));
-        float t = 0f, secs = 5.4f;
+        StartCoroutine(Fade(1f, 0f, 1f));
+        float t = 0f, secs = 5f;
         while (t < secs)
         {
             float k = Ease(t / secs);
@@ -373,8 +409,8 @@ public class TrailerDirector : MonoBehaviour
             spaceCam.transform.position = camEarth; spaceCam.transform.rotation = rot;
             rigCam.transform.rotation = rot; rigCam.fieldOfView = spaceCam.fieldOfView = Mathf.Lerp(48f, 42f, k);
             // the satellite drifts across the frame, slowly turning
-            rigCam.transform.position = sb.center - rot * Vector3.forward * sz * Mathf.Lerp(3.2f, 2.4f, k) + rot * Vector3.right * sz * Mathf.Lerp(0.8f, -0.5f, k);
-            satGo.transform.Rotate(Vector3.up, 6f * Time.deltaTime, Space.World);
+            rigCam.transform.position = sb.center - rot * Vector3.forward * sz * Mathf.Lerp(1.9f, 1.45f, k) + rot * Vector3.right * sz * Mathf.Lerp(0.45f, -0.25f, k);
+            satGo.transform.RotateAround(sb.center, Vector3.up, 5f * Time.deltaTime);
             earth.Spin(0.4f * Time.deltaTime, Time.deltaTime);
             t += Time.deltaTime;
             yield return null;
@@ -383,15 +419,44 @@ public class TrailerDirector : MonoBehaviour
     }
 
     // ───────────────────────── 5. TITLE (28-30 s) ─────────────────────────
+    // Pure black. A beat of silence. A white line cuts the dark, ASCEND slams together out of wide-spaced letters,
+    // a white glow pulses through it, the tagline rises underneath. Hold. Cut to black.
     IEnumerator TitleCard()
     {
         Caption("", "");
-        title.text = "ASCEND"; tagline.text = "DESIGN.   LAUNCH.   EXPLORE.";
         var g = title.transform.parent.GetComponent<CanvasGroup>();
-        for (float a = 0f; a < 0.7f; a += Time.deltaTime) { g.alpha = a / 0.7f; title.characterSpacing = Mathf.Lerp(60f, 24f, Ease(a / 0.7f)); yield return null; }
-        g.alpha = 1f;
-        yield return new WaitForSeconds(1.3f);
-        for (float a = 0f; a < 0.5f; a += Time.deltaTime) { g.alpha = 1f - a / 0.5f; yield return null; }
+        fade.alpha = 1f; g.alpha = 1f;
+        title.text = "ASCEND"; title.alpha = 0f; glow.text = "ASCEND"; glow.alpha = 0f;
+        tagline.text = "DESIGN.     LAUNCH.     EXPLORE."; tagline.alpha = 0f;
+        line.sizeDelta = new Vector2(0f, 2f);
+        yield return new WaitForSeconds(0.35f);                                   // silence
+        for (float a = 0f; a < 0.45f; a += Time.deltaTime)                       // the line cuts across
+        { line.sizeDelta = new Vector2(Mathf.Lerp(0f, 1100f, 1f - Mathf.Pow(1f - a / 0.45f, 3f)), 2f); yield return null; }
+        line.sizeDelta = new Vector2(1100f, 2f);
+        var tr = (RectTransform)title.transform;
+        for (float a = 0f; a < 1.1f; a += Time.deltaTime)                        // letters collapse together
+        {
+            float k = 1f - Mathf.Pow(1f - a / 1.1f, 4f);
+            title.alpha = Mathf.Clamp01(a / 0.5f);
+            title.characterSpacing = glow.characterSpacing = Mathf.Lerp(140f, 34f, k);
+            tr.localScale = glow.transform.localScale = Vector3.one * Mathf.Lerp(1.18f, 1f, k);
+            yield return null;
+        }
+        title.characterSpacing = glow.characterSpacing = 34f;
+        for (float a = 0f; a < 0.6f; a += Time.deltaTime)                        // the glow pulse + tagline
+        {
+            float k = a / 0.6f;
+            glow.alpha = Mathf.Sin(k * Mathf.PI) * 0.85f;
+            glow.transform.localScale = Vector3.one * (1f + 0.06f * k);
+            tagline.alpha = Mathf.Clamp01(k * 1.5f);
+            ((RectTransform)tagline.transform).anchoredPosition = new Vector2(0f, Mathf.Lerp(-100f, -110f, Ease(k)));
+            yield return null;
+        }
+        glow.alpha = 0f; tagline.alpha = 1f;
+        for (float a = 0f; a < 1f; a += Time.deltaTime)                          // hold, slow push in
+        { tr.localScale = Vector3.one * (1f + 0.025f * a); yield return null; }
+        g.alpha = 0f;                                                            // hard cut
+        yield return new WaitForSeconds(0.25f);
     }
 
     // ───────────────────────── UI ─────────────────────────
@@ -409,11 +474,17 @@ public class TrailerDirector : MonoBehaviour
             bar.anchorMin = new Vector2(0f, top ? 1f : 0f); bar.anchorMax = new Vector2(1f, top ? 1f : 0f); bar.pivot = new Vector2(0.5f, top ? 1f : 0f);
             bar.sizeDelta = new Vector2(0f, 118f); bar.anchoredPosition = Vector2.zero;
         }
-        caption = MissionUI.Txt(root, "", 40, Color.white, FontStyles.Bold);
+        // soft dark band rising from the bottom bar, so white captions read over a bright room or sky
+        var band = new GameObject("Caption Shade", typeof(RectTransform), typeof(RawImage)).GetComponent<RawImage>();
+        band.transform.SetParent(root, false); band.raycastTarget = false; band.texture = ShadeTexture(); band.color = Color.white;
+        band.rectTransform.anchorMin = new Vector2(0f, 0f); band.rectTransform.anchorMax = new Vector2(1f, 0f); band.rectTransform.pivot = new Vector2(0.5f, 0f);
+        band.rectTransform.sizeDelta = new Vector2(0f, 140f); band.rectTransform.anchoredPosition = new Vector2(0f, 118f);
+        caption = MissionUI.Txt(root, "", 34, Color.white, FontStyles.Bold);
         caption.characterSpacing = 16f; caption.alignment = TextAlignmentOptions.Center;
-        MissionUI.Place(caption.rectTransform, new Vector2(0.5f, 0f), new Vector2(0, 150), new Vector2(1700, 60));
+        caption.outlineWidth = 0.22f; caption.outlineColor = new Color32(0, 0, 0, 230);
+        MissionUI.Place(caption.rectTransform, new Vector2(0.5f, 0f), new Vector2(0, 70), new Vector2(1700, 56));   // inside the black bar: always readable
         sub = MissionUI.Lbl(root, "", 15); sub.alignment = TextAlignmentOptions.Center;
-        MissionUI.Place(sub.rectTransform, new Vector2(0.5f, 0f), new Vector2(0, 42), new Vector2(1700, 30));
+        MissionUI.Place(sub.rectTransform, new Vector2(0.5f, 0f), new Vector2(0, 26), new Vector2(1700, 30));
         count = MissionUI.Txt(root, "", 170, Color.white, FontStyles.Bold); count.alignment = TextAlignmentOptions.Center;
         MissionUI.Place(count.rectTransform, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(600, 260));
         var skip = MissionUI.Lbl(root, "ESC  SKIP", 12);
@@ -422,12 +493,18 @@ public class TrailerDirector : MonoBehaviour
         var f = MissionUI.Solid(root, Color.black, false, "Fade"); MissionUI.Stretch(f.rectTransform); fade = f.gameObject.AddComponent<CanvasGroup>(); fade.blocksRaycasts = false;
         var fl = MissionUI.Solid(root, Color.white, false, "Flash"); MissionUI.Stretch(fl.rectTransform); flash = fl.gameObject.AddComponent<CanvasGroup>(); flash.alpha = 0f; flash.blocksRaycasts = false;
 
-        var tg = MissionUI.Rect("Title Card", root); MissionUI.Stretch(tg); var tcg = tg.gameObject.AddComponent<CanvasGroup>(); tcg.alpha = 0f;
-        title = MissionUI.Txt(tg, "", 150, Color.white, FontStyles.Bold); title.alignment = TextAlignmentOptions.Center; title.characterSpacing = 24f;
-        MissionUI.Place(title.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0, 40), new Vector2(1800, 200));
-        tagline = MissionUI.Lbl(tg, "", 22); tagline.color = MissionUI.Accent; tagline.alignment = TextAlignmentOptions.Center;
-        MissionUI.Place(tagline.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0, -80), new Vector2(1600, 40));
-        tg.SetAsLastSibling(); f.transform.SetAsLastSibling(); fl.transform.SetAsLastSibling();
+        var tg = MissionUI.Rect("Title Card", root); MissionUI.Stretch(tg); var tcg = tg.gameObject.AddComponent<CanvasGroup>(); tcg.alpha = 0f; tcg.blocksRaycasts = false;
+        MissionUI.Stretch(MissionUI.Solid(tg, Color.black, false, "Black").rectTransform);
+        glow = MissionUI.Txt(tg, "", 170, Color.white, FontStyles.Bold); glow.alignment = TextAlignmentOptions.Center;
+        MissionUI.Place(glow.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0, 30), new Vector2(1900, 240));
+        glow.outlineWidth = 0.35f; glow.outlineColor = new Color32(255, 255, 255, 140);   // soft white halo
+        title = MissionUI.Txt(tg, "", 170, Color.white, FontStyles.Bold); title.alignment = TextAlignmentOptions.Center; title.characterSpacing = 34f;
+        MissionUI.Place(title.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0, 30), new Vector2(1900, 240));
+        line = MissionUI.Solid(tg, Color.white, false, "Line").rectTransform;
+        MissionUI.Place(line, new Vector2(0.5f, 0.5f), new Vector2(0, -62), new Vector2(0, 2));
+        tagline = MissionUI.Lbl(tg, "", 30); tagline.color = new Color(1f, 1f, 1f, 0.85f); tagline.alignment = TextAlignmentOptions.Center; tagline.characterSpacing = 18f;
+        MissionUI.Place(tagline.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0, -100), new Vector2(1600, 40));
+        f.transform.SetAsLastSibling(); fl.transform.SetAsLastSibling(); tg.SetAsLastSibling();
     }
 
     void Caption(string big, string small)
@@ -445,7 +522,7 @@ public class TrailerDirector : MonoBehaviour
 
     IEnumerator Fade(float from, float to, float secs)
     {
-        for (float a = 0f; a < secs; a += Time.deltaTime) { fade.alpha = Mathf.Lerp(from, to, a / secs); yield return null; }
+        for (float a = 0f; a < secs; a += Time.deltaTime) { fade.alpha = Mathf.Lerp(from, to, Ease(a / secs)); yield return null; }   // eased: no hard edges
         fade.alpha = to;
     }
 
@@ -491,6 +568,88 @@ public class TrailerDirector : MonoBehaviour
     }
 
     // ───────────────────────── small helpers ─────────────────────────
+    static Texture2D ShadeTexture()
+    {
+        var t = new Texture2D(1, 64, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };
+        for (int y = 0; y < 64; y++) { float k = 1f - y / 63f; t.SetPixel(0, y, new Color(0f, 0f, 0f, 0.72f * k * k)); }
+        t.Apply(); return t;
+    }
+
+    // A classic small satellite: gold-foil body, two blue solar wings on booms, a white dish pointing at Earth.
+    GameObject ClassicSatellite()
+    {
+        var root = new GameObject("Trailer Satellite");
+        var lit = Shader.Find("Universal Render Pipeline/Lit");
+        Material gold = Mat(lit, new Color(0.86f, 0.63f, 0.22f), 1f, 0.62f, FoilTexture());
+        Material panel = Mat(lit, new Color(0.45f, 0.55f, 1f), 0.15f, 0.55f, CellTexture());
+        Material silver = Mat(lit, new Color(0.78f, 0.79f, 0.8f), 0.9f, 0.6f, null);
+        Material white = Mat(lit, new Color(0.93f, 0.93f, 0.92f), 0f, 0.35f, null);
+        Material dark = Mat(lit, new Color(0.08f, 0.08f, 0.09f), 0.2f, 0.4f, null);
+        Part(root, PrimitiveType.Cube, gold, new Vector3(0f, 0f, 0f), new Vector3(1.1f, 1.3f, 1.1f), Vector3.zero);           // body
+        Part(root, PrimitiveType.Cube, silver, new Vector3(0f, 0.68f, 0f), new Vector3(1.14f, 0.06f, 1.14f), Vector3.zero);   // top deck
+        Part(root, PrimitiveType.Cube, silver, new Vector3(0f, -0.68f, 0f), new Vector3(1.14f, 0.06f, 1.14f), Vector3.zero);  // bottom deck
+        for (int side = -1; side <= 1; side += 2)
+        {
+            Part(root, PrimitiveType.Cylinder, silver, new Vector3(side * 0.95f, 0f, 0f), new Vector3(0.05f, 0.4f, 0.05f), new Vector3(0f, 0f, 90f)); // boom
+            for (int i = 0; i < 2; i++)
+            {
+                float x = side * (1.55f + i * 1.25f);
+                Part(root, PrimitiveType.Cube, panel, new Vector3(x, 0f, 0f), new Vector3(1.2f, 0.03f, 0.95f), Vector3.zero);
+                Part(root, PrimitiveType.Cube, silver, new Vector3(x, -0.02f, 0f), new Vector3(1.22f, 0.02f, 0.97f), Vector3.zero);
+            }
+        }
+        // dish on a short mast, facing down to Earth
+        Part(root, PrimitiveType.Cylinder, silver, new Vector3(0.25f, -0.85f, 0.2f), new Vector3(0.06f, 0.18f, 0.06f), Vector3.zero);
+        Part(root, PrimitiveType.Sphere, white, new Vector3(0.25f, -1.05f, 0.2f), new Vector3(0.75f, 0.14f, 0.75f), Vector3.zero);
+        Part(root, PrimitiveType.Cylinder, dark, new Vector3(0.25f, -1.2f, 0.2f), new Vector3(0.03f, 0.12f, 0.03f), Vector3.zero);
+        // camera lens + small antenna whip
+        Part(root, PrimitiveType.Cylinder, dark, new Vector3(-0.3f, -0.78f, -0.25f), new Vector3(0.28f, 0.1f, 0.28f), Vector3.zero);
+        Part(root, PrimitiveType.Cylinder, silver, new Vector3(-0.35f, 0.95f, 0.3f), new Vector3(0.015f, 0.3f, 0.015f), Vector3.zero);
+        foreach (var tr in root.GetComponentsInChildren<Transform>()) tr.gameObject.layer = RigLayer;
+        return root;
+    }
+
+    static Material Mat(Shader sh, Color c, float metal, float smooth, Texture2D tex)
+    {
+        var m = new Material(sh); m.SetColor("_BaseColor", c); m.SetFloat("_Metallic", metal); m.SetFloat("_Smoothness", smooth);
+        if (tex) m.SetTexture("_BaseMap", tex);
+        return m;
+    }
+
+    static void Part(GameObject root, PrimitiveType type, Material m, Vector3 pos, Vector3 scale, Vector3 euler)
+    {
+        var g = GameObject.CreatePrimitive(type);
+        Destroy(g.GetComponent<Collider>());
+        g.transform.SetParent(root.transform, false);
+        g.transform.localPosition = pos; g.transform.localScale = scale; g.transform.localEulerAngles = euler;
+        g.GetComponent<Renderer>().sharedMaterial = m;
+        g.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+    }
+
+    // crinkled gold foil (blanket)
+    static Texture2D FoilTexture()
+    {
+        var t = new Texture2D(64, 64, TextureFormat.RGBA32, true);
+        for (int y = 0; y < 64; y++) for (int x = 0; x < 64; x++)
+        {
+            float n = Mathf.PerlinNoise(x * 0.18f, y * 0.18f) * 0.6f + Mathf.PerlinNoise(x * 0.5f + 9f, y * 0.5f) * 0.4f;
+            float v = 0.75f + 0.35f * n; t.SetPixel(x, y, new Color(v, v, v));
+        }
+        t.Apply(); return t;
+    }
+
+    // blue solar cells with thin silver gaps
+    static Texture2D CellTexture()
+    {
+        var t = new Texture2D(64, 64, TextureFormat.RGBA32, true);
+        for (int y = 0; y < 64; y++) for (int x = 0; x < 64; x++)
+        {
+            bool gap = x % 8 == 0 || y % 8 == 0;
+            t.SetPixel(x, y, gap ? new Color(0.6f, 0.62f, 0.66f) : new Color(0.06f, 0.12f, 0.32f + 0.05f * ((x / 8 + y / 8) % 2)));
+        }
+        t.Apply(); t.filterMode = FilterMode.Bilinear; return t;
+    }
+
     // Where is the launch tower? Returns a rotation whose -Z points away from it, so shots never look through the tower.
     Quaternion TowerFrame()
     {
