@@ -101,7 +101,8 @@ public class AscendLaunchController : MonoBehaviour
     // ───────────── constants ─────────────
     const double EarthR = 6371000.0, Mu = 3.986004418e14;
     const float G0 = 9.80665f, StepDt = 0.02f;
-    static readonly float[] Warps = { 0.5f, 1f, 1.5f, 2f };   // time speed, up to 2x
+    const float MinWarp = 0.5f, MaxWarp = 5f;   // time speed slider; it speeds up by itself as the rocket climbs
+    static readonly float[] BandKm = { 5f, 20f, 45f, 70f };   // above these heights: 2x, 3x, 4x, 5x
 
     // ───────────── runtime: parts ─────────────
     class Eng
@@ -156,7 +157,8 @@ public class AscendLaunchController : MonoBehaviour
     float burnoutTime, igniteAt, kickStart = -1f;
     float q, mach, gNow, mass, altitude, speed, vUp;
     float maxQ, maxAlt, maxSpeed, maxG, liftoffTWR;
-    int warpIndex;
+    float warp = 1f; int warpBand = -1; Slider warpSlider;
+    AscendTrajectoryGraph graph;
     string stageLabel = "";
 
     // ───────────── runtime: world ─────────────
@@ -707,7 +709,9 @@ public class AscendLaunchController : MonoBehaviour
         px = 0; py = EarthR; vx = 0; vy = 0;
         tFlight = 0f; tilt = 0f; throttle = 1f; tumbleRate = 0f; curStage = 0;
         liftedOff = stageBurnout = pendingIgnite = fairingGone = maxQSaid = machSaid = throttleSaid = gThrottleSaid = fallingSaid = ended = false;
-        kickStart = -1f; maxQ = maxAlt = maxSpeed = maxG = 0f; warpIndex = 1; engineCut = false;
+        kickStart = -1f; maxQ = maxAlt = maxSpeed = maxG = 0f; warp = 1f; warpBand = -1; engineCut = false;
+        if (warpSlider) warpSlider.SetValueWithoutNotify(warp);
+        if (graph) graph.Clear(cansat ? goalKm : karmanLineKm);
         mass = TotalMass();
         liftoffTWR = 0f;
         karmanSaid = false; topLitAt = 0f;
@@ -789,19 +793,38 @@ public class AscendLaunchController : MonoBehaviour
     // ═════════════════════════════════════════════════════════════════════════
     //  FLIGHT LOOP
     // ═════════════════════════════════════════════════════════════════════════
-    void SetWarp(int i) { warpIndex = Mathf.Clamp(i, 0, Warps.Length - 1); }
+    void SetWarp(float v, bool fromSlider = false)
+    {
+        warp = Mathf.Clamp(Mathf.Round(v * 2f) / 2f, MinWarp, MaxWarp);
+        if (!fromSlider && warpSlider) warpSlider.SetValueWithoutNotify(warp);
+    }
+    // separation shots play in real time so you can watch them
+    float EffectiveWarp => Time.time < sepShotUntil ? Mathf.Min(1f, warp) : warp;
+
+    // Higher = faster: 1x near the ground, then 2x, 3x, 4x and 5x as the air thins (you can still move the slider)
+    void AutoWarp()
+    {
+        if (!liftedOff || fallingSaid) return;
+        int band = 0;
+        while (band < BandKm.Length && altitude >= BandKm[band] * 1000f) band++;
+        if (band == warpBand) return;
+        bool first = warpBand < 0;
+        warpBand = band;
+        if (!first && band + 1 > warp) { SetWarp(band + 1); AddLog($"Climbing fast: time speed <b>{warp:0}x</b>. <color=#9AA0A6>(slider: bottom left)</color>"); }
+    }
 
     void FlightUpdate()
     {
-        if (KeyDown(KeyCode.Minus)) SetWarp(warpIndex - 1);
-        if (KeyDown(KeyCode.Equals)) SetWarp(warpIndex + 1);
+        if (KeyDown(KeyCode.Minus)) SetWarp(warp - 0.5f);
+        if (KeyDown(KeyCode.Equals)) SetWarp(warp + 0.5f);
+        AutoWarp();
         if (KeyDown(KeyCode.Alpha1)) SetCam(1);
         if (KeyDown(KeyCode.Alpha2)) SetCam(2);
         if (KeyDown(KeyCode.Alpha3)) SetCam(3);
         if (KeyDown(KeyCode.C)) SetCam(camMode % 3 + 1);
         if (KeyDown(KeyCode.H)) ToggleAllWindows();
 
-        float sim = Mathf.Min(Time.deltaTime, 0.1f) * Warps[warpIndex];
+        float sim = Mathf.Min(Time.deltaTime, 0.1f) * EffectiveWarp;
         while (sim > 0f && phase == Phase.Flight)
         {
             float dt = Mathf.Min(StepDt, sim);
@@ -958,7 +981,7 @@ public class AscendLaunchController : MonoBehaviour
 
         // Fairing
         // (when the flight continues in orbit, the nose cover stays on and opens there, just before the satellite is released)
-        if (!fairingGone && altitude >= fairingJettisonKm * 1000f && fairingParts.Count > 0 && (curStage > 0 || stageCount == 1))
+        if (!fairingGone && !OrbitSceneOk() && altitude >= fairingJettisonKm * 1000f && fairingParts.Count > 0 && (curStage > 0 || stageCount == 1))
         {
             fairingGone = true;
             StartSepShot(fairingParts, 5f);
@@ -981,7 +1004,7 @@ public class AscendLaunchController : MonoBehaviour
         if (!fallingSaid && vUp < 0f && !AnyFuelLeft())
         {
             fallingSaid = true;
-            warpIndex = Mathf.Max(warpIndex, 3);
+            SetWarp(Mathf.Max(warp, 3f));
             ShowBig("OUT OF FUEL", 2f);
             AddLog($"Out of fuel! Highest point {maxAlt / 1000f:0.0} km. Falling back to Earth...");
         }
@@ -1003,7 +1026,7 @@ public class AscendLaunchController : MonoBehaviour
             // Keep flying until the first stage has dropped and the second stage is burning,
             // then continue in orbit (Solar System scene) without a break
             bool topStage = curStage >= stageCount - 1 && !pendingIgnite;
-            bool ready = topStage && tFlight - topLitAt > 5f && (fairingGone || fairingParts.Count == 0) && Time.time > sepShotUntil;
+            bool ready = topStage && tFlight - topLitAt > 8f && Time.time > sepShotUntil && Time.time > igniteShotUntil;
             if (ready || altitude > 600000f || tFlight - karmanAt > 120f || (!AnyFuelLeft() && vUp < 0f)) { GoToOrbit(); return; }
         }
     }
@@ -1106,6 +1129,13 @@ public class AscendLaunchController : MonoBehaviour
             pendingIgnite = false;
             IgniteStage(curStage, tFlight);
             topLitAt = tFlight;
+            // close-up of the upper stage lighting its engine, seen from below and the side
+            float len = Mathf.Max(4f, focusTop - focusBottom);
+            camDist = Mathf.Clamp(len * 2.6f, 14f, rocketHeight * 1.8f);
+            camPitch = -14f;
+            sepShotUntil = Time.time;
+            igniteShotUntil = Time.time + 6f;
+            ShowBig("STAGE " + (curStage + 1) + " IGNITION", 1.8f);
             if (engines.Any(e => e.grp.stage == curStage && !e.dead))
                 AddLog($"Stage {curStage + 1} engine on! <color=#9AA0A6>(second-stage ignition)</color>");
         }
@@ -1132,7 +1162,8 @@ public class AscendLaunchController : MonoBehaviour
 
     // ── Separation shot: a puff of gas and a camera that shows the part falling away ──
     Transform sepTarget;
-    float sepShotUntil;
+    float sepShotUntil, igniteShotUntil;
+    Vector3 sepOff; bool sepCamInit;
 
     void StartSepShot(IEnumerable<int> parts, float seconds)
     {
@@ -1149,7 +1180,7 @@ public class AscendLaunchController : MonoBehaviour
         AscendFX.Puff(joint, Mathf.Max(1f, coreDia), root.up, WorldVelocity());
         sepTarget = first;
         sepShotUntil = Time.time + seconds;
-        if (warpIndex > 1) warpIndex = 1;   // real time so you can watch it
+        sepCamInit = false;
     }
 
     void DetachGroup(Grp g, float push)
@@ -1292,7 +1323,7 @@ public class AscendLaunchController : MonoBehaviour
         {
             Vector2 md = RightMouseHeld() ? MouseDelta() : Vector2.zero;
             camYaw += md.x * 3f; camPitch = Mathf.Clamp(camPitch - md.y * 3f, -60f, 80f);
-            camDist = Mathf.Clamp(camDist * (1f - Scroll() * 0.1f), rocketHeight * 0.8f, rocketHeight * 20f + 200f);
+            camDist = Mathf.Clamp(camDist * (1f - Scroll() * 0.1f), Mathf.Max(6f, (focusTop - focusBottom) * 0.8f), rocketHeight * 20f + 200f);
         }
 
         if (camMode == 1 && sepTarget && Time.time < sepShotUntil)
@@ -1304,10 +1335,14 @@ public class AscendLaunchController : MonoBehaviour
             Vector3 mid = (target + dropC) * 0.5f;
             float gap = Vector3.Distance(target, dropC);
             Vector3 side = Vector3.Cross(downDir, Vector3.up).normalized;
-            float dist = Mathf.Clamp(gap * 1.2f + rocketHeight * 1.2f, camDist, rocketHeight * 6f + 40f);
+            float len = Mathf.Max(4f, focusTop - focusBottom);
+            float dist = Mathf.Clamp(gap * 1.3f + len * 2f, 14f, rocketHeight * 6f + 40f);
             if (gap > rocketHeight * 5f + 60f) sepShotUntil = Time.time;   // too far apart now: back to the chase camera
-            Vector3 want = mid + side * dist + Vector3.up * dist * 0.15f - root.up * dist * 0.1f;
-            flightCam.transform.position = Vector3.Lerp(flightCam.transform.position, want, 1f - Mathf.Exp(-Time.deltaTime * 3f));
+            // smooth the camera RELATIVE to the rocket: at kilometres per second a world-space lag would leave it far behind
+            Vector3 wantOff = side * dist + Vector3.up * dist * 0.15f - root.up * dist * 0.1f;
+            if (!sepCamInit) { sepOff = flightCam.transform.position - mid; sepCamInit = true; }
+            sepOff = Vector3.Lerp(sepOff, wantOff, 1f - Mathf.Exp(-Time.deltaTime * 3f));
+            flightCam.transform.position = mid + sepOff;
             flightCam.transform.rotation = Quaternion.Slerp(flightCam.transform.rotation, Quaternion.LookRotation(mid - flightCam.transform.position, Vector3.up), 1f - Mathf.Exp(-Time.deltaTime * 4f));
             flightCam.fieldOfView = 60f;
         }
@@ -1334,6 +1369,7 @@ public class AscendLaunchController : MonoBehaviour
         else
         {
             flightCam.fieldOfView = 60f;
+            if (Time.time < igniteShotUntil) target = root.position + root.up * Mathf.Lerp(focusBottom, focusMid, 0.4f);
             Vector3 pos = target + Quaternion.Euler(camPitch, camYaw, 0f) * new Vector3(0f, 0f, -camDist);
             if (pos.y < basePos.y + 1f) pos.y = basePos.y + 1f;
             flightCam.transform.position = pos;
@@ -1626,7 +1662,8 @@ public class AscendLaunchController : MonoBehaviour
         altFill.anchorMax = new Vector2(af, 1f);
         altLabel.text = cansat ? $"{altitude:N0} m of {goalKm * 1000f:N0} m  <color=#9AA0A6>(CanSat release height)</color>"
                                : $"{altitude / 1000f:0.0} km of {karmanLineKm:0} km  <color=#9AA0A6>(space starts at the Karman line)</color>";
-        warpLabel.text = $"TIME  {Warps[warpIndex]:0.0#}x";
+        warpLabel.text = $"TIME  {EffectiveWarp:0.0}x";
+        if (graph && liftedOff) graph.Add(tFlight, downKm, altitude / 1000f);
     }
 
     void BuildFuelRows()
@@ -1760,23 +1797,25 @@ public class AscendLaunchController : MonoBehaviour
         warpBox.anchorMin = warpBox.anchorMax = warpBox.pivot = new Vector2(0f, 0f);
         warpBox.sizeDelta = new Vector2(1000, 64); warpBox.anchoredPosition = new Vector2(24, 132);
         if (font && !AUI.Font) AUI.Font = font;
-        var minus = MissionUI.Btn(warpBox, "-", 26, MissionUI.Line, () => SetWarp(warpIndex - 1), 56, 44, font);
-        MissionUI.Place((RectTransform)minus.transform, new Vector2(0f, 0.5f), new Vector2(12, 0), new Vector2(56, 44));
+        // Time speed slider (0.5x - 5x). It speeds up by itself as the rocket climbs; drag it any time.
         warpLabel = Gui.Text(warpBox, "", 19, Color.white, font, FontStyles.Bold);
-        var wl = warpLabel.rectTransform; wl.anchorMin = wl.anchorMax = wl.pivot = new Vector2(0f, 0.5f); wl.sizeDelta = new Vector2(190, 46); wl.anchoredPosition = new Vector2(74, 0);
-        warpLabel.alignment = TextAlignmentOptions.Center;
-        var plus = MissionUI.Btn(warpBox, "+", 26, MissionUI.Line, () => SetWarp(warpIndex + 1), 56, 44, font);
-        MissionUI.Place((RectTransform)plus.transform, new Vector2(0f, 0.5f), new Vector2(270, 0), new Vector2(56, 44));
+        var wl = warpLabel.rectTransform; wl.anchorMin = wl.anchorMax = wl.pivot = new Vector2(0f, 0.5f); wl.sizeDelta = new Vector2(150, 46); wl.anchoredPosition = new Vector2(16, 0);
+        warpLabel.alignment = TextAlignmentOptions.MidlineLeft;
+        warpSlider = AscendTrajectoryGraph.MakeSlider(warpBox, new Vector2(170f, 0f), new Vector2(160f, 30f), MinWarp, MaxWarp, 1f);
+        warpSlider.onValueChanged.AddListener(v => { SetWarp(v, true); var es = UnityEngine.EventSystems.EventSystem.current; if (es && es.currentSelectedGameObject == warpSlider.gameObject) es.SetSelectedGameObject(null); });   // never keeps keyboard focus
         var sep = MissionUI.Solid(warpBox, MissionUI.LineDim, false, "Divider").rectTransform;
-        sep.anchorMin = sep.anchorMax = sep.pivot = new Vector2(0f, 0.5f); sep.sizeDelta = new Vector2(1f, 40f); sep.anchoredPosition = new Vector2(340, 0);
+        sep.anchorMin = sep.anchorMax = sep.pivot = new Vector2(0f, 0.5f); sep.sizeDelta = new Vector2(1f, 40f); sep.anchoredPosition = new Vector2(346, 0);
         warpText = Gui.Text(warpBox, "1 CHASE   2 NOSE   3 GROUND CAM   //   RMB LOOK   SCROLL ZOOM   - / + TIME   H HIDE", 13, labelC, font);
         warpText.characterSpacing = 3f;
-        var wrt = warpText.rectTransform; wrt.anchorMin = new Vector2(0f, 0f); wrt.anchorMax = new Vector2(1f, 1f); wrt.offsetMin = new Vector2(358, 0); wrt.offsetMax = new Vector2(-16, 0);
+        var wrt = warpText.rectTransform; wrt.anchorMin = new Vector2(0f, 0f); wrt.anchorMax = new Vector2(1f, 1f); wrt.offsetMin = new Vector2(364, 0); wrt.offsetMax = new Vector2(-16, 0);
+
+        // Trajectory graph (left, between the log and the controls): height vs distance downrange
+        graph = AscendTrajectoryGraph.Build(hud, new Vector2(24f, 212f), new Vector2(600f, 340f), font);
         warpText.alignment = TextAlignmentOptions.MidlineLeft;
 
         // Window bar (top middle): show / hide each window
         windows.Clear();
-        windows.Add(("COMPUTER", fc.gameObject)); windows.Add(("LOG", logBox.gameObject)); windows.Add(("HEIGHT", altBox.gameObject)); windows.Add(("CONTROLS", warpBox.gameObject));
+        windows.Add(("COMPUTER", fc.gameObject)); windows.Add(("LOG", logBox.gameObject)); windows.Add(("HEIGHT", altBox.gameObject)); windows.Add(("CONTROLS", warpBox.gameObject)); windows.Add(("GRAPH", graph.gameObject));
         var bar = MissionUI.Box(hud, "Window Bar", MissionUI.Line, MissionUI.HudBg);
         bar.anchorMin = bar.anchorMax = bar.pivot = new Vector2(0.5f, 1f);
         bar.sizeDelta = new Vector2(134f * (windows.Count + 1) + 16f, 52f); bar.anchoredPosition = new Vector2(20f, -16f);
@@ -2521,4 +2560,146 @@ public class AscendPuffMover : MonoBehaviour
 {
     public Vector3 velocity;
     void Update() { velocity += Vector3.down * 9.81f * Time.deltaTime; transform.position += velocity * Time.deltaTime; }
+}
+
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  TRAJECTORY GRAPH: the flight path drawn live (height vs distance downrange),
+//  with the goal height as a dashed line. Cheap: one small texture redrawn twice a second.
+// ═════════════════════════════════════════════════════════════════════════════
+public class AscendTrajectoryGraph : MonoBehaviour
+{
+    const int W = 552, H = 250;
+    Texture2D tex;
+    Color32[] px;
+    RawImage img;
+    TextMeshProUGUI xMax, yMax, readout;
+    readonly List<Vector2> pts = new List<Vector2>();   // (downrange km, altitude km)
+    float goalKm = 100f, lastT = -1f, redrawAt;
+    static readonly Color32 Bg = new Color32(0, 0, 0, 0), Grid = new Color32(255, 255, 255, 28), Goal = new Color32(255, 200, 80, 170),
+                            Path = new Color32(115, 215, 255, 255), Head = new Color32(255, 255, 255, 255);
+
+    public static AscendTrajectoryGraph Build(RectTransform parent, Vector2 pos, Vector2 size, TMP_FontAsset font)
+    {
+        var box = MissionUI.Box(parent, "Trajectory", MissionUI.Line, MissionUI.HudBg, true);
+        box.anchorMin = box.anchorMax = box.pivot = Vector2.zero;
+        box.sizeDelta = size; box.anchoredPosition = pos;
+        var g = box.gameObject.AddComponent<AscendTrajectoryGraph>();
+        var title = MissionUI.Lbl(box, "TRAJECTORY", 15, font); title.color = MissionUI.Text;
+        MissionUI.Place(title.rectTransform, new Vector2(0f, 1f), new Vector2(20f, -12f), new Vector2(300f, 24f)); title.rectTransform.pivot = new Vector2(0f, 1f);
+        var sub = MissionUI.Lbl(box, "HEIGHT  vs  DISTANCE", 11, font); sub.alignment = TextAlignmentOptions.Right;
+        MissionUI.Place(sub.rectTransform, new Vector2(1f, 1f), new Vector2(-20f, -14f), new Vector2(300f, 22f)); sub.rectTransform.pivot = new Vector2(1f, 1f);
+        MissionUI.HLine(box, 42f, MissionUI.LineDim, 14f);
+
+        var area = MissionUI.Rect("Plot", box);
+        area.anchorMin = area.anchorMax = area.pivot = new Vector2(0f, 1f);
+        area.anchoredPosition = new Vector2(30f, -52f); area.sizeDelta = new Vector2(W, H);
+        MissionUI.Border(area, MissionUI.LineDim, 1f);
+        g.img = area.gameObject.AddComponent<RawImage>(); g.img.raycastTarget = false;
+        g.tex = new Texture2D(W, H, TextureFormat.RGBA32, false) { filterMode = FilterMode.Bilinear, wrapMode = TextureWrapMode.Clamp };
+        g.px = new Color32[W * H];
+        g.img.texture = g.tex;
+
+        g.yMax = MissionUI.Lbl(box, "", 11, font); g.yMax.alignment = TextAlignmentOptions.TopLeft;
+        MissionUI.Place(g.yMax.rectTransform, new Vector2(0f, 1f), new Vector2(36f, -56f), new Vector2(200f, 18f)); g.yMax.rectTransform.pivot = new Vector2(0f, 1f);
+        g.xMax = MissionUI.Lbl(box, "", 11, font); g.xMax.alignment = TextAlignmentOptions.Right;
+        MissionUI.Place(g.xMax.rectTransform, new Vector2(1f, 0f), new Vector2(-20f, 10f), new Vector2(300f, 18f)); g.xMax.rectTransform.pivot = new Vector2(1f, 0f);
+        g.readout = MissionUI.Txt(box, "", 13, MissionUI.Text, FontStyles.Bold, font); g.readout.alignment = TextAlignmentOptions.Left;
+        MissionUI.Place(g.readout.rectTransform, new Vector2(0f, 0f), new Vector2(30f, 10f), new Vector2(300f, 18f)); g.readout.rectTransform.pivot = new Vector2(0f, 0f);
+        g.Clear(100f);
+        return g;
+    }
+
+    public void Clear(float goal)
+    {
+        goalKm = Mathf.Max(0.1f, goal);
+        pts.Clear(); lastT = -1f;
+        Redraw();
+    }
+
+    // every half second of flight time
+    public void Add(float t, float downKm, float altKm)
+    {
+        if (lastT >= 0f && t - lastT < 0.5f) { if (Time.unscaledTime > redrawAt) Redraw(); return; }
+        lastT = t;
+        pts.Add(new Vector2(Mathf.Max(0f, downKm), Mathf.Max(0f, altKm)));
+        if (pts.Count > 4000) pts.RemoveAt(0);
+        if (Time.unscaledTime > redrawAt) Redraw();
+    }
+
+    void Redraw()
+    {
+        redrawAt = Time.unscaledTime + 0.5f;
+        float maxX = 10f, maxY = goalKm * 1.25f;
+        foreach (var p in pts) { maxX = Mathf.Max(maxX, p.x * 1.15f); maxY = Mathf.Max(maxY, p.y * 1.15f); }
+        maxX = Nice(maxX); maxY = Nice(maxY);
+        for (int i = 0; i < px.Length; i++) px[i] = Bg;
+        // grid: 4 x 4
+        for (int k = 1; k < 4; k++)
+        {
+            int gx = k * W / 4, gy = k * H / 4;
+            for (int y = 0; y < H; y++) px[y * W + gx] = Grid;
+            for (int x = 0; x < W; x++) px[gy * W + x] = Grid;
+        }
+        // goal height (dashed)
+        int goalY = Mathf.RoundToInt(goalKm / maxY * (H - 1));
+        if (goalY > 0 && goalY < H) for (int x = 0; x < W; x++) if ((x / 6) % 2 == 0) { px[goalY * W + x] = Goal; if (goalY + 1 < H) px[(goalY + 1) * W + x] = Goal; }
+        // the path
+        Vector2 prev = Vector2.zero; bool has = false;
+        foreach (var p in pts)
+        {
+            var q = new Vector2(p.x / maxX * (W - 1), p.y / maxY * (H - 1));
+            if (has) Line(prev, q, Path); else Dot(q, Path, 1);
+            prev = q; has = true;
+        }
+        if (has) Dot(prev, Head, 3);
+        tex.SetPixels32(px); tex.Apply(false);
+        yMax.text = maxY.ToString(maxY < 10f ? "0.#" : "N0") + " KM  HIGH";
+        xMax.text = maxX.ToString(maxX < 10f ? "0.#" : "N0") + " KM  DOWNRANGE";
+        readout.text = pts.Count > 0 ? $"<color=#73D7FF>{pts[pts.Count - 1].y:0.0} km</color>  up   <color=#9AA0A6>/</color>  {pts[pts.Count - 1].x:0.0} km  out   <color=#FFC850>--- goal</color>" : "<color=#FFC850>--- goal height</color>";
+    }
+
+    static float Nice(float v)
+    {
+        float m = Mathf.Pow(10f, Mathf.Floor(Mathf.Log10(Mathf.Max(0.01f, v))));
+        foreach (float s in new[] { 1f, 2f, 2.5f, 5f, 10f }) if (s * m >= v) return s * m;
+        return 10f * m;
+    }
+
+    void Line(Vector2 a, Vector2 b, Color32 c)
+    {
+        int n = Mathf.Max(1, Mathf.CeilToInt(Vector2.Distance(a, b)));
+        for (int i = 0; i <= n; i++) Dot(Vector2.Lerp(a, b, i / (float)n), c, 1);
+    }
+
+    void Dot(Vector2 p, Color32 c, int r)
+    {
+        int cx = Mathf.RoundToInt(p.x), cy = Mathf.RoundToInt(p.y);
+        for (int y = cy - r + 1; y < cy + r; y++)
+            for (int x = cx - r + 1; x < cx + r; x++)
+                if (x >= 0 && x < W && y >= 0 && y < H) px[y * W + x] = c;
+    }
+
+    void OnDestroy() { if (tex) Destroy(tex); }
+
+    // A thin mission-control slider (track + accent fill + square handle)
+    public static Slider MakeSlider(RectTransform parent, Vector2 pos, Vector2 size, float min, float max, float value)
+    {
+        var r = MissionUI.Rect("Slider", parent);
+        r.anchorMin = r.anchorMax = r.pivot = new Vector2(0f, 0.5f);
+        r.anchoredPosition = pos; r.sizeDelta = size;
+        var hit = r.gameObject.AddComponent<Image>(); hit.color = Color.clear; hit.raycastTarget = true;
+        var track = MissionUI.Solid(r, MissionUI.LineDim, false, "Track").rectTransform;
+        track.anchorMin = new Vector2(0f, 0.5f); track.anchorMax = new Vector2(1f, 0.5f); track.sizeDelta = new Vector2(0f, 3f); track.anchoredPosition = Vector2.zero;
+        var fillArea = MissionUI.Rect("Fill Area", r); MissionUI.Stretch(fillArea, 0, 13, 0, 13);
+        var fill = MissionUI.Solid(fillArea, MissionUI.Accent, false, "Fill"); fill.rectTransform.sizeDelta = Vector2.zero;
+        var handleArea = MissionUI.Rect("Handle Area", r); MissionUI.Stretch(handleArea, 8, 0, 8, 0);
+        var handle = MissionUI.Box(handleArea, "Handle", MissionUI.Text, Color.black, false, true);
+        handle.sizeDelta = new Vector2(14f, 0f);
+        var s = r.gameObject.AddComponent<Slider>();
+        s.fillRect = fill.rectTransform; s.handleRect = handle; s.targetGraphic = handle.GetComponent<Image>();
+        s.minValue = min; s.maxValue = max; s.value = value;
+        s.navigation = new Navigation { mode = Navigation.Mode.None };
+        return s;
+    }
 }

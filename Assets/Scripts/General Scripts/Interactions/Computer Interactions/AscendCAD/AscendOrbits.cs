@@ -77,11 +77,12 @@ public class AscendOrbitDirector : MonoBehaviour
     const int RigLayer = 31;
     const double Mu = 3.986004418e14, EarthRm = 6371000.0;
     static readonly Vector3 RigOrigin = new Vector3(50000f, 50000f, 50000f);
-    const float MinSpeed = 1f, MaxSpeed = 5f;   // time speed slider (1x - 5x)
+    const float MinSpeed = 1f, MaxSpeed = 10f;   // time speed slider (1x - 10x)
     // Game time: one orbit takes 2 minutes at 1x, and the Earth turns once every 10 orbits,
     // so every place on Earth comes into view within one turn (with the camera tilted)
     const float OrbitSeconds = 120f, EarthDayOrbits = 10f;
     double missionHours;
+    float consoleStart;
     readonly bool[] done = new bool[5];
     Vector3 spaceSun;
     Quaternion sunOriginal;
@@ -552,7 +553,7 @@ public class AscendOrbitDirector : MonoBehaviour
             payloadGo.position += payloadVel * rdt;
             stageGo.position += stageVel * rdt;
             stageGo.Rotate(stageSpin * rdt, Space.World);
-            if (releaseAt > 0f && Time.time - releaseAt > 7f) { releaseAt = -1f; StartCoroutine(ToConsole()); }
+            if (releaseAt > 0f && Time.time - releaseAt > 10f) { releaseAt = -1f; StartCoroutine(ToConsole()); }
         }
         if (phase == Phase.Console) { ConsoleUpdate(); UpdateConsoleUI(); }
 
@@ -578,8 +579,43 @@ public class AscendOrbitDirector : MonoBehaviour
         // Real-size camera around the satellite; the space camera copies it in scaled units
         Transform target = phase == Phase.Release || phase == Phase.Console ? payloadGo : assembly;
         Vector3 center = target.position + target.up * (target == assembly ? assemblyHeight * 0.5f : 0.5f);
+        float dist = camDist;
+        if (phase == Phase.Release && stageGo && payloadGo)
+        {
+            // Watch it from the side, close to the nose:
+            //  - the nose cover lifts off (framed to fit the cover)
+            //  - then the satellite springs away from the top of the stage (framed to fit the satellite + the gap)
+            Vector3 pc = Center(payloadGo), top = TopPoint(stageGo, Prograde());
+            float ps = Mathf.Max(0.3f, Size(payloadGo));
+            Vector3 wantC; float wantD;
+            float close = Mathf.Max(ps * 1.4f, 0.7f);   // close enough that even a small CubeSat fills part of the screen
+            if (!released)
+            {
+                // the nose; then, as the cover lifts away, zoom in on the satellite it uncovers
+                float t = Time.time - releaseStart;
+                wantC = pc;
+                wantD = Mathf.Lerp(Mathf.Max(fairingSize * 1.4f, 4f), close * 1.4f, Mathf.SmoothStep(0f, 1f, (t - 2.6f) / 2.2f));
+            }
+            else
+            {
+                // first the satellite AND the top of the stage as they part, then settle on the satellite
+                float since = Time.time - releaseAt, gap = Vector3.Distance(pc, top);
+                float settle = Mathf.SmoothStep(0f, 1f, (since - 3f) / 2.5f);
+                wantC = Vector3.Lerp(Vector3.Lerp(top, pc, 0.6f), pc, settle);
+                wantD = Mathf.Lerp(close + gap * 1.3f, close, settle);
+            }
+            if (!relInit) { relC = center; relD = dist; relInit = true; }
+            float k = 1f - Mathf.Exp(-Time.deltaTime * 1.6f);
+            relC = Vector3.Lerp(relC, wantC, k); relD = Mathf.Lerp(relD, wantD, k);
+            center = relC; dist = relD;
+            releaseYaw = Mathf.MoveTowards(releaseYaw, 130f, Time.deltaTime * 45f);   // in front and above: the stage falls back behind the satellite, never between
+            pitchUsed = Mathf.MoveTowards(pitchUsed, 22f, Time.deltaTime * 20f);
+            camYawUsed = releaseYaw;
+            if (satLabel) { satLabel.gameObject.SetActive(released); satLabel.transform.position = pc + Radial() * (ps * 0.9f + relD * 0.06f); satLabel.transform.rotation = rigCam.transform.rotation; satLabel.fontSize = relD * 0.6f; }
+        }
+        else { releaseYaw = camYaw; camYawUsed = camYaw; pitchUsed = camPitch; relInit = false; if (satLabel) satLabel.gameObject.SetActive(false); }
         Quaternion frame = Quaternion.LookRotation(Prograde(), Radial());
-        Vector3 offset = frame * (Quaternion.Euler(camPitch, camYaw, 0f) * new Vector3(0f, 0f, -camDist));
+        Vector3 offset = frame * (Quaternion.Euler(pitchUsed, camYawUsed, 0f) * new Vector3(0f, 0f, -dist));
         rigCam.transform.position = center + offset;
         rigCam.transform.rotation = Quaternion.LookRotation(center - rigCam.transform.position, Radial());
 
@@ -603,9 +639,11 @@ public class AscendOrbitDirector : MonoBehaviour
     readonly List<Transform> fairingGos = new List<Transform>();
     readonly List<(Transform t, Vector3 vel, Vector3 spin)> drifting = new List<(Transform, Vector3, Vector3)>();
 
+    float releaseStart;
     void StartRelease()
     {
         phase = Phase.Release;
+        releaseStart = Time.time;
         StartCoroutine(ReleaseSequence());
     }
 
@@ -615,27 +653,72 @@ public class AscendOrbitDirector : MonoBehaviour
         if (fairingGos.Count > 0)
         {
             Big("FAIRING SEPARATION", 2f);
+            foreach (var f in fairingGos) if (f) fairingSize = Mathf.Max(fairingSize, Size(f));
+            yield return new WaitForSeconds(1.2f);   // the camera moves in to the nose first
             foreach (var f in fairingGos)
             {
                 if (!f) continue;
                 f.SetParent(rig, true);
-                Vector3 side = Vector3.ProjectOnPlane(UnityEngine.Random.onUnitSphere, Prograde()).normalized;
-                drifting.Add((f, Prograde() * 1.2f + side * 1.5f, UnityEngine.Random.onUnitSphere * 25f));
+                // the cover lifts off forward and drifts aside, slowly tumbling, uncovering the satellite
+                Vector3 outward = Vector3.ProjectOnPlane(Center(f) - Center(payloadGo), Prograde());
+                if (outward.sqrMagnitude < 0.01f) outward = Vector3.Cross(Prograde(), Radial());
+                drifting.Add((f, Prograde() * 1.3f + outward.normalized * 0.7f + Radial() * 0.4f, Vector3.Cross(Prograde(), outward.normalized) * 7f));
             }
-            yield return new WaitForSeconds(2.5f);
+            yield return new WaitForSeconds(4f);
+            Big("PAYLOAD SEPARATION", 2f);
+            yield return new WaitForSeconds(1.2f);
         }
         // 2. The satellite separates
         releaseAt = Time.time;
+        released = true;
         payloadGo.SetParent(rig, true);
         stageGo.SetParent(rig, true);
         Vector3 pro = Prograde();
-        payloadVel = pro * 0.7f;                      // springs push the satellite forward
-        stageVel = -pro * 0.35f + Radial() * 0.05f;   // the empty stage drifts back
+        payloadVel = pro * 0.35f;                     // springs push the satellite forward (slow enough to watch)
+        stageVel = -pro * 0.18f + Radial() * 0.03f;   // the empty stage drifts back
         stageSpin = UnityEngine.Random.onUnitSphere * 4f;
         // look at the satellite now (it's much smaller than the rocket stage)
         var rs = payloadGo.GetComponentsInChildren<Renderer>();
-        if (rs.Length > 0) { Bounds b = rs[0].bounds; foreach (var r in rs) b.Encapsulate(r.bounds); camDist = Mathf.Clamp(b.size.magnitude * 3.5f, 2.5f, 40f); }
+        if (rs.Length > 0) { Bounds b = rs[0].bounds; foreach (var r in rs) b.Encapsulate(r.bounds); camDist = Mathf.Clamp(b.size.magnitude * 3.5f, 2.5f, 40f); }   // where the view settles
         Big("SATELLITE RELEASED!", 3f);
+        if (!satLabel)
+        {
+            var lg = new GameObject("Satellite Label");
+            lg.layer = RigLayer;
+            lg.transform.SetParent(rig, false);
+            satLabel = lg.AddComponent<TextMeshPro>();
+            satLabel.text = "YOUR SATELLITE"; satLabel.color = new Color(0.55f, 0.9f, 1f); satLabel.alignment = TextAlignmentOptions.Center;
+            satLabel.characterSpacing = 10f; satLabel.textWrappingMode = TextWrappingModes.NoWrap;
+            satLabel.outlineWidth = 0.2f; satLabel.outlineColor = new Color32(0, 0, 0, 200);
+            if (AUI.Font) satLabel.font = AUI.Font;
+        }
+    }
+
+    float releaseYaw, camYawUsed, pitchUsed, relD, fairingSize;
+    Vector3 relC; bool relInit, released;
+    TextMeshPro satLabel;
+    static float Size(Transform t)
+    {
+        var rs = t.GetComponentsInChildren<Renderer>();
+        if (rs.Length == 0) return 1f;
+        Bounds b = rs[0].bounds; foreach (var r in rs) b.Encapsulate(r.bounds);
+        return b.size.magnitude;
+    }
+    // the farthest point of a part along a direction (the top of the stage, where the satellite sits)
+    static Vector3 TopPoint(Transform t, Vector3 dir)
+    {
+        var rs = t.GetComponentsInChildren<Renderer>();
+        if (rs.Length == 0) return t.position;
+        Bounds b = rs[0].bounds; foreach (var r in rs) b.Encapsulate(r.bounds);
+        float ext = Mathf.Abs(b.extents.x * dir.x) + Mathf.Abs(b.extents.y * dir.y) + Mathf.Abs(b.extents.z * dir.z);
+        return b.center + dir.normalized * ext;
+    }
+    static Vector3 Center(Transform t)
+    {
+        var rs = t.GetComponentsInChildren<Renderer>();
+        if (rs.Length == 0) return t.position;
+        Bounds b = rs[0].bounds; foreach (var r in rs) b.Encapsulate(r.bounds);
+        return b.center;
     }
 
     void MoveDrifting(float dt)
@@ -662,6 +745,7 @@ public class AscendOrbitDirector : MonoBehaviour
     {
         phase = Phase.Console;
         missionHours = 0;
+        consoleStart = Time.time;
         satRT = new RenderTexture(1280, 720, 24, RenderTextureFormat.ARGB32) { name = "Satellite Camera", antiAliasing = 2 };
         satCam = new GameObject("Satellite Photo Camera").AddComponent<Camera>();
         satCam.transform.SetParent(transform, false);
@@ -948,6 +1032,7 @@ public class AscendOrbitDirector : MonoBehaviour
         Place(conCount.rectTransform, new Vector2(16, -284), new Vector2(466, 30), new Vector2(0f, 1f)); conCount.alignment = TextAlignmentOptions.Left;
         clockText = T(info, "", 15, MissionUI.Label, FontStyles.Bold);
         Place(clockText.rectTransform, new Vector2(16, -314), new Vector2(466, 26), new Vector2(0f, 1f)); clockText.alignment = TextAlignmentOptions.Left;
+        clockText.enableAutoSizing = true; clockText.fontSizeMax = 15f; clockText.fontSizeMin = 9f; clockText.textWrappingMode = TextWrappingModes.NoWrap;
         MissionUI.HLine(info, 350f, MissionUI.LineDim, 14f);
         conInfo = T(info, "", 16, Color.white);
         Place(conInfo.rectTransform, new Vector2(16, -362), new Vector2(466, 290), new Vector2(0f, 1f)); conInfo.alignment = TextAlignmentOptions.TopLeft;
@@ -955,7 +1040,7 @@ public class AscendOrbitDirector : MonoBehaviour
 
         var sl = MissionUI.Lbl(info, "SPEED", 13);
         Place(sl.rectTransform, new Vector2(16, 30), new Vector2(120, 40), new Vector2(0f, 0f)); sl.alignment = TextAlignmentOptions.MidlineLeft;
-        // Speed slider: thin track, bright fill, outlined handle (1x - 5x in 0.5 steps)
+        // Speed slider: thin track, bright fill, outlined handle (1x - 10x in 0.5 steps)
         var sliderRt = MissionUI.Rect("Speed Slider", info);
         MissionUI.Place(sliderRt, new Vector2(0f, 0f), new Vector2(120, 42), new Vector2(250, 30));
         var track = MissionUI.Solid(sliderRt, MissionUI.LineDim, false, "Track").rectTransform;
@@ -1036,7 +1121,8 @@ public class AscendOrbitDirector : MonoBehaviour
         conCount.text = $"PHOTOS  {photos.Count} / {PhotoGoal}";
         float hrs = (float)missionHours;
         bool late = hrs > ParHours;
-        clockText.text = $"MISSION TIME  <color={(late ? "#F28B82" : "#FFFFFF")}>{(int)hrs:00}:{(int)((hrs % 1f) * 60f):00} h</color>   GOAL {ParHours:0} h" + (late ? $"   <color=#F28B82>-{Mathf.Min(45f, (hrs - ParHours) * PenaltyPerHour):0}%</color>" : "");
+        float real = Time.time - consoleStart;
+        clockText.text = $"TIME ELAPSED  <color={(late ? "#F28B82" : "#FFFFFF")}>{(int)hrs:00}:{(int)((hrs % 1f) * 60f):00} h</color>  <size=80%><color=#9AA0A6>IN ORBIT   //   {(int)(real / 60f):00}:{(int)(real % 60f):00} REAL   //   GOAL {ParHours:0} h</color></size>" + (late ? $"   <color=#F28B82>-{Mathf.Min(45f, (hrs - ParHours) * PenaltyPerHour):0}%</color>" : "");
         if (speedLabel) speedLabel.text = speed.ToString("0.0") + "x";
     }
 

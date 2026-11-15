@@ -514,29 +514,61 @@ public class MeetingCast : MonoBehaviour
         }
         Vector3 focus = cast.director ? cast.director.transform.position : room + fwd * 2f;
 
-        // The team: standing along both sides of the table, turned toward the director
+        // The team: seated on the meeting room's chairs, facing the table, turned toward the director
         var actors = mb.team != null && mb.team.Length > 0 ? mb.team : null;
-        int n = Mathf.Max(0, mb.teamSize);
-        for (int i = 0; i < n && actors != null; i++)
+        var chairs = FindChairs(room, 22f);
+        if (actors != null && chairs.Count > 0)
         {
-            var a = actors[i % actors.Length];
-            if (a == null || !a.model) continue;
-            int row = i / 2; float s = i % 2 == 0 ? 1f : -1f;
-            Vector3 p = Ground(room + fwd * (4.6f + row * 2.05f) + side * s * 2.35f + fwd * (s > 0 ? 0f : 0.6f));
-            Vector3 look = Vector3.Lerp(Flat(focus - p).normalized, -side * s, 0.35f);
-            var m = CastMember.Make(go.transform, a, p, Quaternion.LookRotation(look), false, font);
-            m.lookTarget = focus + Vector3.up * 1.55f;
-            m.Offset(i * 0.37f);
-            cast.team.Add(m);
+            // the table runs between the two rows of chairs
+            Vector3 mid = Vector3.zero; foreach (var c in chairs) mid += c.pos; mid /= chairs.Count;
+            // closest to you first, both sides, skipping the chairs right next to the director
+            chairs.Sort((x, y) => Flat(x.pos - room).sqrMagnitude.CompareTo(Flat(y.pos - room).sqrMagnitude));
+            int n = Mathf.Max(0, mb.teamSize), placed = 0;
+            for (int i = 0; i < chairs.Count && placed < n; i++)
+            {
+                var c = chairs[i];
+                if (Flat(c.pos - focus).magnitude < 1.3f) continue;
+                var a = actors[placed % actors.Length];
+                if (a == null || !a.model) { placed++; continue; }
+                Vector3 toTable = Vector3.Project(mid - c.pos, side);
+                if (toTable.sqrMagnitude < 0.01f) toTable = Flat(mid - c.pos);
+                Vector3 p = new Vector3(c.pos.x, c.floor, c.pos.z);
+                var m = CastMember.Make(go.transform, a, p, Quaternion.LookRotation(toTable.normalized), false, font);
+                m.SitOn(c.seatY);
+                m.lookTarget = focus + Vector3.up * 1.55f;
+                m.Offset(placed * 0.37f);
+                cast.team.Add(m);
+                placed++;
+            }
         }
         return cast;
+    }
+
+    struct Chair { public Vector3 pos; public float seatY, floor; }
+
+    // The meeting room model's chairs: the seat + back pieces are about 0.85 m tall and 0.6-0.8 m wide
+    static List<Chair> FindChairs(Vector3 room, float radius)
+    {
+        var list = new List<Chair>();
+        var seen = new HashSet<Transform>();
+        foreach (var r in FindObjectsByType<Renderer>(FindObjectsInactive.Exclude))
+        {
+            var t = r.transform.parent;
+            if (!t || !t.name.StartsWith("3DGeom~3_Defintion") || !seen.Add(t)) continue;
+            Bounds b = r.bounds;
+            foreach (var r2 in t.GetComponentsInChildren<Renderer>()) b.Encapsulate(r2.bounds);
+            if (Flat(b.center - room).magnitude > radius || b.size.y < 0.6f || b.size.y > 1.2f) continue;
+            float floor = Ground(b.center).y;
+            if (floor > b.min.y) floor = b.min.y - 0.35f;
+            list.Add(new Chair { pos = b.center, seatY = b.min.y + 0.12f, floor = floor });
+        }
+        return list;
     }
 
     // Called by the briefing on every new line
     public void OnLine(int line)
     {
         if (director) director.Gesture(line == 0 ? CastMember.Wave : CastMember.Talk);
-        if (team.Count > 0 && line % 2 == 1) team[UnityEngine.Random.Range(0, team.Count)].Gesture(CastMember.Talk);
     }
 
     public void Speaking(bool on) { if (director) director.speaking = on; }
@@ -545,12 +577,7 @@ public class MeetingCast : MonoBehaviour
     {
         var cam = Camera.main;
         if (director && cam) director.lookTarget = cam.transform.position;
-        // now and then someone nods along / talks to a neighbour
-        if (Time.time > nextChatter && team.Count > 0)
-        {
-            nextChatter = Time.time + UnityEngine.Random.Range(2.5f, 5f);
-            team[UnityEngine.Random.Range(0, team.Count)].Gesture(CastMember.Talk);
-        }
+        // the team sits still and listens (no gestures)
     }
 
     static Vector3 Flat(Vector3 v) { v.y = 0f; return v.sqrMagnitude < 0.0001f ? Vector3.forward : v; }
@@ -575,7 +602,26 @@ public class CastMember : MonoBehaviour
     readonly float[] len = { 1f, 1f, 1f };
     int gesture = Idle; float gestureEnd;
     Transform head, neck;
+    Quaternion headRest, neckRest;
     float phase, nodTimer;
+    // seated pose (built from the leg bones: there is no sitting animation)
+    bool seated; float seatY; bool seatPlaced;
+    Transform hips, upL, upR, lowL, lowR;
+    Quaternion upLRest, upRRest, lowLRest, lowRRest;
+
+    public void SitOn(float seatHeight)
+    {
+        seated = true; seatY = seatHeight;
+        foreach (var t in GetComponentsInChildren<Transform>())
+            switch (t.name)
+            {
+                case "Hips": hips = t; break;
+                case "UpperLeg.L": upL = t; upLRest = t.localRotation; break;
+                case "UpperLeg.R": upR = t; upRRest = t.localRotation; break;
+                case "LowerLeg.L": lowL = t; lowLRest = t.localRotation; break;
+                case "LowerLeg.R": lowR = t; lowRRest = t.localRotation; break;
+            }
+    }
 
     public static CastMember Make(Transform parent, MissionBriefing.Actor a, Vector3 pos, Quaternion rot, bool isDirector, TMP_FontAsset font)
     {
@@ -586,7 +632,7 @@ public class CastMember : MonoBehaviour
         var rs = g.GetComponentsInChildren<Renderer>();
         if (rs.Length > 0) { Bounds b = rs[0].bounds; foreach (var r in rs) b.Encapsulate(r.bounds); g.transform.localScale *= a.height / Mathf.Max(0.1f, b.size.y); }
         var m = g.AddComponent<CastMember>();
-        foreach (var t in g.GetComponentsInChildren<Transform>()) { if (t.name == "Head") m.head = t; else if (t.name == "Neck") m.neck = t; }
+        foreach (var t in g.GetComponentsInChildren<Transform>()) { if (t.name == "Head") { m.head = t; m.headRest = t.localRotation; } else if (t.name == "Neck") { m.neck = t; m.neckRest = t.localRotation; } }
 
         var anim = g.GetComponentInChildren<Animator>(); if (!anim) anim = g.AddComponent<Animator>();
         anim.applyRootMotion = false;
@@ -620,6 +666,15 @@ public class CastMember : MonoBehaviour
 
     void Update()
     {
+        // start every frame from the rest pose: bones the animation doesn't move would otherwise keep
+        // our head turn / leg bend from the last frame and spin around
+        if (head) head.localRotation = headRest;
+        if (neck) neck.localRotation = neckRest;
+        if (seated)
+        {
+            if (upL) upL.localRotation = upLRest; if (upR) upR.localRotation = upRRest;
+            if (lowL) lowL.localRotation = lowLRest; if (lowR) lowR.localRotation = lowRRest;
+        }
         if (!mixer.IsValid()) return;
         int want = Time.time < gestureEnd ? gesture : Idle;
         // while the director is speaking, she keeps talking with her hands
@@ -633,6 +688,7 @@ public class CastMember : MonoBehaviour
     // body language: the head turns to whoever they look at, with small nods while listening / talking
     void LateUpdate()
     {
+        if (seated) Sit();
         if (!head) return;
         Vector3 body = transform.forward;
         Vector3 to = lookTarget - head.position;
@@ -649,6 +705,22 @@ public class CastMember : MonoBehaviour
     }
 
     void OnDestroy() { if (graph.IsValid()) graph.Destroy(); }
+
+    // thighs forward, shins down; the first frame lowers the whole body so the hips rest on the seat
+    void Sit()
+    {
+        Vector3 right = transform.right;
+        Quaternion thigh = Quaternion.AngleAxis(-88f, right), knee = Quaternion.AngleAxis(88f, right);
+        if (upL) upL.rotation = thigh * upL.rotation;
+        if (upR) upR.rotation = thigh * upR.rotation;
+        if (lowL) lowL.rotation = knee * lowL.rotation;
+        if (lowR) lowR.rotation = knee * lowR.rotation;
+        if (!seatPlaced && hips)
+        {
+            seatPlaced = true;
+            transform.position += Vector3.up * (seatY + 0.06f - hips.position.y) - transform.forward * 0.12f;
+        }
+    }
 
     // Black ASCEND uniform: dark suit, cyan undershirt, "ASCEND" badge on the chest
     static void Uniform(GameObject g, TMP_FontAsset font)
