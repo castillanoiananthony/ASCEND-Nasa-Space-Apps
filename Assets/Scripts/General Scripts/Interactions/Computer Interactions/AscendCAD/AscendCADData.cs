@@ -6430,7 +6430,7 @@ public class AscendCADScreen
         }
         infoTitle.text = (picked != null ? "<color=#F07A26>Placing:</color> " : "") + "<noparse>" + p.name + "</noparse>" +
                          (picked != null ? "\n<size=65%><color=#9AA0A6>3D view below: drag to turn it around</color></size>" : "");
-        infoText.text = AscendReport.PartInfo(p);
+        infoText.text = AscendReport.PartInfo(p) + AscendPartGuide.Build(p, data);
         bool show = p.attach != CADAttach.Internal;
         previewBox.SetActive(show);
         if (show) SetPreview(p, pl != null ? pl.color : p.defaultColor, pl?.labels);
