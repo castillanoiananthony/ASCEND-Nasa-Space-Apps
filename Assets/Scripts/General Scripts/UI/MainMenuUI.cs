@@ -168,14 +168,29 @@ public class MainMenuUI : MonoBehaviour
         OpenScene(hangarScenePath, hangarSceneName);
     }
 
+    // TUTORIAL: the AscendCAD Academy at your desk (rocket + satellite lessons, the 3D maps and the water bottle rocket lab)
     private void OnTutorial()
     {
-        if (string.IsNullOrEmpty(tutorialScenePath))
-        {
-            Debug.Log("Tutorial not set up yet.");
-            return;
-        }
-        OpenScene(tutorialScenePath, tutorialSceneName);
+        if (startingGame) return;
+        if (!string.IsNullOrEmpty(tutorialScenePath)) { OpenScene(tutorialScenePath, tutorialSceneName); return; }
+        startingGame = true;
+        GameFlow.PlayTutorial = true;
+        GameFlow.PlayOfficeIntro = false;
+        MissionBriefing.ResetForNewGame();
+        StartCoroutine(LoadTutorial());
+    }
+
+    private System.Collections.IEnumerator LoadTutorial()
+    {
+        var cgo = new GameObject("Tutorial Loading", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler));
+        DontDestroyOnLoad(cgo);
+        var c = cgo.GetComponent<Canvas>(); c.renderMode = RenderMode.ScreenSpaceOverlay; c.sortingOrder = 3000;
+        var sc = cgo.GetComponent<CanvasScaler>(); sc.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize; sc.referenceResolution = new Vector2(1920, 1080);
+        var bg = MissionUI.Solid(cgo.transform, Color.black, true, "Black"); MissionUI.Stretch(bg.rectTransform);
+        var t = MissionUI.Lbl(cgo.transform, "ASCEND ACADEMY   //   LOADING", 16, tmpFont);
+        MissionUI.Place(t.rectTransform, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(800, 40)); t.alignment = TMPro.TextAlignmentOptions.Center;
+        yield return null;
+        OpenScene(hangarScenePath, hangarSceneName);
     }
 
     private void OpenScene(string path, string sceneName)
@@ -452,7 +467,6 @@ public class MainMenuUI : MonoBehaviour
             brt.anchorMin = brt.anchorMax = brt.pivot = new Vector2(0f, 1f);
             brt.anchoredPosition = new Vector2(x, -104f); brt.sizeDelta = new Vector2(b == newBtn ? 330f : 260f, 56f);
         }
-        if (string.IsNullOrEmpty(tutorialScenePath) && string.IsNullOrEmpty(tutorialSceneName)) tutBtn.interactable = false;
 
         var wl = MissionUI.Lbl(playPage, "YOUR WORLDS", 18, tmpFont); wl.alignment = TextAlignmentOptions.Left;
         MenuPages.TopRow(wl.rectTransform, 192f, 30f, inset);

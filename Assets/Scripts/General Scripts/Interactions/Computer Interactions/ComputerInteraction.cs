@@ -107,6 +107,8 @@ public class ComputerInteraction : MonoBehaviour
 
     // Guide hooks (AscendGuide): opened / closed, find an app icon, show the NEXT STEP line in the taskbar
     public static event Action<ComputerInteraction> Opened, Closed;
+    // Set while a full-screen overlay (the tutorial academy) sits on top: E / Esc don't close the computer
+    public static bool InputBlocked;
     public RectTransform AppIcon(string appName)
     {
         if (iconCells == null) return null;
@@ -293,7 +295,7 @@ public class ComputerInteraction : MonoBehaviour
     {
         if (isOpen)
         {
-            if (Pressed(KeyCode.Escape) || (Pressed(KeyCode.E) && !IsTyping())) { Close(); return; }
+            if (!InputBlocked && (Pressed(KeyCode.Escape) || (Pressed(KeyCode.E) && !IsTyping()))) { Close(); return; }
             CheckIconDoubleClick();
             UpdateClock();
             UpdateToast();

@@ -145,6 +145,9 @@ public class MissionBriefing : MonoBehaviour
     public static string CurrentTip => inst && inst.tipRoot && inst.tipRoot.activeSelf && inst.tipText ? inst.tipText.text : "";
     GameObject uiCanvas;
 
+    // Sit at the office desk (used by the tutorial)
+    public static void SitAtDesk() { if (inst) inst.SitInChair(); }
+
     // DEV: skip the office + briefing (mission picked, fund paid, guide set to "free")
     public static void DevSkipBriefing(int missionIndex)
     {

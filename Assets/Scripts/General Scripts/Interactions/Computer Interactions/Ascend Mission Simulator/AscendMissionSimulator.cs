@@ -1081,6 +1081,8 @@ public class AscendMissionSimulatorApp : MonoBehaviour
         calcBtn = AUI.Btn(advBox, "CALCULATE MY SETTINGS", 14, Color.white, Accent, Calculate, -1, 42);
         AUI.Btn(advBox, "COMPARE ALL 3 IN 3D", 13, Color.white, AUI.Hex("#2E7D5B"), Compare, -1, 36);
         advBox.gameObject.SetActive(false);
+        // Optional expert maths (GMAT-style): orbit, launch, maneuvers, propulsion, ground station
+        AUI.Btn(lc, "EXPERT ANALYSIS  (GMAT-STYLE)  >", 13, Color.white, AUI.Hex("#3C3F8F"), () => AscendExpertAnalysis.Open(root, data), -1, 40);
 
         // Right: result + timeline
         var right = AUI.Rect("Right", root);

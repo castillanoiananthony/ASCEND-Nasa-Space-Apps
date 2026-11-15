@@ -21,9 +21,11 @@ public static class GameFlow
     public static bool PlayTrailer;
     // The trailer plays once when the game is opened, before the Main Menu
     public static bool IntroTrailerShown;
+    // Set by the Main Menu's TUTORIAL button: the Universe scene opens the AscendCAD Academy
+    public static bool PlayTutorial;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    static void Reset() { PlayOfficeIntro = false; PlayTrailer = false; IntroTrailerShown = false; }
+    static void Reset() { PlayOfficeIntro = false; PlayTrailer = false; IntroTrailerShown = false; PlayTutorial = false; }
 
     public static bool KeyDown(KeyCode k)
     {
