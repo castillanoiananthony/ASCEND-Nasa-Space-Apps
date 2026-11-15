@@ -128,6 +128,7 @@ public class AscendLaunchController : MonoBehaviour
     static void ResetGuideStatics() { HasLaunched = false; }
     public RectTransform TourVehicle, TourPayload, TourInfo, TourTMinus, TourLaunch, TourClose;
     public bool ConsoleIsOpen => consoleOpen;
+    public void DevOpenConsole() { if (phase == Phase.Idle && !consoleOpen && AscendLaunchSite.Current) OpenConsole(); }
     Phase phase = Phase.Idle;
 
     AscendCADData data;

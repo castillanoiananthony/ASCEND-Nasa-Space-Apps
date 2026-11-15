@@ -145,6 +145,24 @@ public class MissionBriefing : MonoBehaviour
     public static string CurrentTip => inst && inst.tipRoot && inst.tipRoot.activeSelf && inst.tipText ? inst.tipText.text : "";
     GameObject uiCanvas;
 
+    // DEV: skip the office + briefing (mission picked, fund paid, guide set to "free")
+    public static void DevSkipBriefing(int missionIndex)
+    {
+        if (!inst) return;
+        inst.StopAllCoroutines();
+        inst.transitioning = false;
+        if (inst.fade) inst.fade.alpha = 0f;
+        IntroStory.Remove();
+        if (Progress == Stage.Intro) Progress = Stage.ChooseMission;
+        if (Progress <= Stage.GoToMeeting) inst.ChooseMission(missionIndex);
+        if (Progress < Stage.LeaveMeeting) inst.EndBriefing();
+        Progress = Stage.Free;
+        if (inst.phoneOpen) inst.ClosePhone();
+        inst.ShowTip("");
+        inst.RefreshObjective();
+        if (inst.cast) Destroy(inst.cast.gameObject);
+    }
+
     // Called by the Main Menu when a world is opened: start the story from the beginning
     public static void ResetForNewGame() => ResetStatics();
 

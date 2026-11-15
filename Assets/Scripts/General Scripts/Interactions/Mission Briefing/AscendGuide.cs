@@ -30,6 +30,7 @@ public class AscendGuide : MonoBehaviour
     static bool desktopTourDone, consoleTourDone;
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ResetStatics() { desktopTourDone = consoleTourDone = false; }
+    public static void DevSkipTours() { desktopTourDone = consoleTourDone = true; }
 
     MissionBriefing mb;
     TMP_FontAsset font;
