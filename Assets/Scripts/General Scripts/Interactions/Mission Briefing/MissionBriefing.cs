@@ -44,6 +44,15 @@ public class MissionBriefing : MonoBehaviour
 
     public enum Stage { Intro, ChooseMission, GoToMeeting, Briefing, LeaveMeeting, Free }
 
+    // A person in the meeting room: model + animations (Idle, Interact = talking with hands, Wave)
+    [Serializable]
+    public class Actor
+    {
+        public GameObject model;
+        public AnimationClip idle, talk, wave;
+        public float height = 1.72f;
+    }
+
     [Header("PhMail")]
     [Tooltip("Your AscendCAD Data asset (for the PhMail addresses and the mission fund). Leave empty to use the one on the computer.")]
     public AscendCADData ascendCADData;
@@ -102,6 +111,15 @@ public class MissionBriefing : MonoBehaviour
     public float lettersPerSecond = 45f;
     public float fadeSeconds = 0.6f;
 
+    [Header("Meeting room people")]
+    [Tooltip("The Mission Director who briefs you (wears the black ASCEND uniform).")]
+    public Actor director = new Actor { height = 1.68f };
+    [Tooltip("Team members standing around the table.")]
+    public Actor[] team = new Actor[0];
+    [Range(0, 14)] public int teamSize = 10;
+    [Tooltip("How far in front of you the director stands, and how far to the side.")]
+    public float directorDistance = 3.0f, directorSide = 0.25f;
+
     [Header("Missions (Easy, Medium, Hard)")]
     public Mission[] missions = DefaultMissions();
 
@@ -123,6 +141,8 @@ public class MissionBriefing : MonoBehaviour
     public static void Hint(string text, float seconds = 10f) { if (inst) inst.ShowTip(text, seconds); }
     // Hide the office UI (tips, prompts, phone) while flying or in orbit
     public static void SetUiVisible(bool on) { if (inst && inst.uiCanvas) inst.uiCanvas.SetActive(on); }
+    // The tip shown right now ("" if none)
+    public static string CurrentTip => inst && inst.tipRoot && inst.tipRoot.activeSelf && inst.tipText ? inst.tipText.text : "";
     GameObject uiCanvas;
 
     // Called by the Main Menu when a world is opened: start the story from the beginning
@@ -161,6 +181,7 @@ public class MissionBriefing : MonoBehaviour
     readonly Queue<(Sprite icon, string app, string title, string body)> notes = new Queue<(Sprite, string, string, string)>();
     bool notifying;
     DoorGlow meetGlow, exitGlow;
+    MeetingCast cast;
 
     // ================= Unity =================
 
@@ -207,6 +228,7 @@ public class MissionBriefing : MonoBehaviour
         phoneRoot.SetActive(false);
         briefingRoot.SetActive(false);
         BuildDoorSigns();
+        gameObject.AddComponent<AscendGuide>().Init(this, font);   // guidance after the briefing
 
         if (Progress == Stage.Intro)
         {
@@ -266,7 +288,7 @@ public class MissionBriefing : MonoBehaviour
         {
             Progress = Stage.Free;
             RefreshObjective();
-            ShowTip("Go to your computer and open <b>AscendCAD</b>.", 9f);
+            if (cast) Destroy(cast.gameObject);   // the team goes back to work; AscendGuide shows the next tip
         }
     }
 
@@ -516,6 +538,8 @@ public class MissionBriefing : MonoBehaviour
         yield return Fade(0f, 1f, fadeSeconds);
         yield return TeleportPlayer(meetingRoomPoint, meetingRoomPosition, setMeetingRoomFacing ? meetingRoomFacingY : (float?)null);
         if (meetGlow) meetGlow.On = false;
+        if (cast) Destroy(cast.gameObject);
+        cast = MeetingCast.Spawn(this, MeetingPos, meetingRoomPoint ? meetingRoomPoint.eulerAngles.y : meetingRoomFacingY, font);
         yield return new WaitForSecondsRealtime(0.4f);
         yield return Fade(1f, 0f, fadeSeconds);
         transitioning = false;
@@ -546,12 +570,14 @@ public class MissionBriefing : MonoBehaviour
     {
         progressText.text = (lineIndex + 1).ToString("00") + " / " + lines.Length.ToString("00");
         StopTyping();
+        if (cast) cast.OnLine(lineIndex);
         typing = StartCoroutine(TypeLine(lines[lineIndex]));
     }
 
     IEnumerator TypeLine(string line)
     {
         isTyping = true;
+        if (cast) cast.Speaking(true);
         subtitleText.text = line;
         subtitleText.maxVisibleCharacters = 0;
         subtitleText.ForceMeshUpdate();
@@ -566,6 +592,7 @@ public class MissionBriefing : MonoBehaviour
         subtitleText.maxVisibleCharacters = 99999;
         isTyping = false;
         typing = null;
+        if (cast) cast.Speaking(false);
     }
 
     void StopTyping()
@@ -574,6 +601,7 @@ public class MissionBriefing : MonoBehaviour
         typing = null;
         isTyping = false;
         if (subtitleText) subtitleText.maxVisibleCharacters = 99999;
+        if (cast) cast.Speaking(false);
     }
 
     void EndBriefing()
@@ -582,6 +610,7 @@ public class MissionBriefing : MonoBehaviour
         briefingRoot.SetActive(false);
         SetBusy(false, false);
         Progress = Stage.LeaveMeeting;
+        if (cast) cast.OnLine(0);   // the director waves you off
 
         AscendEconomy.ReleaseFund();                         // -> ASCEND BANK notification
         summaryMsg = SendMail("Your mission notes: " + SelectedMission.title, BuildSummary(SelectedMissionIndex));

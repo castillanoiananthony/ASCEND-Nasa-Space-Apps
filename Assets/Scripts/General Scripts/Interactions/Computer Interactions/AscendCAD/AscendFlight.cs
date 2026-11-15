@@ -118,6 +118,15 @@ public class AscendLaunchController : MonoBehaviour
     }
 
     enum Phase { Idle, Countdown, Flight, Ending }
+
+    // Guide hooks (AscendGuide): the console opened / a launch started, and the parts of the screen to explain
+    public static event Action<AscendLaunchController> ConsoleOpened;
+    public static event Action LaunchStarted;
+    public static bool HasLaunched { get; private set; }
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetGuideStatics() { HasLaunched = false; }
+    public RectTransform TourVehicle, TourPayload, TourInfo, TourTMinus, TourLaunch, TourClose;
+    public bool ConsoleIsOpen => consoleOpen;
     Phase phase = Phase.Idle;
 
     AscendCADData data;
@@ -280,6 +289,7 @@ public class AscendLaunchController : MonoBehaviour
         infoBox.SetActive(false); infoBtnText.text = "ROCKET INFO   +";
         RefreshConsole();
         consoleRoot.SetActive(true);
+        try { ConsoleOpened?.Invoke(this); } catch (Exception e) { Debug.LogException(e); }
     }
 
     void CloseConsole()
@@ -311,6 +321,8 @@ public class AscendLaunchController : MonoBehaviour
         if (!AscendLaunchSite.Current) { conMsg.text = "<color=#FFD166>The rocket is no longer on the pad.</color>"; return; }
         countdownSeconds = sec;
         CloseConsole();
+        HasLaunched = true;
+        try { LaunchStarted?.Invoke(); } catch (Exception e) { Debug.LogException(e); }
         StartCoroutine(LaunchSequence());
     }
 
@@ -375,6 +387,7 @@ public class AscendLaunchController : MonoBehaviour
         MissionUI.Header(panel, "LAUNCH COMPUTER", "ASCEND MISSION CONTROL   //   CONSOLE LC-01", 72f, 140f);
         var close = MissionUI.Btn(panel, "CLOSE", 15, MissionUI.Line, CloseConsole, 120, 40);
         MissionUI.Place((RectTransform)close.transform, new Vector2(1f, 1f), new Vector2(-20f, -16f), new Vector2(120, 40));
+        TourClose = (RectTransform)close.transform;
 
         // Body (scrolls if the info is open)
         var body = AUI.Scroll(panel, 30, 30, 30, 96);
@@ -386,10 +399,12 @@ public class AscendLaunchController : MonoBehaviour
         AUI.LE(cards, -1, 430);
         conRocket = Card(cards, "VEHICLE", out rocketPic);
         conPayload = Card(cards, "PAYLOAD", out payloadPic);
+        TourVehicle = (RectTransform)conRocket.transform.parent; TourPayload = (RectTransform)conPayload.transform.parent;
 
         // Info dropdown
         var infoBtn = MissionUI.Btn(body, "ROCKET INFO   +", 18, MissionUI.Line, ToggleInfo, -1, 50);
         infoBtnText = infoBtn.GetComponentInChildren<TextMeshProUGUI>();
+        TourInfo = (RectTransform)infoBtn.transform;
         infoBtnText.alignment = TextAlignmentOptions.MidlineLeft;
         infoBtnText.rectTransform.offsetMin = new Vector2(20f, 0f);
         var ib = MissionUI.Box(body, "Info", MissionUI.LineDim);
@@ -402,6 +417,7 @@ public class AscendLaunchController : MonoBehaviour
         var row = AUI.Rect("T-minus", body);
         AUI.H(row, 0, 0, 0, 0, 18);
         AUI.LE(row, -1, 60);
+        TourTMinus = row;
         var lab = MissionUI.Lbl(row, "T-MINUS  (SEC)", 18);
         lab.color = MissionUI.Text;
         AUI.LE(lab, 260, 60);
@@ -418,6 +434,7 @@ public class AscendLaunchController : MonoBehaviour
         // Launch
         var launch = MissionUI.Btn(body, "LAUNCH", 36, MissionUI.Alert, ConsoleLaunch, -1, 84);
         launch.GetComponentInChildren<TextMeshProUGUI>().characterSpacing = 30f;
+        TourLaunch = (RectTransform)launch.transform;
 
         consoleRoot.SetActive(false);
     }

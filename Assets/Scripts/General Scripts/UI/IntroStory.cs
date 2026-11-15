@@ -19,9 +19,11 @@ public static class GameFlow
     public static bool PlayOfficeIntro;
     // Set by the Main Menu's Trailer button: the Universe scene plays the 30 s trailer, then goes back
     public static bool PlayTrailer;
+    // The trailer plays once when the game is opened, before the Main Menu
+    public static bool IntroTrailerShown;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    static void Reset() { PlayOfficeIntro = false; PlayTrailer = false; }
+    static void Reset() { PlayOfficeIntro = false; PlayTrailer = false; IntroTrailerShown = false; }
 
     public static bool KeyDown(KeyCode k)
     {

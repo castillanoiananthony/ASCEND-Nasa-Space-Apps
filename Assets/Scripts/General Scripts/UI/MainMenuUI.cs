@@ -28,6 +28,9 @@ public class MainMenuUI : MonoBehaviour
     [Tooltip("Optional: a TextMeshPro Font Asset (used instead of the font file if set)")]
     [SerializeField] private TMP_FontAsset fontAsset;
     [SerializeField] private Texture2D backgroundImage;
+    [Tooltip("In-game shots shown as a slow slideshow behind the menu (used instead of the background image when set)")]
+    [SerializeField] private Texture2D[] backgroundSlides;
+    [SerializeField] private float slideSeconds = 7f;
 
     [Header("Scenes (drag the scene files in)")]
     [Tooltip("Drag the Universe scene file here")]
@@ -57,6 +60,8 @@ public class MainMenuUI : MonoBehaviour
     private GameObject mainPanel;
     private GameObject playPanel;
     private GameObject settingsPanel;
+    private GameObject multiplayerPanel;
+    private GameObject plansPanel;
     private RectTransform listContent;
     private ScrollRect scrollRect;
 
@@ -114,12 +119,21 @@ public class MainMenuUI : MonoBehaviour
 
     private void Awake()
     {
+        // coming back from the game or the trailer: the mouse must be free and visible
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
         SetupFont();
         MakeSprites();
         EnsureEventSystem();
         BuildUI();
         LoadWorlds();
         ShowPanel(mainPanel);
+        // Opening the game: the trailer plays first, then it comes back here
+        if (!GameFlow.IntroTrailerShown)
+        {
+            GameFlow.IntroTrailerShown = true;
+            OnTrailer();
+        }
     }
 
     // ======================= BUTTON ACTIONS =================================
@@ -127,6 +141,8 @@ public class MainMenuUI : MonoBehaviour
     private void OnPlay() => ShowPanel(playPanel);
     private void OnBack() => ShowPanel(mainPanel);
     private void OnOptions() => ShowPanel(settingsPanel);
+    private void OnMultiplayer() => ShowPanel(multiplayerPanel);
+    private void OnFuturePlans() => ShowPanel(plansPanel);
 
     // Trailer: plays a 30-second cinematic in the Universe scene, then comes back here
     private void OnTrailer()
@@ -217,6 +233,8 @@ public class MainMenuUI : MonoBehaviour
         mainPanel.SetActive(panel == mainPanel);
         playPanel.SetActive(panel == playPanel);
         if (settingsPanel) settingsPanel.SetActive(panel == settingsPanel);
+        if (multiplayerPanel) multiplayerPanel.SetActive(panel == multiplayerPanel);
+        if (plansPanel) plansPanel.SetActive(panel == plansPanel);
     }
 
     // ======================= WORLD LIST LOGIC ===============================
@@ -368,7 +386,11 @@ public class MainMenuUI : MonoBehaviour
         // ---------- Background ----------
         var bgHolder = NewUI("Background", root);
         Stretch(bgHolder);
-        if (backgroundImage != null)
+        if (backgroundSlides != null && backgroundSlides.Length > 0)
+        {
+            BuildSlideshow(bgHolder);
+        }
+        else if (backgroundImage != null)
         {
             var bgRT = NewUI("Image", bgHolder);
             var raw = bgRT.gameObject.AddComponent<RawImage>();
@@ -401,52 +423,57 @@ public class MainMenuUI : MonoBehaviour
         mainPanel = main.gameObject;
 
         var titleRT = NewUI("Title", main);
-        titleRT.anchorMin = titleRT.anchorMax = new Vector2(0.68f, 0.76f);
+        titleRT.anchorMin = titleRT.anchorMax = new Vector2(1f, 0.76f);
+        titleRT.pivot = new Vector2(1f, 0.5f);
+        titleRT.anchoredPosition = new Vector2(-120f, 0f);
         titleRT.sizeDelta = new Vector2(1200, 240);
-        AddText(titleRT, "ASCEND", 160, TextAlignmentOptions.Center, 22, false);
+        AddText(titleRT, "ASCEND", 160, TextAlignmentOptions.Right, 22, false);
 
-        MakeTextButton(main, "Play",    new Vector2(0.68f, 0.52f), OnPlay);
-        MakeTextButton(main, "Options", new Vector2(0.68f, 0.40f), OnOptions);
-        MakeTextButton(main, "Exit",    new Vector2(0.68f, 0.28f), OnExit);
+        MakeTextButton(main, "Single Player", new Vector2(1f, 0.56f), OnPlay);
+        MakeTextButton(main, "Multiplayer",   new Vector2(1f, 0.46f), OnMultiplayer);
+        MakeTextButton(main, "Settings",      new Vector2(1f, 0.36f), OnOptions);
+        MakeTextButton(main, "About Game",    new Vector2(1f, 0.26f), OnFuturePlans);
+        MakeTextButton(main, "Exit",          new Vector2(1f, 0.16f), OnExit);
 
         // ---------- Settings panel ----------
         settingsPanel = SettingsPanel.Build(root, tmpFont, OnTrailer, ("BACK", (Action)OnBack, true));
+        multiplayerPanel = MenuPages.BuildMultiplayer(root, tmpFont, OnBack);
+        plansPanel = MenuPages.BuildAbout(root, tmpFont, OnBack);
 
-        // ---------- Play panel ----------
-        var play = NewUI("PlayPanel", root);
-        Stretch(play);
-        var dark = play.gameObject.AddComponent<Image>();
-        dark.color = new Color(0f, 0f, 0f, playPanelDarkness);
-        playPanel = play.gameObject;
+        // ---------- Single Player panel (same mission-control look as the other pages) ----------
+        var playPage = MenuPages.Frame(root, "PlayPanel", "SINGLE PLAYER", "ASCEND   //   MISSION LEAD", tmpFont, out playPanel);
+        float inset = 56f;
 
-        MakeIconButton(play, "TutorialButton", iconQuestion, "TUTORIAL", false,
-            new Vector2(0, 1), new Vector2(140, -120), 700, OnTutorial);
-        MakeIconButton(play, "CreateWorldButton", iconPlus, "CREATE NEW WORLD", false,
-            new Vector2(0, 1), new Vector2(140, -220), 900, CreateNewWorld);
-        MakeIconButton(play, "BackButton", iconBack, "Back", true,
-            new Vector2(1, 1), new Vector2(-140, -120), 320, OnBack);
+        var newBtn = MissionUI.Btn(playPage, "+  NEW WORLD", 22, MissionUI.Accent, CreateNewWorld, 330, 56, tmpFont);
+        var tutBtn = MissionUI.Btn(playPage, "TUTORIAL", 22, MissionUI.LineDim, OnTutorial, 260, 56, tmpFont);
+        foreach (var (b, x) in new[] { (newBtn, inset), (tutBtn, inset + 350f) })
+        {
+            var brt = (RectTransform)b.transform;
+            brt.anchorMin = brt.anchorMax = brt.pivot = new Vector2(0f, 1f);
+            brt.anchoredPosition = new Vector2(x, -104f); brt.sizeDelta = new Vector2(b == newBtn ? 330f : 260f, 56f);
+        }
+        if (string.IsNullOrEmpty(tutorialScenePath) && string.IsNullOrEmpty(tutorialSceneName)) tutBtn.interactable = false;
+
+        var wl = MissionUI.Lbl(playPage, "YOUR WORLDS", 18, tmpFont); wl.alignment = TextAlignmentOptions.Left;
+        MenuPages.TopRow(wl.rectTransform, 192f, 30f, inset);
+        var hint = MissionUI.Lbl(playPage, "DOUBLE-CLICK A WORLD TO OPEN IT", 15, tmpFont); hint.alignment = TextAlignmentOptions.Right;
+        MenuPages.TopRow(hint.rectTransform, 192f, 30f, inset);
 
         // Existing worlds box
-        var box = NewUI("ExistingWorlds", play);
-        box.anchorMin = new Vector2(0.1f, 0.07f);
-        box.anchorMax = new Vector2(0.9f, 0.66f);
-        box.offsetMin = box.offsetMax = Vector2.zero;
-        MakeFrame(box, 3, new Color(1, 1, 1, 0.9f));
+        var box = MissionUI.Box(playPage, "ExistingWorlds", MissionUI.LineDim, new Color(0f, 0f, 0f, 0.6f));
+        box.anchorMin = Vector2.zero; box.anchorMax = Vector2.one;
+        box.offsetMin = new Vector2(inset, 120f); box.offsetMax = new Vector2(-inset, -232f);
 
-        var headerRT = NewUI("Header", box);
-        headerRT.anchorMin = new Vector2(0, 1);
-        headerRT.anchorMax = new Vector2(1, 1);
-        headerRT.pivot = new Vector2(0.5f, 1);
-        headerRT.anchoredPosition = new Vector2(0, -15);
-        headerRT.sizeDelta = new Vector2(0, 70);
-        AddText(headerRT, "Existing Worlds", 40, TextAlignmentOptions.Center, 30, true);
+        emptyLabel = MissionUI.Txt(box, "NO WORLDS YET.\n<size=70%><color=#9AA0A6>PRESS  + NEW WORLD  TO START YOUR FIRST MISSION.</color></size>", 30, MissionUI.Text, FontStyles.Normal, tmpFont);
+        emptyLabel.alignment = TextAlignmentOptions.Center; emptyLabel.characterSpacing = 6f; emptyLabel.lineSpacing = 30f;
+        MissionUI.Stretch(emptyLabel.rectTransform);
 
         // Scrollable list
         var viewport = NewUI("Viewport", box);
         viewport.anchorMin = Vector2.zero;
         viewport.anchorMax = Vector2.one;
-        viewport.offsetMin = new Vector2(20, 20);
-        viewport.offsetMax = new Vector2(-20, -100);
+        viewport.offsetMin = new Vector2(16, 16);
+        viewport.offsetMax = new Vector2(-16, -16);
         var vpImg = viewport.gameObject.AddComponent<Image>();
         vpImg.color = Color.clear; // lets the mouse wheel scroll over empty space
         viewport.gameObject.AddComponent<RectMask2D>();
@@ -458,8 +485,8 @@ public class MainMenuUI : MonoBehaviour
         listContent.offsetMin = listContent.offsetMax = Vector2.zero;
 
         var layout = listContent.gameObject.AddComponent<VerticalLayoutGroup>();
-        layout.padding = new RectOffset(160, 160, 10, 10);
-        layout.spacing = 14;
+        layout.padding = new RectOffset(8, 8, 8, 8);
+        layout.spacing = 12;
         layout.childAlignment = TextAnchor.UpperCenter;
         layout.childControlWidth = true;
         layout.childControlHeight = true;
@@ -475,6 +502,14 @@ public class MainMenuUI : MonoBehaviour
         scrollRect.horizontal = false;
         scrollRect.movementType = ScrollRect.MovementType.Clamped;
         scrollRect.scrollSensitivity = 30;
+
+        MenuPages.BackButton(playPage, tmpFont, OnBack);
+    }
+
+    private TextMeshProUGUI emptyLabel;
+    private void Update()
+    {
+        if (emptyLabel) emptyLabel.gameObject.SetActive(rows.Count == 0);
     }
 
     private void SpawnRow(string worldName)
@@ -485,15 +520,18 @@ public class MainMenuUI : MonoBehaviour
         row.root = rt.gameObject;
 
         var bg = rt.gameObject.AddComponent<Image>();
-        bg.sprite = barSprite;
-        rt.gameObject.AddComponent<LayoutElement>().preferredHeight = 80;
-        MakeFrame(rt, 3, new Color(1, 1, 1, 0.85f));
+        bg.color = new Color(0f, 0f, 0f, 0.7f);
+        rt.gameObject.AddComponent<LayoutElement>().preferredHeight = 84;
+        MissionUI.Border(rt, MissionUI.Line);
+        var tick = MissionUI.Solid(rt, MissionUI.Accent, false, "Tick").rectTransform;   // accent bar on the left edge
+        tick.anchorMin = new Vector2(0f, 0f); tick.anchorMax = new Vector2(0f, 1f); tick.pivot = new Vector2(0f, 0.5f);
+        tick.sizeDelta = new Vector2(5f, -20f); tick.anchoredPosition = new Vector2(10f, 0f);
 
-        // Name label (black so it reads on the light side of the bar)
-        row.label = AddText(rt, "", 36, TextAlignmentOptions.MidlineLeft, 10, true);
-        row.label.color = worldNameColor;
+        // Name label
+        row.label = AddText(rt, "", 34, TextAlignmentOptions.MidlineLeft, 10, true);
+        row.label.color = MissionUI.Text;
         var labelRT = (RectTransform)row.label.transform;
-        labelRT.offsetMin = new Vector2(24, 0);
+        labelRT.offsetMin = new Vector2(34, 0);
         labelRT.offsetMax = new Vector2(-160, 0);
 
         // Name input
@@ -558,6 +596,77 @@ public class MainMenuUI : MonoBehaviour
         return input;
     }
 
+    // ======================= BACKGROUND SLIDESHOW ===========================
+    // Two layers cross-fade between the in-game shots, each slowly zooming in.
+    // A dark shade on the right keeps the menu text readable on bright shots.
+    private RawImage[] slideLayers;
+
+    private void BuildSlideshow(RectTransform holder)
+    {
+        slideLayers = new RawImage[2];
+        for (int i = 0; i < 2; i++)
+        {
+            var rt = NewUI("Slide " + (i + 1), holder);
+            var raw = rt.gameObject.AddComponent<RawImage>();
+            raw.raycastTarget = false;
+            var fit = rt.gameObject.AddComponent<AspectRatioFitter>();
+            fit.aspectMode = AspectRatioFitter.AspectMode.EnvelopeParent;
+            fit.aspectRatio = 16f / 9f;
+            slideLayers[i] = raw;
+        }
+        var shadeRT = NewUI("Menu Shade", holder);
+        Stretch(shadeRT);
+        var shade = shadeRT.gameObject.AddComponent<RawImage>();
+        shade.raycastTarget = false;
+        var tex = new Texture2D(256, 1, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };
+        for (int x = 0; x < 256; x++)
+        {
+            float k = Mathf.Clamp01((x / 255f - 0.3f) / 0.35f);
+            tex.SetPixel(x, 0, new Color(0f, 0f, 0f, 0.25f + 0.7f * k * k * (3f - 2f * k)));
+        }
+        tex.Apply();
+        shade.texture = tex;
+        StartCoroutine(Slideshow());
+    }
+
+    private System.Collections.IEnumerator Slideshow()
+    {
+        int index = 0, front = 0;
+        float fadeTime = 1.6f;
+        slideLayers[0].texture = backgroundSlides[0];
+        slideLayers[1].color = new Color(1f, 1f, 1f, 0f);
+        float shown = 0f;
+        while (true)
+        {
+            // slow zoom on the front slide
+            shown += Time.unscaledDeltaTime;
+            slideLayers[front].rectTransform.localScale = Vector3.one * (1f + 0.06f * Mathf.Clamp01(shown / (slideSeconds + fadeTime)));
+            if (backgroundSlides.Length > 1 && shown >= slideSeconds)
+            {
+                index = (index + 1) % backgroundSlides.Length;
+                int back = 1 - front;
+                var b = slideLayers[back];
+                b.texture = backgroundSlides[index];
+                b.rectTransform.localScale = Vector3.one;
+                b.transform.SetAsLastSibling();
+                b.transform.parent.Find("Menu Shade").SetAsLastSibling();
+                for (float a = 0f; a < fadeTime; a += Time.unscaledDeltaTime)
+                {
+                    float k = a / fadeTime; k = k * k * (3f - 2f * k);
+                    b.color = new Color(1f, 1f, 1f, k);
+                    b.rectTransform.localScale = Vector3.one * (1f + 0.06f * (a / (slideSeconds + fadeTime)));
+                    slideLayers[front].rectTransform.localScale *= 1f + 0.004f * Time.unscaledDeltaTime;
+                    yield return null;
+                }
+                b.color = Color.white;
+                slideLayers[front].color = new Color(1f, 1f, 1f, 0f);
+                front = back;
+                shown = fadeTime;
+            }
+            yield return null;
+        }
+    }
+
     // ======================= UI HELPERS =====================================
 
     private static RectTransform NewUI(string name, Transform parent)
@@ -598,16 +707,30 @@ public class MainMenuUI : MonoBehaviour
     {
         var rt = NewUI(label + "Button", parent);
         rt.anchorMin = rt.anchorMax = anchor;
-        rt.sizeDelta = new Vector2(500, 90);
+        rt.pivot = new Vector2(1f, 0.5f);
+        rt.anchoredPosition = new Vector2(-130f, 0f);   // right edge, lined up under the title
+        rt.sizeDelta = new Vector2(760, 90);
 
         var hit = rt.gameObject.AddComponent<Image>();
         hit.color = Color.clear;
 
-        var txt = AddText(rt, label, 64, TextAlignmentOptions.Center, 12, true);
+        var txt = AddText(rt, label, 54, TextAlignmentOptions.Right, 10, true);
+
+        // underline that slides in from the right when the button is hovered / selected
+        var line = NewUI("Underline", rt);
+        line.anchorMin = line.anchorMax = new Vector2(1f, 0f);
+        line.pivot = new Vector2(1f, 0.5f);
+        line.anchoredPosition = new Vector2(0f, 10f);
+        line.sizeDelta = new Vector2(0f, 3f);
+        var lineImg = line.gameObject.AddComponent<Image>();
+        lineImg.color = Color.white; lineImg.raycastTarget = false;
+        var ul = rt.gameObject.AddComponent<MenuUnderline>();
+        ul.line = line; ul.text = txt;
 
         var btn = rt.gameObject.AddComponent<Button>();
         btn.targetGraphic = txt;
         SetHoverColors(btn);
+        var c = btn.colors; c.highlightedColor = Color.white; c.selectedColor = Color.white; btn.colors = c;   // the underline shows the hover now
         btn.onClick.AddListener(onClick);
     }
 
@@ -831,5 +954,29 @@ public class MainMenuUI : MonoBehaviour
 
         tex.Apply();
         return Sprite.Create(tex, new Rect(0, 0, W, 4), new Vector2(0.5f, 0.5f), 100);
+    }
+}
+
+// Main Menu button underline: grows smoothly under the label on hover / keyboard select, shrinks on exit
+public class MenuUnderline : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, ISelectHandler, IDeselectHandler
+{
+    public RectTransform line;
+    public TMP_Text text;
+    bool hover, selected;
+    float k;
+
+    public void OnPointerEnter(PointerEventData e) => hover = true;
+    public void OnPointerExit(PointerEventData e) => hover = false;
+    public void OnSelect(BaseEventData e) => selected = true;
+    public void OnDeselect(BaseEventData e) => selected = false;
+    void OnDisable() { hover = selected = false; k = 0f; if (line) line.sizeDelta = new Vector2(0f, line.sizeDelta.y); }
+
+    void Update()
+    {
+        if (!line || !text) return;
+        float target = hover || selected ? 1f : 0f;
+        k = Mathf.MoveTowards(k, target, Time.unscaledDeltaTime / 0.22f);
+        float e = k * k * (3f - 2f * k);
+        line.sizeDelta = new Vector2(text.preferredWidth * e, line.sizeDelta.y);
     }
 }

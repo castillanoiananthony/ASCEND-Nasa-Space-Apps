@@ -271,6 +271,12 @@ MonoBehaviour:
   onFlightFailed:
     m_PersistentCalls:
       m_Calls: []
+  TourVehicle: {fileID: 0}
+  TourPayload: {fileID: 0}
+  TourInfo: {fileID: 0}
+  TourTMinus: {fileID: 0}
+  TourLaunch: {fileID: 0}
+  TourClose: {fileID: 0}
 --- !u!1 &59328535 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: ba2bb9489229c894bb12c353229ef801, type: 3}
@@ -465,6 +471,46 @@ MonoBehaviour:
     - ASCEND Mission Control'
   lettersPerSecond: 45
   fadeSeconds: 0.6
+  director:
+    model: {fileID: 2242888416370347441, guid: c81ce8f0810e04ddab30b22ea28f1750, type: 3}
+    idle: {fileID: -6736537688726264772, guid: c81ce8f0810e04ddab30b22ea28f1750, type: 3}
+    talk: {fileID: -1208920132165896793, guid: c81ce8f0810e04ddab30b22ea28f1750, type: 3}
+    wave: {fileID: -469540091750951958, guid: c81ce8f0810e04ddab30b22ea28f1750, type: 3}
+    height: 1.68
+  team:
+  - model: {fileID: 2242888416370347441, guid: 5ea2cab9103b26d928caeabb8c0eb8c8, type: 3}
+    idle: {fileID: -6736537688726264772, guid: 5ea2cab9103b26d928caeabb8c0eb8c8, type: 3}
+    talk: {fileID: -1208920132165896793, guid: 5ea2cab9103b26d928caeabb8c0eb8c8, type: 3}
+    wave: {fileID: -469540091750951958, guid: 5ea2cab9103b26d928caeabb8c0eb8c8, type: 3}
+    height: 1.76
+  - model: {fileID: 2242888416370347441, guid: bb5fa8eceaa5722919536da334d0ffaf, type: 3}
+    idle: {fileID: -6736537688726264772, guid: bb5fa8eceaa5722919536da334d0ffaf, type: 3}
+    talk: {fileID: -1208920132165896793, guid: bb5fa8eceaa5722919536da334d0ffaf, type: 3}
+    wave: {fileID: -469540091750951958, guid: bb5fa8eceaa5722919536da334d0ffaf, type: 3}
+    height: 1.65
+  - model: {fileID: 2242888416370347441, guid: a881143666ccb1bc9a21ae0426a9d724, type: 3}
+    idle: {fileID: -6736537688726264772, guid: a881143666ccb1bc9a21ae0426a9d724, type: 3}
+    talk: {fileID: -1208920132165896793, guid: a881143666ccb1bc9a21ae0426a9d724, type: 3}
+    wave: {fileID: -469540091750951958, guid: a881143666ccb1bc9a21ae0426a9d724, type: 3}
+    height: 1.76
+  - model: {fileID: 2242888416370347441, guid: 8861237438f5d063f9cdbb67e562bd91, type: 3}
+    idle: {fileID: -6736537688726264772, guid: 8861237438f5d063f9cdbb67e562bd91, type: 3}
+    talk: {fileID: -1208920132165896793, guid: 8861237438f5d063f9cdbb67e562bd91, type: 3}
+    wave: {fileID: -469540091750951958, guid: 8861237438f5d063f9cdbb67e562bd91, type: 3}
+    height: 1.65
+  - model: {fileID: 2242888416370347441, guid: 5ea2cab9103b26d928caeabb8c0eb8c8, type: 3}
+    idle: {fileID: -6736537688726264772, guid: 5ea2cab9103b26d928caeabb8c0eb8c8, type: 3}
+    talk: {fileID: -1208920132165896793, guid: 5ea2cab9103b26d928caeabb8c0eb8c8, type: 3}
+    wave: {fileID: -469540091750951958, guid: 5ea2cab9103b26d928caeabb8c0eb8c8, type: 3}
+    height: 1.76
+  - model: {fileID: 2242888416370347441, guid: c81ce8f0810e04ddab30b22ea28f1750, type: 3}
+    idle: {fileID: -6736537688726264772, guid: c81ce8f0810e04ddab30b22ea28f1750, type: 3}
+    talk: {fileID: -1208920132165896793, guid: c81ce8f0810e04ddab30b22ea28f1750, type: 3}
+    wave: {fileID: -469540091750951958, guid: c81ce8f0810e04ddab30b22ea28f1750, type: 3}
+    height: 1.65
+  teamSize: 10
+  directorDistance: 3
+  directorSide: 0.25
   missions:
   - title: Sky Sensor
     subtitle: EASY  |  A tiny probe that measures the sky

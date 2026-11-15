@@ -105,6 +105,24 @@ public class ComputerInteraction : MonoBehaviour
     public RectTransform DesktopArea { get; private set; }
     public bool IsOpen => isOpen;
 
+    // Guide hooks (AscendGuide): opened / closed, find an app icon, show the NEXT STEP line in the taskbar
+    public static event Action<ComputerInteraction> Opened, Closed;
+    public RectTransform AppIcon(string appName)
+    {
+        if (iconCells == null) return null;
+        for (int i = 0; i < apps.Length && i < iconCells.Length; i++) if (IsApp(apps[i], appName)) return iconCells[i];
+        return null;
+    }
+    public void SetGuideLine(string text)
+    {
+        guideText = text ?? "";
+        if (guideLabel) { guideLabel.text = guideText; guideLabel.gameObject.SetActive(guideText.Length > 0); }
+        if (guideSep) guideSep.SetActive(guideText.Length > 0);
+    }
+    string guideText = "";
+    TextMeshProUGUI guideLabel;
+    GameObject guideSep;
+
     const int DesktopSortOrder = 999;
     const int HintSortOrder = 1000;
     const float TitleBarHeight = 36f;
@@ -267,8 +285,7 @@ public class ComputerInteraction : MonoBehaviour
         if (hintLabel)
         {
             hintLabel.text = exitHintText;
-            hintLabel.fontSize = exitHintSize;
-            ((RectTransform)hintLabel.transform.parent).anchoredPosition = exitHintOffset;
+            hintLabel.fontSize = Mathf.Min(exitHintSize, 18f);
         }
     }
 
@@ -369,6 +386,7 @@ public class ComputerInteraction : MonoBehaviour
         // Exit hint
         if (!hintRoot) BuildExitHint();
         hintRoot.SetActive(true);
+        SetGuideLine(guideText);
 
         // Freeze player
         foreach (var s in disableWhileOpen) if (s) s.enabled = false;
@@ -385,6 +403,9 @@ public class ComputerInteraction : MonoBehaviour
                 go.SetActive(false);
             }
         }
+
+        // everything is built and shown: let the guide know (desktop tour)
+        try { Opened?.Invoke(this); } catch (Exception e) { Debug.LogException(e); }
 
     }
 
@@ -408,6 +429,7 @@ public class ComputerInteraction : MonoBehaviour
 
         Cursor.lockState = previousLock;
         Cursor.visible = previousVisible;
+        try { Closed?.Invoke(this); } catch (Exception e) { Debug.LogException(e); }
     }
 
     // ───────────────────────────── Apps ─────────────────────────────
@@ -575,9 +597,8 @@ public class ComputerInteraction : MonoBehaviour
     {
         const float cellW = 120f, cellH = 128f, iconSize = 60f;
 
-        // Start the icons below the "Press E to exit" hint (pill = text + padding)
-        float hintBottom = Mathf.Abs(exitHintOffset.y) + exitHintSize * 1.3f + 12f;
-        float top = hintBottom + 12f;
+        // The "Press E to exit" hint lives in the taskbar now, so the icons start at the top
+        float top = 16f;
         iconCells = new RectTransform[apps.Length];
 
         for (int i = 0; i < apps.Length; i++)
@@ -889,11 +910,12 @@ public class ComputerInteraction : MonoBehaviour
     {
         hintRoot = CreateOverlayCanvas("ExitHint_" + name, HintSortOrder);
 
-        // Small dark pill that sizes itself to the text
+        // Small dark pill in the middle of the taskbar (never covered by a window, even a full-screen one).
+        // Shows the guide's NEXT STEP (if any) and how to leave the computer.
         var pill = CreateRect("Pill", hintRoot.transform);
-        pill.anchorMin = pill.anchorMax = new Vector2(0f, 1f);
-        pill.pivot = new Vector2(0f, 1f);
-        pill.anchoredPosition = exitHintOffset;
+        pill.anchorMin = pill.anchorMax = new Vector2(0.5f, 0f);
+        pill.pivot = new Vector2(0.5f, 0.5f);
+        pill.anchoredPosition = new Vector2(0f, taskbarHeight * 0.5f);
 
         var pillImg = pill.gameObject.AddComponent<Image>();
         pillImg.sprite = RoundedSprite;
@@ -902,7 +924,9 @@ public class ComputerInteraction : MonoBehaviour
         pillImg.raycastTarget = false;
 
         var layout = pill.gameObject.AddComponent<HorizontalLayoutGroup>();
-        layout.padding = new RectOffset(12, 12, 6, 6);
+        layout.padding = new RectOffset(16, 16, 5, 5);
+        layout.spacing = 14f;
+        layout.childAlignment = TextAnchor.MiddleCenter;
         layout.childControlWidth = layout.childControlHeight = true;
         layout.childForceExpandWidth = layout.childForceExpandHeight = false;
 
@@ -910,10 +934,23 @@ public class ComputerInteraction : MonoBehaviour
         fitter.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
         fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
-        hintLabel = CreateText("Text", pill, exitHintText, exitHintSize);
+        pillImg.color = new Color(0f, 0f, 0f, 0.7f);
+
+        guideLabel = CreateText("Next Step", pill, "", 16f);
+        guideLabel.color = new Color(0.55f, 0.88f, 1f, 1f);
+        guideLabel.alignment = TextAlignmentOptions.MidlineLeft;
+        guideLabel.textWrappingMode = TextWrappingModes.NoWrap;
+        guideLabel.gameObject.AddComponent<LayoutElement>().preferredWidth = -1;
+        var sep = CreateRect("Separator", pill);
+        sep.gameObject.AddComponent<Image>().color = new Color(1f, 1f, 1f, 0.3f);
+        var sle = sep.gameObject.AddComponent<LayoutElement>(); sle.preferredWidth = 1.5f; sle.preferredHeight = 22f;
+        guideSep = sep.gameObject;
+
+        hintLabel = CreateText("Text", pill, exitHintText, Mathf.Min(exitHintSize, 18f));
         hintLabel.color = new Color(1f, 1f, 1f, 0.85f);
         hintLabel.alignment = TextAlignmentOptions.MidlineLeft;
         hintLabel.textWrappingMode = TextWrappingModes.NoWrap;
+        SetGuideLine(guideText);
 
         hintRoot.SetActive(false);
     }

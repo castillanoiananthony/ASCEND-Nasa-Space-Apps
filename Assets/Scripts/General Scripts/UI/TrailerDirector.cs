@@ -6,7 +6,7 @@
 //    10-22 s  LAUNCH        countdown, ignition, liftoff, tracking shot, stage separation
 //    22-28 s  ORBIT         HD Earth, the satellite drifting over the Philippines
 //    28-30 s  TITLE         ASCEND - Design. Launch. Explore.   -> back to the Main Menu
-//  Esc or Space skips. Letterbox bars, captions, eased camera moves with a little handheld shake.
+//  S (or Esc / Space) skips. Letterbox bars, captions, eased camera moves with a little handheld shake.
 // ═════════════════════════════════════════════════════════════════════════════
 using System;
 using System.Collections;
@@ -94,9 +94,9 @@ public class TrailerDirector : MonoBehaviour
         while (true)
         {
 #if ENABLE_INPUT_SYSTEM
-            bool k = Keyboard.current != null && (Keyboard.current.escapeKey.wasPressedThisFrame || Keyboard.current.spaceKey.wasPressedThisFrame);
+            bool k = Keyboard.current != null && (Keyboard.current.sKey.wasPressedThisFrame || Keyboard.current.escapeKey.wasPressedThisFrame || Keyboard.current.spaceKey.wasPressedThisFrame);
 #else
-            bool k = Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.Space);
+            bool k = Input.GetKeyDown(KeyCode.S) || Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.Space);
 #endif
             if (k && !skipping) { skipping = true; StopAllCoroutines(); StartCoroutine(SkipOut()); yield break; }
             yield return null;
@@ -110,6 +110,7 @@ public class TrailerDirector : MonoBehaviour
         if (sun) sun.transform.rotation = sunRot;
         AscendSky.ResetAltitude();
         GameFlow.PlayTrailer = false;
+        Cursor.lockState = CursorLockMode.None; Cursor.visible = true;   // give the mouse back to the menu
         if (Application.CanStreamedLevelBeLoaded(mainMenuScene)) SceneManager.LoadScene(mainMenuScene);
 #if UNITY_EDITOR
         else UnityEditor.SceneManagement.EditorSceneManager.LoadSceneInPlayMode("Assets/Scenes/" + mainMenuScene + ".unity", new LoadSceneParameters(LoadSceneMode.Single));
@@ -125,7 +126,7 @@ public class TrailerDirector : MonoBehaviour
         float t = 0f, seed = UnityEngine.Random.value * 100f;
         while (t < secs)
         {
-            float k = Ease(t / secs);
+            float u = t / secs, k = 0.4f * Ease(u) + 0.6f * u;   // eases in, but never stops dead at the end
             each?.Invoke(t);
             Vector3 p = pos(k);
             Vector3 n = new Vector3(Mathf.PerlinNoise(seed, t * 0.7f) - 0.5f, Mathf.PerlinNoise(seed + 3f, t * 0.7f) - 0.5f, 0f) * shake;
@@ -163,8 +164,8 @@ public class TrailerDirector : MonoBehaviour
         Caption("EVERY MISSION STARTS WITH A PLAN", "ASCEND MISSION CONTROL   //   BRIEFING ROOM");
         StartCoroutine(Fade(1f, 0f, 1.2f));
         Vector3 a = room + Vector3.up * 1.55f - fwd * 0.6f + side * 0.7f, b = room + Vector3.up * 1.3f + fwd * 4.5f - side * 0.4f;
-        yield return Shot(4.5f, k => Vector3.Lerp(a, b, k), k => room + fwd * 12f + Vector3.up * 1.1f, 46f, 40f, 0.03f);
-        yield return Fade(0f, 1f, 0.35f);
+        StartCoroutine(FadeAt(4.45f, 0.35f));
+        yield return Shot(4.85f, k => Vector3.Lerp(a, b, k), k => room + fwd * 12f + Vector3.up * 1.1f, 46f, 40f, 0.03f);
         foreach (var g in spawned) if (g) Destroy(g);
         spawned.Clear();
     }
@@ -267,10 +268,10 @@ public class TrailerDirector : MonoBehaviour
         yield return Shot(3f, k => g1 + Vector3.up * 2f * k, k => rocket.transform.position + Vector3.up * rocketH * Mathf.Lerp(0.22f, 0.5f, k), 50f, 44f, 0.08f, climb);
         // tracking shot from the side
         var tAng = Clear(new Vector3(-rocketH * 1.5f, rocketH * 0.5f, -rocketH * 2f), 0.8f, 1.6f);
-        yield return Shot(2.2f, k => rocket.transform.position + tAng * new Vector3(-rocketH * 1.5f, rocketH * (0.2f + 0.4f * k), -rocketH * 2f), k => rocket.transform.position + Vector3.up * rocketH * 0.5f, 42f, 38f, 0.06f, climb);
+        StartCoroutine(FadeAt(2.15f, 0.4f));
+        yield return Shot(2.6f, k => rocket.transform.position + tAng * new Vector3(-rocketH * 1.5f, rocketH * (0.2f + 0.4f * k), -rocketH * 2f), k => rocket.transform.position + Vector3.up * rocketH * 0.5f, 42f, 38f, 0.06f, climb);
 
         // high in a dark sky: stage separation
-        yield return Fade(0f, 1f, 0.4f);
         rocket.transform.position = basePos + Vector3.up * 52000f;
         AscendSky.SetAltitude(52000f);
         var cleanup = new List<GameObject>();
@@ -302,8 +303,8 @@ public class TrailerDirector : MonoBehaviour
             }
         };
         Vector3 off = new Vector3(rocketH * 1.4f, -rocketH * 0.2f, -rocketH * 1.6f);
-        yield return Shot(3f, k => rocket.transform.position + off + Vector3.down * rocketH * 0.6f * k, k => rocket.transform.position + Vector3.up * rocketH * (0.35f - 0.25f * k), 38f, 46f, 0.04f, high);
-        yield return Fade(0f, 1f, 0.7f);   // soft fade to black into orbit
+        StartCoroutine(FadeAt(2.95f, 0.7f));   // soft fade to black into orbit, everything still moving
+        yield return Shot(3.7f, k => rocket.transform.position + off + Vector3.down * rocketH * 0.6f * k, k => rocket.transform.position + Vector3.up * rocketH * (0.35f - 0.25f * k), 38f, 46f, 0.04f, high);
         foreach (var f in fx) if (f) Destroy(f.gameObject);
         fx.Clear();
         if (dropped) Destroy(dropped.gameObject);
@@ -401,10 +402,11 @@ public class TrailerDirector : MonoBehaviour
         Vector3 lookEarth = AscendEarth.Center + earth.WorldDir(13f, 123f) * AscendEarth.RadiusKm;
         Caption("EXPLORE.", "FOR THE PHILIPPINES   //   700 KM ABOVE HOME");
         StartCoroutine(Fade(1f, 0f, 1f));
-        float t = 0f, secs = 5f;
+        float t = 0f, secs = 5.5f;
+        StartCoroutine(FadeAt(5f, 0.5f));
         while (t < secs)
         {
-            float k = Ease(t / secs);
+            float u = t / secs, k = 0.4f * Ease(u) + 0.6f * u;
             Quaternion rot = Quaternion.LookRotation(lookEarth - camEarth + Vector3.up * 900f * (1f - k), Vector3.up) * Quaternion.Euler(-4f * k, 6f * k, 0f);
             spaceCam.transform.position = camEarth; spaceCam.transform.rotation = rot;
             rigCam.transform.rotation = rot; rigCam.fieldOfView = spaceCam.fieldOfView = Mathf.Lerp(48f, 42f, k);
@@ -415,7 +417,7 @@ public class TrailerDirector : MonoBehaviour
             t += Time.deltaTime;
             yield return null;
         }
-        yield return Fade(0f, 1f, 0.5f);
+        fade.alpha = 1f;
     }
 
     // ───────────────────────── 5. TITLE (28-30 s) ─────────────────────────
@@ -487,8 +489,8 @@ public class TrailerDirector : MonoBehaviour
         MissionUI.Place(sub.rectTransform, new Vector2(0.5f, 0f), new Vector2(0, 26), new Vector2(1700, 30));
         count = MissionUI.Txt(root, "", 170, Color.white, FontStyles.Bold); count.alignment = TextAlignmentOptions.Center;
         MissionUI.Place(count.rectTransform, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(600, 260));
-        var skip = MissionUI.Lbl(root, "ESC  SKIP", 12);
-        MissionUI.Place(skip.rectTransform, new Vector2(1f, 1f), new Vector2(-40, -44), new Vector2(200, 30)); skip.alignment = TextAlignmentOptions.Right;
+        var skip = MissionUI.Txt(root, "PRESS <color=#FFFFFF><b>S</b></color> TO SKIP", 16, MissionUI.Label, FontStyles.Normal); skip.characterSpacing = 8f;
+        MissionUI.Place(skip.rectTransform, new Vector2(1f, 1f), new Vector2(-40, -44), new Vector2(420, 30)); skip.alignment = TextAlignmentOptions.Right;
 
         var f = MissionUI.Solid(root, Color.black, false, "Fade"); MissionUI.Stretch(f.rectTransform); fade = f.gameObject.AddComponent<CanvasGroup>(); fade.blocksRaycasts = false;
         var fl = MissionUI.Solid(root, Color.white, false, "Flash"); MissionUI.Stretch(fl.rectTransform); flash = fl.gameObject.AddComponent<CanvasGroup>(); flash.alpha = 0f; flash.blocksRaycasts = false;
@@ -519,6 +521,8 @@ public class TrailerDirector : MonoBehaviour
         for (float a = 0f; a < 0.6f; a += Time.deltaTime) { caption.alpha = sub.alpha = a / 0.6f; yield return null; }
         caption.alpha = sub.alpha = 1f;
     }
+
+    IEnumerator FadeAt(float delay, float secs) { yield return new WaitForSeconds(delay); yield return Fade(0f, 1f, secs); }
 
     IEnumerator Fade(float from, float to, float secs)
     {
